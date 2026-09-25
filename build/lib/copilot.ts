@@ -6,7 +6,28 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import glob from 'glob';
 import { ensureNpmPackage, materializeNpmPackageVersion, type EnsureNpmPackageOptions } from './npmPackage.ts';
+
+/**
+ * Returns the direct @github/copilot SDK files explicitly allowed by the
+ * built-in extension's .vscodeignore. The production dependency filter removes
+ * the package wholesale, so the extension packaging stream re-adds this
+ * narrowly-scoped allowlist from the extension's own node_modules tree.
+ */
+export function getCopilotSdkPackageFiles(extensionPath: string): string[] {
+	const vscodeIgnorePath = path.join(extensionPath, '.vscodeignore');
+	const includePatterns = fs.readFileSync(vscodeIgnorePath, 'utf8')
+		.split(/\r?\n/g)
+		.map(line => line.trim())
+		.filter(line => line.startsWith('!node_modules/@github/copilot/'))
+		.map(line => line.slice(1));
+
+	return [...new Set(includePatterns.flatMap(pattern =>
+		glob.sync(path.join(extensionPath, pattern), { nodir: true, dot: true })
+			.map(filePath => path.relative(extensionPath, filePath).split(path.sep).join('/'))
+	))].sort();
+}
 
 /**
  * Options for {@link prepareBuiltInCopilotRipgrepShim}. Extends the npm packing

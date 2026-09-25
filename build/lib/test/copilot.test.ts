@@ -10,7 +10,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { suite, test } from 'node:test';
 import { create } from 'tar';
-import { copilotPlatforms, ensureCopilotPlatformPackage, getCopilotExcludeFilter, getCopilotRuntimePrebuildFiles, getCopilotRuntimeVersion, getMxcExcludeFilter, prepareBuiltInCopilotRipgrepShim } from '../copilot.ts';
+import { copilotPlatforms, ensureCopilotPlatformPackage, getCopilotExcludeFilter, getCopilotRuntimePrebuildFiles, getCopilotRuntimeVersion, getMxcExcludeFilter, getCopilotSdkPackageFiles, prepareBuiltInCopilotRipgrepShim } from '../copilot.ts';
 
 /**
  * Builds a fake `@github/copilot-win32-x64@1.0.73` tarball on disk and returns
@@ -32,6 +32,35 @@ function createPinnedCopilotWin32Tarball(dir: string): { tarball: string; integr
 }
 
 suite('copilot', () => {
+	test('collects only the direct Copilot SDK files allowlisted by .vscodeignore', () => {
+		const extensionPath = fs.mkdtempSync(path.join(os.tmpdir(), 'vscode-copilot-package-filter-test-'));
+		try {
+			fs.writeFileSync(path.join(extensionPath, '.vscodeignore'), [
+				'**',
+				'!node_modules/@github/copilot/package.json',
+				'!node_modules/@github/copilot/sdk/*.js',
+				'!node_modules/@github/copilot/sdk/prebuilds/*/runtime.node',
+				'node_modules/@github/copilot/index.js',
+			].join('\n'));
+			const packageRoot = path.join(extensionPath, 'node_modules', '@github', 'copilot');
+			fs.mkdirSync(path.join(packageRoot, 'sdk', 'prebuilds', 'linux-x64'), { recursive: true });
+			fs.mkdirSync(path.join(packageRoot, 'sdk', 'node_modules', '@github', 'copilot'), { recursive: true });
+			fs.writeFileSync(path.join(packageRoot, 'package.json'), '{}');
+			fs.writeFileSync(path.join(packageRoot, 'index.js'), 'standalone cli');
+			fs.writeFileSync(path.join(packageRoot, 'sdk', 'index.js'), 'sdk');
+			fs.writeFileSync(path.join(packageRoot, 'sdk', 'prebuilds', 'linux-x64', 'runtime.node'), 'runtime');
+			fs.writeFileSync(path.join(packageRoot, 'sdk', 'node_modules', '@github', 'copilot', 'index.js'), 'transitive cli');
+
+			assert.deepStrictEqual(getCopilotSdkPackageFiles(extensionPath), [
+				'node_modules/@github/copilot/package.json',
+				'node_modules/@github/copilot/sdk/index.js',
+				'node_modules/@github/copilot/sdk/prebuilds/linux-x64/runtime.node',
+			]);
+		} finally {
+			fs.rmSync(extensionPath, { recursive: true, force: true });
+		}
+	});
+
 	test('reads the runtime version owned by the SDK', () => {
 		const repoRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vscode-copilot-version-test-'));
 		try {

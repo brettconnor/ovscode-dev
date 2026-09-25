@@ -22,6 +22,7 @@ import { type IExtensionDefinition, getExtensionStream } from './builtInExtensio
 import { fetchUrls, fetchGithub } from './fetch.ts';
 import { createTsgoStream, spawnTsgo } from './tsgo.ts';
 import watcher from './watch/index.ts';
+import { getCopilotSdkPackageFiles } from './copilot.ts';
 
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
@@ -200,6 +201,12 @@ function fromLocalEsbuild(extensionPath: string, esbuildConfigFileName: string):
 			);
 
 			fileNames = Array.from(new Set([...fileNames, ...packagedDependencyFileNames]));
+		}
+
+		if (extensionName === 'copilot') {
+			// The shared production dependency filter strips @github/copilot/**.
+			// Re-add only the direct SDK files already allowlisted by .vscodeignore.
+			fileNames = Array.from(new Set([...fileNames, ...getCopilotSdkPackageFiles(extensionPath)]));
 		}
 
 		const files = fileNames
