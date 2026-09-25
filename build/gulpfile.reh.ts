@@ -74,10 +74,10 @@ function getNodeChecksum(expectedName: string): string | undefined {
 	return undefined;
 }
 
-function extractAlpinefromDocker(nodeVersion: string, platform: string, arch: string) {
+function extractAlpinefromPodman(nodeVersion: string, platform: string, arch: string) {
 	const imageName = arch === 'arm64' ? 'arm64v8/node' : 'node';
-	log(`Downloading node.js ${nodeVersion} ${platform} ${arch} from docker image ${imageName}`);
-	const contents = cp.execSync(`docker run --rm ${imageName}:${nodeVersion}-alpine /bin/sh -c 'cat \`which node\`'`, { maxBuffer: 100 * 1024 * 1024, encoding: 'buffer' });
+	log(`Downloading node.js ${nodeVersion} ${platform} ${arch} from Podman image ${imageName}`);
+	const contents = cp.execSync(`podman run --rm ${imageName}:${nodeVersion}-alpine /bin/sh -c 'cat \`which node\`'`, { maxBuffer: 100 * 1024 * 1024, encoding: 'buffer' });
 	// eslint-disable-next-line local/code-no-dangerous-type-assertions
 	return es.readArray([new File({ path: 'node', contents, stat: { mode: parseInt('755', 8) } as fs.Stats })]);
 }
@@ -245,7 +245,7 @@ function nodejs(platform: string, arch: string): NodeJS.ReadWriteStream | undefi
 					.pipe(filter('**/node'))
 					.pipe(util.setExecutableBit('**'))
 					.pipe(rename('node'))
-				: extractAlpinefromDocker(nodeVersion, platform, arch);
+				: extractAlpinefromPodman(nodeVersion, platform, arch);
 	}
 }
 
