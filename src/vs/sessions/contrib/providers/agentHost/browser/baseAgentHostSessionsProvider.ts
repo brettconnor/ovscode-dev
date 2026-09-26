@@ -405,7 +405,6 @@ function isSessionIsolation(value: unknown): value is SessionIsolation {
 function isGloballyRememberedSessionConfigKey(property: string): boolean {
 	return property !== SessionConfigKey.Branch
 		&& property !== SessionConfigKey.Isolation
-		&& property !== SessionConfigKey.SandboxEnabled
 		&& !UNSAFE_SESSION_CONFIG_KEYS.has(property);
 }
 

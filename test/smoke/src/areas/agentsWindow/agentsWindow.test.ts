@@ -213,9 +213,10 @@ export function setup(logger: Logger, quality: Quality) {
 
 	});
 
-	const runDevContainerSuite = quality !== Quality.Exploration;
+	// Dev Container AgentHost support is removed from the product baseline.
+	const runDevContainerSuite = false;
 	if (!runDevContainerSuite) {
-		logger.log('Skipping Agents Window (Dev Container AgentHost) on Exploration builds');
+		logger.log('Skipping Agents Window Dev Container scenarios because the product support was cut');
 	}
 	(runDevContainerSuite ? describe : describe.skip)('Agents Window (Dev Container AgentHost)', () => {
 		installPodmanPrerequisite(logger, process.platform === 'linux');
@@ -306,7 +307,7 @@ export function setup(logger: Logger, quality: Quality) {
 		const requested = transport === 'ssh' || (transport === 'wsl' ? !!process.env.VSCODE_SMOKE_TEST_WSL_DISTRO : !!process.env.VSCODE_SMOKE_TEST_TUNNEL_TOKEN);
 		const enabled = runDevContainerSuite && (required || (supportedPlatform && requested));
 		if (!enabled) {
-			logger.log(`Skipping Agents Window (${label} Dev Container AgentHost): ${!runDevContainerSuite ? 'not supported on Exploration builds' : !supportedPlatform ? 'unsupported platform' : transport === 'wsl' ? 'set VSCODE_SMOKE_TEST_WSL_DISTRO to enable the WSL fixture' : 'set VSCODE_SMOKE_TEST_TUNNEL_TOKEN to enable the real tunnel fixture'}`);
+			logger.log(`Skipping Agents Window (${label} Dev Container AgentHost): ${!runDevContainerSuite ? 'Dev Container AgentHost support was cut from the product' : !supportedPlatform ? 'unsupported platform' : transport === 'wsl' ? 'set VSCODE_SMOKE_TEST_WSL_DISTRO to enable the WSL fixture' : 'set VSCODE_SMOKE_TEST_TUNNEL_TOKEN to enable the real tunnel fixture'}`);
 		}
 		(enabled ? describe : describe.skip)(`Agents Window (${label} Dev Container AgentHost)`, () => {
 			if (transport !== 'wsl') {
@@ -394,7 +395,7 @@ export function setup(logger: Logger, quality: Quality) {
 		});
 	}
 
-	describe('Agents Window (local AgentHost, SDK sandbox)', () => {
+	describe.skip('Agents Window (local AgentHost, SDK sandbox)', () => {
 
 		// Variant of the AgentHost suite that leaves
 		// `chat.agentHost.customTerminalTool.enabled` at its default (false), so

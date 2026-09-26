@@ -5,7 +5,6 @@
 
 import { ILogService } from '../../../log/common/log.js';
 import { raceTimeout } from '../../../../base/common/async.js';
-import { copilotSandboxPolicyCommand } from './copilotSandboxPolicyDisplay.js';
 import type { ICopilotSlashCommandHandler, ResolvedCopilotSlashCommand, RuntimeSlashCommandInfo } from './copilotSlashCommand.js';
 
 type RuntimeSlashCommandCatalog = {
@@ -40,16 +39,13 @@ export class CopilotSlashCommandProvider {
 		} catch (err) {
 			this._logService.warn(`[Copilot] rpc.commands.list failed`, err);
 		}
-		return [copilotSandboxPolicyCommand, ...commands.filter(command => this._normalizeSlashCommandKey(command.name) !== copilotSandboxPolicyCommand.name)];
+		return commands;
 	}
 
 	public async resolveSlashCommand(command: string, maxWaitMs: number | undefined = undefined): Promise<ResolvedCopilotSlashCommand | undefined> {
 		const key = this._normalizeSlashCommandKey(command);
 		if (!key) {
 			return undefined;
-		}
-		if (key === copilotSandboxPolicyCommand.name) {
-			return this._withHandler(copilotSandboxPolicyCommand);
 		}
 		const catalog = await this._getRuntimeSlashCommandCatalog(maxWaitMs);
 		return this._withHandler(catalog.byName.get(key) ?? catalog.byAlias.get(key));

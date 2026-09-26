@@ -1121,17 +1121,13 @@ function isUnauthorizedPathGateRequest(request: PermissionRequest): boolean {
  * actually needed.
  *
  * A read is gated for several reasons — the path lies outside the allowed
- * directories, a managed or scoped rule matched it, or the model asked to
- * escape the sandbox. Only the first is about location, so the title claims it
+ * directories or a managed or scoped rule matched it. Only the first is about location, so the title claims it
  * either when the unauthorized-path gate raised the request or when the path is
  * absolute and contained by none of the session's workspace roots. A relative
  * path, an unknown path, or an unknown workspace falls back to the neutral
  * title rather than asserting a location the request does not establish.
  */
-function readConfirmationTitle(request: PermissionRequest, path: string | undefined, workspaceRoots: readonly URI[], requestSandboxBypass: boolean | undefined): string {
-	if (requestSandboxBypass) {
-		return localize('copilot.permission.read.bypass.title', "Read file outside the sandbox?");
-	}
+function readConfirmationTitle(request: PermissionRequest, path: string | undefined, workspaceRoots: readonly URI[]): string {
 	const outsideWorkspace = isUnauthorizedPathGateRequest(request)
 		|| (path !== undefined
 			&& isAbsolute(path)
@@ -1166,13 +1162,7 @@ export function getPermissionDisplay(request: PermissionRequest, workingDirector
 	const toolName = request.kind === 'mcp' || request.kind === 'custom-tool' || request.kind === 'hook'
 		? str(request.toolName)
 		: undefined;
-	const requestSandboxBypass = request.kind === 'shell' || request.kind === 'write' || request.kind === 'read' || request.kind === 'url'
-		? request.requestSandboxBypass
-		: undefined;
-
-	const shellConfirmationTitle = requestSandboxBypass
-		? localize('copilot.permission.shell.bypass.title', "Run in terminal outside the sandbox?")
-		: localize('copilot.permission.shell.title', "Run in terminal?");
+	const shellConfirmationTitle = localize('copilot.permission.shell.title', "Run in terminal?");
 
 	switch (request.kind) {
 		case 'shell': {
@@ -1240,7 +1230,7 @@ export function getPermissionDisplay(request: PermissionRequest, workingDirector
 		}
 		case 'read':
 			return {
-				confirmationTitle: readConfirmationTitle(request, path, workingDirectory ? [workingDirectory, ...(additionalDirectories ?? [])] : [], requestSandboxBypass),
+				confirmationTitle: readConfirmationTitle(request, path, workingDirectory ? [workingDirectory, ...(additionalDirectories ?? [])] : []),
 				invocationMessage: getInvocationMessage(CopilotToolName.View, getToolDisplayName(CopilotToolName.View), path ? { path } : undefined),
 				permissionKind: 'read',
 				permissionPath: path,

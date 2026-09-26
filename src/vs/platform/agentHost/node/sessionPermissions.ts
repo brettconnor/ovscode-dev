@@ -24,7 +24,6 @@ import { AgentHostAutoApprovePolicyRestrictedConfigKey, AgentHostEditAutoApprove
 import type { IAgentToolPendingConfirmationSignal } from '../common/agent.js';
 import { ISessionDataService, isSessionAttachmentPath } from '../common/sessionDataService.js';
 import { SessionConfigKey } from '../common/sessionConfigKeys.js';
-import { readToolCallMeta } from '../common/meta/agentToolCallMeta.js';
 import { ConfirmationOptionKind, type ConfirmationOption } from '../common/state/protocol/state.js';
 import { ActionType, type IToolCallReadyAction } from '../common/state/sessionActions.js';
 import {
@@ -50,7 +49,6 @@ export interface IToolApprovalEvent {
 	readonly permissionKind?: IAgentToolPendingConfirmationSignal['permissionKind'];
 	readonly permissionPath?: string;
 	readonly toolInput?: string;
-	readonly requestSandboxBypass?: boolean;
 	readonly shellLanguage?: IAgentToolPendingConfirmationSignal['shellLanguage'];
 }
 
@@ -64,7 +62,6 @@ const CONFIRMATION_OPTIONS: readonly ConfirmationOption[] = [
 	SKIP_OPTION,
 ];
 const MANAGED_CONFIRMATION_OPTIONS: readonly ConfirmationOption[] = [ALLOW_ONCE_OPTION, SKIP_OPTION];
-const SANDBOX_BYPASS_META_KEY = 'agentHost.sandboxBypass';
 
 const HOME_DIR = URI.file(homedir());
 
@@ -254,13 +251,6 @@ export class SessionPermissionManager extends Disposable {
 		const workDirs = getEffectiveWorkingDirectories(this._stateManager, sessionKey);
 		const workingDirectories = workDirs?.map(d => URI.parse(d));
 
-		// 0. Sandbox bypass: a shell command that opted out of the
-		// sandbox (`requestSandboxBypass`) escapes the sandbox's
-		// containment.
-		if (e.requestSandboxBypass) {
-			return undefined;
-		}
-
 		// 1. Global auto-approve setting
 		if (this.isGlobalAutoApproveEnabled()) {
 			return ToolCallConfirmationReason.Setting;
@@ -399,7 +389,7 @@ export class SessionPermissionManager extends Disposable {
 
 	/** Whether adding a persistent terminal auto-approve rule can suppress future prompts for this shell event. */
 	isAutoApproveRuleResolvable(e: IToolApprovalEvent, sessionKey: ProtocolURI): boolean {
-		if (e.permissionKind !== 'shell' || !e.toolInput || e.requestSandboxBypass || !e.shellLanguage) {
+		if (e.permissionKind !== 'shell' || !e.toolInput || !e.shellLanguage) {
 			return false;
 		}
 		if (this._configService.getRootValue(platformRootSchema, AgentHostTerminalAutoApproveEnabledConfigKey) === false) {
@@ -454,9 +444,7 @@ export class SessionPermissionManager extends Disposable {
 				riskAssessment: state.riskAssessment,
 				edits: state.edits,
 				editable: state.editable,
-				...(e.requestSandboxBypass
-					? { _meta: { ...state._meta, [SANDBOX_BYPASS_META_KEY]: true } }
-					: state._meta ? { _meta: state._meta } : {}),
+				...(state._meta ? { _meta: state._meta } : {}),
 				// Managed asks are one-time only. Other agents can supply tool-specific
 				// buttons (e.g. ExitPlanMode's `Approve`/`Deny`) via `state.options`;
 				// otherwise the standard session/once/skip set is used.
@@ -494,13 +482,6 @@ export class SessionPermissionManager extends Disposable {
 		const sessionKey = resolveAgentHostSession(URI.parse(chatChannel)).toString();
 		if (selectedOptionId === ALLOW_SESSION_OPTION_ID) {
 			const part = this._stateManager.getSessionState(chatChannel)?.activeTurn?.responseParts.find(part => part.kind === ResponsePartKind.ToolCall && part.toolCall.toolCallId === toolCallId);
-			if (part?.kind === ResponsePartKind.ToolCall && readToolCallMeta(part.toolCall)[SANDBOX_BYPASS_META_KEY] === true) {
-				const policy = this._configService.getSessionSandboxPolicy(sessionKey);
-				if (!policy?.enabled || policy.allowBypass) {
-					this._configService.updateSessionConfig(sessionKey, { [SessionConfigKey.SandboxEnabled]: 'off' });
-				}
-				return;
-			}
 			const toolName = this._getToolNameForToolCall(chatChannel, toolCallId);
 			if (toolName) {
 				this._addToolToSessionPermissions(sessionKey, toolName);

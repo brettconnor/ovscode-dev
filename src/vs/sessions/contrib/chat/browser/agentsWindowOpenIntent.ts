@@ -7,7 +7,6 @@ import { decodeHex } from '../../../../base/common/buffer.js';
 import { Schemas } from '../../../../base/common/network.js';
 import { URI } from '../../../../base/common/uri.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
-import { DevContainerAgentHostEnabledSettingId } from '../../../common/devContainerAgentHostService.js';
 import { WorkspaceArgumentKind } from '../../../common/workspaceSelection.js';
 
 const DEV_CONTAINER_REMOTE_AUTHORITY_PREFIX = 'dev-container+';
@@ -73,7 +72,7 @@ function readDevContainerHostPath(config: string): string | undefined {
 	}
 }
 
-export function resolveAgentsWindowFolderIntent(workspaceUri: URI | undefined, configurationService: IConfigurationService): IAgentsWindowFolderIntent {
+export function resolveAgentsWindowFolderIntent(workspaceUri: URI | undefined, _configurationService: IConfigurationService): IAgentsWindowFolderIntent {
 	if (workspaceUri?.scheme === Schemas.file) {
 		return { folderUri: workspaceUri, preferDevContainer: false };
 	}
@@ -89,6 +88,6 @@ export function resolveAgentsWindowFolderIntent(workspaceUri: URI | undefined, c
 	}
 	return {
 		folderUri: URI.file(hostPath),
-		preferDevContainer: configurationService.getValue<boolean>(DevContainerAgentHostEnabledSettingId) === true,
+		preferDevContainer: false,
 	};
 }

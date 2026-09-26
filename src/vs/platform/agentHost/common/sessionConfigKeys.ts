@@ -21,8 +21,6 @@ export const enum SessionConfigKey {
 	AutoApprove = 'autoApprove',
 	/** `'permissions'` — per-tool session allow/deny lists. */
 	Permissions = 'permissions',
-	/** Persisted session sandbox selection; omitted or `default` follows the host default. */
-	SandboxEnabled = 'sandboxEnabled',
 	/** `'isolation'` — host-owned `'folder'` or `'worktree'` selection. */
 	Isolation = 'isolation',
 	/** `'branch'` — host-owned base branch to work from. */
@@ -50,8 +48,6 @@ export const enum SessionConfigKey {
 	/** `'shellInitScripts'` — scripts a client generated for the session, sourced before built-in shell tool commands. */
 	ShellInitScripts = 'shellInitScripts',
 }
-
-export type SessionSandboxEnabled = 'default' | 'on' | 'off';
 
 /**
  * The set of enum values the unified permission picker *tolerates* for the
@@ -83,7 +79,6 @@ export function omitTransientSessionConfigValues<T>(values: Record<string, T>): 
 
 const automationDefinitionOwnedConfigKeys = [
 	SessionConfigKey.Permissions,
-	SessionConfigKey.SandboxEnabled,
 	SessionConfigKey.Isolation,
 	SessionConfigKey.Branch,
 	SessionConfigKey.WorktreeBranchPrefix,

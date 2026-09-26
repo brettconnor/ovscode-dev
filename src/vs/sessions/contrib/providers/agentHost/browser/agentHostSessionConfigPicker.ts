@@ -296,7 +296,6 @@ function isRenderableSessionConfigProperty(property: string, schema: SessionConf
 		return false;
 	}
 	if (
-		property === SessionConfigKey.SandboxEnabled ||
 		property === SessionConfigKey.WorktreeBranchTrack ||
 		property === SessionConfigKey.WorktreeCreateNewBranch
 	) {

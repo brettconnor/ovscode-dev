@@ -1468,7 +1468,6 @@ export class AgentSideEffects extends Disposable {
 			permissionKind: e.permissionKind,
 			permissionPath: e.permissionPath,
 			toolInput: getInlineToolInput(e.state.toolInput),
-			requestSandboxBypass: e.requestSandboxBypass,
 			shellLanguage: e.shellLanguage,
 		};
 		// A write to a read-only host snapshot under the session attachments dir must be refused when

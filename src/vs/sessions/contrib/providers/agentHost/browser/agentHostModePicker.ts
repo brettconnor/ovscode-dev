@@ -374,14 +374,7 @@ export class AgentHostModePicker extends AgentHostSessionEnumPicker {
 			this._permissionDelegate.isModePickerCombined.read(reader);
 			this._permissionDelegate.currentPermissionLevel.read(reader);
 			this._permissionDelegate.isResolving.read(reader);
-			this._permissionDelegate.sandboxToggleSettingId.read(reader);
-			this._permissionDelegate.managedSandboxEnforced.read(reader);
-			this._permissionDelegate.managedSandboxAllowsBypass.read(reader);
 			this._hidePicker();
-			this._updateTrigger();
-		}));
-		this._register(autorun(reader => {
-			this._permissionDelegate.sandboxEnabled.read(reader);
 			this._updateTrigger();
 		}));
 		this._register(this._configurationService.onDidChangeConfiguration(e => {

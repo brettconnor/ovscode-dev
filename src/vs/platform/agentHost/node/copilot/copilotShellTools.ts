@@ -8,15 +8,11 @@ import { generateUuid } from '../../../../base/common/uuid.js';
 import { URI } from '../../../../base/common/uri.js';
 import { Disposable, DisposableStore, type IReference, toDisposable } from '../../../../base/common/lifecycle.js';
 import { Emitter, Event } from '../../../../base/common/event.js';
-import { IInstantiationService } from '../../../instantiation/common/instantiation.js';
 import { ILogService } from '../../../log/common/log.js';
-import type { ITerminalSandboxResolvedNetworkDomains } from '../../../sandbox/common/terminalSandboxService.js';
-import { TerminalSandboxEngine } from '../../../sandbox/common/terminalSandboxEngine.js';
 import { TerminalClaimKind, TerminalLifecycleStatus, type TerminalSessionClaim } from '../../common/state/protocol/state.js';
 import { parseRequiredSessionUriFromChatUri } from '../../common/state/sessionState.js';
 import { isZsh } from '../agentHostShellUtils.js';
 import { IAgentHostTerminalManager } from '../agentHostTerminalManager.js';
-import { AgentHostSandboxEngine } from './agentHostSandboxEngine.js';
 import { DEFAULT_SHELL_COMMAND_TIMEOUT_MS, executeShellCommand, isMultilineCommand, prefixForHistorySuppression, prepareOutputForModel, shellTypeForExecutable, type IShellCommandResult, type ShellType } from '../shared/shellCommandExecution.js';
 
 // Re-exported for consumers (and tests) that historically imported these
@@ -50,14 +46,12 @@ interface IManagedShell {
  * a {@link IAgentHostTerminalManager} terminal and participates in AHP terminal
  * claim semantics.
  *
- * Created via {@link IInstantiationService} once per session and disposed when
- * the session ends.
+ * Created once per session and disposed when the session ends.
  */
 export class ShellManager extends Disposable {
 	private readonly _shells = new Map<string, IManagedShell>();
 	private readonly _toolCallShells = new Map<string, string>();
 	private _resolvedExecutable: Promise<string> | undefined;
-	private _sandboxEngine: AgentHostSandboxEngine | undefined;
 	private _workingDirectory: URI | undefined;
 	private _pendingShellCreations = 0;
 	/** Set of shell ids currently executing a command and unsafe to share. */
@@ -73,7 +67,6 @@ export class ShellManager extends Disposable {
 		workingDirectory: URI | undefined,
 		@IAgentHostTerminalManager private readonly _terminalManager: IAgentHostTerminalManager,
 		@ILogService private readonly _logService: ILogService,
-		@IInstantiationService private readonly _instantiationService: IInstantiationService,
 	) {
 		super();
 		this._workingDirectory = workingDirectory;
@@ -117,7 +110,6 @@ export class ShellManager extends Disposable {
 		this._shells.clear();
 		this._toolCallShells.clear();
 		this._workingDirectory = workingDirectory;
-		this._sandboxEngine?.setWorkingDirectory(workingDirectory);
 	}
 
 	/**
@@ -130,27 +122,6 @@ export class ShellManager extends Disposable {
 			this._resolvedExecutable = this._terminalManager.getDefaultShell();
 		}
 		return this._resolvedExecutable;
-	}
-
-	/**
-	 * Lazily constructs the per-session {@link TerminalSandboxEngine}. The engine
-	 * is registered for disposal alongside the {@link ShellManager}; its temp dir
-	 * is cleaned up best-effort on dispose.
-	 */
-	getOrCreateSandboxEngine(): TerminalSandboxEngine {
-		if (!this._sandboxEngine) {
-			const sandboxEngine = this._instantiationService.createInstance(
-				AgentHostSandboxEngine,
-				this._sessionUri.toString(),
-				this._workingDirectory,
-			);
-			this._register(sandboxEngine);
-			this._register(toDisposable(() => {
-				void sandboxEngine.engine.cleanupTempDir().catch(err => this._logService.warn('[ShellManager] Sandbox temp dir cleanup failed', err));
-			}));
-			this._sandboxEngine = sandboxEngine;
-		}
-		return this._sandboxEngine.engine;
 	}
 
 	/**
@@ -376,20 +347,7 @@ async function executeCommandInShell(
 interface IShellToolArgs {
 	command: string;
 	timeout?: number;
-	requestUnsandboxedExecution?: boolean;
-	requestUnsandboxedExecutionReason?: string;
 }
-
-export interface IUnsandboxedCommandConfirmationRequest {
-	readonly toolCallId: string;
-	readonly toolName: string;
-	readonly shellExecutable: string;
-	readonly command: string;
-	readonly reason?: string;
-	readonly blockedDomains?: readonly string[];
-}
-
-export type UnsandboxedCommandConfirmationHandler = (request: IUnsandboxedCommandConfirmationRequest) => Promise<boolean>;
 
 interface IWriteShellArgs {
 	command: string;
@@ -413,35 +371,20 @@ export async function createShellTools(
 	chat: URI,
 	terminalManager: IAgentHostTerminalManager,
 	logService: ILogService,
-	confirmUnsandboxedExecution?: UnsandboxedCommandConfirmationHandler,
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<Tool<any>[]> {
 	const executable = await shellManager.getResolvedExecutable();
 	const shellType = shellTypeForExecutable(executable);
-	const engine = shellManager.getOrCreateSandboxEngine();
-	const sandboxEnabled = await engine.isEnabled();
-	const networkDomains = sandboxEnabled ? engine.getResolvedNetworkDomains() : undefined;
-
 	const primaryTool: Tool<IShellToolArgs> = {
 		name: shellType,
 		description: shellType === 'bash'
-			? (isZsh(executable) ? createZshModelDescription(sandboxEnabled, networkDomains) : createBashModelDescription(sandboxEnabled, networkDomains))
-			: createPowerShellModelDescription(shellType, executable, sandboxEnabled, networkDomains),
+			? (isZsh(executable) ? createZshModelDescription(false) : createBashModelDescription(false))
+			: createPowerShellModelDescription(shellType, executable, false),
 		parameters: {
 			type: 'object',
 			properties: {
 				command: { type: 'string', description: 'The command to execute' },
 				timeout: { type: 'number', description: 'Timeout in milliseconds (default 120000)' },
-				...(sandboxEnabled ? {
-					requestUnsandboxedExecution: {
-						type: 'boolean',
-						description: 'Request that this command run outside the sandbox. Only set this after first executing the command in the sandbox and observing that sandboxing caused the failure. The user will be prompted before the command runs unsandboxed.',
-					},
-					requestUnsandboxedExecutionReason: {
-						type: 'string',
-						description: 'A short explanation of the sandboxed execution failure or blocked-domain requirement that justifies retrying outside the sandbox. Only provide this when requestUnsandboxedExecution is true.',
-					},
-				} : {}),
 			},
 			required: ['command'],
 		},
@@ -456,79 +399,7 @@ export async function createShellTools(
 			);
 			let shouldReleaseShell = true;
 			try {
-				let commandToRun = args.command;
-				if (sandboxEnabled) {
-					if (args.requestUnsandboxedExecution && !engine.areUnsandboxedCommandsAllowed()) {
-						return makeFailureResult(
-							'Unsandboxed execution is disabled by the chat.agent.sandbox.allowUnsandboxedCommands setting.',
-							'unsandboxed_disabled'
-						);
-					}
-
-					const requestUnsandboxedConfirmation = async (blockedDomains?: readonly string[]): Promise<boolean | ToolResultObject> => {
-						if (!confirmUnsandboxedExecution) {
-							const blocked = blockedDomains?.join(', ') ?? '(unknown)';
-							return makeFailureResult(
-								`Command requires approval to run outside the sandbox. Blocked domains: ${blocked}. Re-run with requestUnsandboxedExecution=true and requestUnsandboxedExecutionReason explaining why unsandboxed access is required.`,
-								'sandbox_blocked'
-							);
-						}
-
-						const approved = await confirmUnsandboxedExecution({
-							toolCallId: invocation.toolCallId,
-							toolName: invocation.toolName,
-							shellExecutable: executable,
-							command: args.command,
-							reason: args.requestUnsandboxedExecutionReason,
-							blockedDomains,
-						});
-						return approved;
-					};
-
-					let wrapped = await engine.wrapCommand(
-						args.command,
-						args.requestUnsandboxedExecution,
-						executable,
-						ref.object.shellType === 'bash' ? shellManager.workingDirectory : undefined,
-					);
-
-					if (args.requestUnsandboxedExecution && !wrapped.isSandboxWrapped) {
-						const decision = await requestUnsandboxedConfirmation(wrapped.blockedDomains);
-						if (typeof decision !== 'boolean') {
-							return decision;
-						}
-						if (!decision) {
-							const blocked = wrapped.blockedDomains?.join(', ') ?? '(none)';
-							return makeFailureResult(
-								`User declined to run command outside the sandbox. Blocked domains: ${blocked}.`,
-								'sandbox_blocked'
-							);
-						}
-					}
-
-					if (wrapped.requiresUnsandboxConfirmation) {
-						const decision = await requestUnsandboxedConfirmation(wrapped.blockedDomains);
-						if (typeof decision !== 'boolean') {
-							return decision;
-						}
-						if (!decision) {
-							const blocked = wrapped.blockedDomains?.join(', ') ?? '(unknown)';
-							return makeFailureResult(
-								`User declined to run command outside the sandbox. Blocked domains: ${blocked}.`,
-								'sandbox_blocked'
-							);
-						}
-
-						wrapped = await engine.wrapCommand(
-							args.command,
-							true,
-							executable,
-							ref.object.shellType === 'bash' ? shellManager.workingDirectory : undefined,
-						);
-					}
-					commandToRun = wrapped.command;
-				}
-				const result = await executeCommandInShell(ref.object, commandToRun, timeoutMs, terminalManager, logService);
+				const result = await executeCommandInShell(ref.object, args.command, timeoutMs, terminalManager, logService);
 				if (result.keepShellBusy) {
 					shouldReleaseShell = false;
 					shellManager.holdShellUntilCommandFinishes(ref.object);
@@ -671,7 +542,7 @@ function isWindowsPowerShell(envShell: string): boolean {
 	return envShell.endsWith('System32\\WindowsPowerShell\\v1.0\\powershell.exe');
 }
 
-function createPowerShellModelDescription(shellType: string, shellPath: string, isSandboxEnabled: boolean, networkDomains?: ITerminalSandboxResolvedNetworkDomains): string {
+function createPowerShellModelDescription(shellType: string, shellPath: string): string {
 	const isWinPwsh = isWindowsPowerShell(shellPath);
 	const parts = [
 		`This tool allows you to execute ${isWinPwsh ? 'Windows PowerShell 5.1' : 'PowerShell'} commands in a persistent terminal session, preserving environment variables, working directory, and other context across multiple commands.`,
@@ -702,10 +573,6 @@ function createPowerShellModelDescription(shellType: string, shellPath: string, 
 		`Use write_${shellType} to send commands or input to a terminal session.`,
 	];
 
-	if (isSandboxEnabled) {
-		parts.push(...createSandboxLines(networkDomains));
-	}
-
 	parts.push(
 		'',
 		'Output Management:',
@@ -733,34 +600,7 @@ function createPowerShellModelDescription(shellType: string, shellPath: string, 
 	return parts.join('\n');
 }
 
-function createSandboxLines(networkDomains?: ITerminalSandboxResolvedNetworkDomains): string[] {
-	const lines = [
-		'',
-		'Sandboxing:',
-		'- ATTENTION: Terminal sandboxing is enabled, commands run in a sandbox by default',
-		'- When executing commands within the sandboxed environment, all operations requiring a temporary directory must utilize the $TMPDIR environment variable. The /tmp directory is not guaranteed to be accessible or writable and must be avoided',
-		'- Tools and scripts should respect the TMPDIR environment variable, which is automatically set to an appropriate path within the sandbox',
-		'- When a command fails due to sandbox restrictions, immediately re-run it with requestUnsandboxedExecution=true. Do NOT ask the user for permission — setting this flag automatically shows a confirmation prompt to the user',
-		'- Only set requestUnsandboxedExecution=true when there is evidence of failures caused by the sandbox, e.g. \'Operation not permitted\' errors, network failures, or file access errors, etc',
-		'- Do NOT set requestUnsandboxedExecution=true without first executing the command in sandbox mode. Always try the command in the sandbox first, and only set requestUnsandboxedExecution=true when retrying after that sandboxed execution failed due to sandbox restrictions.',
-		'- When setting requestUnsandboxedExecution=true, also provide requestUnsandboxedExecutionReason explaining why the command needs unsandboxed access',
-	];
-	if (networkDomains) {
-		const deniedSet = new Set(networkDomains.deniedDomains);
-		const effectiveAllowed = networkDomains.allowedDomains.filter(d => !deniedSet.has(d));
-		if (effectiveAllowed.length === 0) {
-			lines.push('- All network access is blocked in the sandbox');
-		} else {
-			lines.push(`- Only the following domains are accessible in the sandbox (all other network access is blocked): ${effectiveAllowed.join(', ')}`);
-		}
-		if (networkDomains.deniedDomains.length > 0) {
-			lines.push(`- The following domains are explicitly blocked in the sandbox: ${networkDomains.deniedDomains.join(', ')}`);
-		}
-	}
-	return lines;
-}
-
-function createGenericDescription(shellType: string, isSandboxEnabled: boolean, networkDomains?: ITerminalSandboxResolvedNetworkDomains): string {
+function createGenericDescription(shellType: string): string {
 	const parts = [`
 Command Execution:
 - Use && to chain simple commands on one line
@@ -784,10 +624,6 @@ Async Mode:
 - Returns a terminal ID for checking status and runtime later
 
 Use write_${shellType} to send commands or input to a terminal session.`];
-
-	if (isSandboxEnabled) {
-		parts.push(createSandboxLines(networkDomains).join('\n'));
-	}
 
 	parts.push(`
 
@@ -813,20 +649,20 @@ Interactive Input Handling:
 	return parts.join('');
 }
 
-function createBashModelDescription(isSandboxEnabled: boolean, networkDomains?: ITerminalSandboxResolvedNetworkDomains): string {
+function createBashModelDescription(): string {
 	return [
 		'This tool allows you to execute shell commands in a persistent bash terminal session, preserving environment variables, working directory, and other context across multiple commands.',
-		createGenericDescription('bash', isSandboxEnabled, networkDomains),
+		createGenericDescription('bash'),
 		'- Use [[ ]] for conditional tests instead of [ ]',
 		'- Prefer $() over backticks for command substitution',
 		'- Use set -e at start of complex commands to exit on errors'
 	].join('\n');
 }
 
-function createZshModelDescription(isSandboxEnabled: boolean, networkDomains?: ITerminalSandboxResolvedNetworkDomains): string {
+function createZshModelDescription(): string {
 	return [
 		'This tool allows you to execute shell commands in a persistent zsh terminal session, preserving environment variables, working directory, and other context across multiple commands.',
-		createGenericDescription('bash', isSandboxEnabled, networkDomains),
+		createGenericDescription('bash'),
 		'- Use type to check command type (builtin, function, alias)',
 		'- Use jobs, fg, bg for job control',
 		'- Use [[ ]] for conditional tests instead of [ ]',
