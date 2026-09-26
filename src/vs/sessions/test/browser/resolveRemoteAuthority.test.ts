@@ -4,15 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import assert from 'assert';
-import { decodeHex, encodeHex, VSBuffer } from '../../../base/common/buffer.js';
+import { decodeHex } from '../../../base/common/buffer.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../base/test/common/utils.js';
-import { upcastPartial } from '../../../base/test/common/mock.js';
 import { IRemoteAgentHostEntry, IRemoteAgentHostService, getEntryAddress, RemoteAgentHostEntryType } from '../../../platform/agentHost/common/remoteAgentHostService.js';
-import { AGENT_HOST_SCHEME, agentHostAuthority, toAgentHostUri } from '../../../platform/agentHost/common/agentHostUri.js';
+import { AGENT_HOST_SCHEME } from '../../../platform/agentHost/common/agentHostUri.js';
 import { URI } from '../../../base/common/uri.js';
 import { resolveRemoteAuthority, resolveRemoteFolderUri, sshAuthorityString } from '../../browser/openInVSCodeUtils.js';
 import { ISessionsProvidersService } from '../../services/sessions/browser/sessionsProvidersService.js';
-import { IAgentHostSessionsProvider } from '../../common/agentHostSessionsProvider.js';
 
 suite('resolveRemoteAuthority', () => {
 
