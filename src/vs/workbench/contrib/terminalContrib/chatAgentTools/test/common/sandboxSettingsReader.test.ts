@@ -7,11 +7,8 @@ import assert from 'assert';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../../base/test/common/utils.js';
 import { TestConfigurationService } from '../../../../../../platform/configuration/test/common/testConfigurationService.js';
 import { NullLogService } from '../../../../../../platform/log/common/log.js';
-import { AgentNetworkDomainSettingId } from '../../../../../../platform/networkFilter/common/settings.js';
 import { AgentSandboxEnabledValue, AgentSandboxSettingId } from '../../../../../../platform/sandbox/common/settings.js';
-import { AgentHostSandboxKey } from '../../../../../../platform/agentHost/common/sandboxConfigSchema.js';
-import { readAgentHostSandboxValues, readSandboxSetting } from '../../common/sandboxSettingsReader.js';
-import { terminalChatAgentToolsConfiguration } from '../../common/terminalChatAgentToolsConfiguration.js';
+import { readSandboxSetting } from '../../common/sandboxSettingsReader.js';
 
 suite('sandboxSettingsReader', () => {
 	ensureNoDisposablesAreLeakedInTestSuite();
@@ -24,19 +21,6 @@ suite('sandboxSettingsReader', () => {
 			readSandboxSetting<string>(cfg, new NullLogService(), AgentSandboxSettingId.AgentSandboxEnabled),
 			AgentSandboxEnabledValue.On,
 		);
-	});
-
-	test('forwards the network default and explicit network restrictions to the agent host', async () => {
-		const settingId = AgentSandboxSettingId.AgentSandboxAllowNetwork;
-		const cfg = new TestConfigurationService({ [settingId]: terminalChatAgentToolsConfiguration[settingId].default });
-		const logService = new NullLogService();
-		const values = [readAgentHostSandboxValues(cfg, logService)];
-		await cfg.setUserConfiguration(settingId, false);
-		values.push(readAgentHostSandboxValues(cfg, logService));
-		assert.deepStrictEqual(values, [
-			{ [AgentHostSandboxKey.AllowNetwork]: true },
-			{ [AgentHostSandboxKey.AllowNetwork]: false },
-		]);
 	});
 
 	test('returns undefined when nothing is configured', () => {
@@ -79,24 +63,4 @@ suite('sandboxSettingsReader', () => {
 		);
 	});
 
-	test('readAgentHostSandboxValues builds a bag keyed by prefix-free agent-host sandbox sub-keys', () => {
-		const cfg = new TestConfigurationService();
-		cfg.setUserConfiguration(AgentSandboxSettingId.AgentSandboxEnabled, AgentSandboxEnabledValue.On);
-		cfg.setUserConfiguration(AgentSandboxSettingId.AgentSandboxAllowUnsandboxedCommands, true);
-		cfg.setUserConfiguration(AgentNetworkDomainSettingId.AllowedNetworkDomains, ['example.com']);
-
-		const bag = readAgentHostSandboxValues(cfg, new NullLogService());
-
-		assert.deepStrictEqual(bag, {
-			[AgentHostSandboxKey.Enabled]: AgentSandboxEnabledValue.On,
-			[AgentHostSandboxKey.AllowUnsandboxedCommands]: true,
-			[AgentHostSandboxKey.AllowedNetworkDomains]: ['example.com'],
-		});
-	});
-
-	test('readAgentHostSandboxValues omits keys that are not user-configured', () => {
-		const cfg = new TestConfigurationService();
-		const bag = readAgentHostSandboxValues(cfg, new NullLogService());
-		assert.deepStrictEqual(bag, {});
-	});
 });

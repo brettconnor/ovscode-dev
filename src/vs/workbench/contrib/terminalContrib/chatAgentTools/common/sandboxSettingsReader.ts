@@ -8,7 +8,7 @@ import { ILogService } from '../../../../../platform/log/common/log.js';
 import { AgentNetworkDomainSettingId } from '../../../../../platform/networkFilter/common/settings.js';
 import { AgentSandboxSettingId } from '../../../../../platform/sandbox/common/settings.js';
 
-/** Setting IDs that affect the engine's sandbox configuration. */
+/** Setting IDs that affect terminal sandbox configuration. */
 export const SANDBOX_SETTING_KEYS: readonly string[] = [
 	AgentSandboxSettingId.AgentSandboxEnabled,
 	AgentSandboxSettingId.AgentSandboxWindowsEnabled,
@@ -25,7 +25,7 @@ export const SANDBOX_SETTING_KEYS: readonly string[] = [
 
 /**
  * Reads a single sandbox-related setting from `IConfigurationService`.
- * Legacy boolean sandbox enabled values are normalized to the agent-host
+ * Legacy boolean sandbox enabled values are normalized to the canonical
  * `'on' | 'off'` enum.
  */
 export function readSandboxSetting<T>(configurationService: IConfigurationService, _logService: ILogService, settingId: string): T | undefined {
@@ -33,10 +33,10 @@ export function readSandboxSetting<T>(configurationService: IConfigurationServic
 }
 
 /**
- * Coerce values into the canonical shape the agent-host schema expects.
+ * Coerce values into the canonical shape the sandbox configuration expects.
  * Today the non-trivial cases are the boolean sandbox enabled settings,
  * which are forwarded as the `'on' | 'off'` enum for
- * agent-host compatibility.
+ * compatibility.
  */
 function normalizeSandboxSettingValue<T>(settingId: string, value: T | undefined): T | undefined {
 	if (settingId === AgentSandboxSettingId.AgentSandboxEnabled || settingId === AgentSandboxSettingId.AgentSandboxWindowsEnabled) {

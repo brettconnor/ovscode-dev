@@ -7,7 +7,6 @@ import assert from 'assert';
 import * as dom from '../../../../../../base/browser/dom.js';
 import { IAction, toAction } from '../../../../../../base/common/actions.js';
 import { timeout } from '../../../../../../base/common/async.js';
-import { Codicon } from '../../../../../../base/common/codicons.js';
 import { Event } from '../../../../../../base/common/event.js';
 import { mock } from '../../../../../../base/test/common/mock.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../../base/test/common/utils.js';
@@ -48,7 +47,6 @@ suite('Combined mode and permissions picker', () => {
 		const service = store.add(instantiationService.createInstance(ActionWidgetService));
 		const selections: string[] = [];
 		let closes = 0;
-		let sandboxed = false;
 		const permissionItems: IActionListItem<IAction>[] = [
 			...[
 				{ label: 'Manual permissions', level: ChatPermissionLevel.Default },
@@ -70,17 +68,6 @@ suite('Combined mode and permissions picker', () => {
 				}),
 			})),
 			{ kind: ActionListItemKind.Separator },
-			{
-				kind: ActionListItemKind.Action,
-				label: 'Sandboxing for terminal',
-				group: { title: '', icon: Codicon.shield },
-				item: toAction({ id: 'sandbox', label: 'Sandboxing for terminal', run: () => { } }),
-				standaloneToggle: {
-					label: 'Sandboxing for terminal',
-					checked: false,
-					onChange: value => { sandboxed = value; },
-				},
-			},
 		];
 		const items = [
 			...createModePickerModeItems([
@@ -100,7 +87,6 @@ suite('Combined mode and permissions picker', () => {
 			...createModePickerPermissionsItems<IAction>({
 				label: 'Manual permissions',
 				level: ChatPermissionLevel.Default,
-				sandboxed: false,
 			}, permissionItems, async () => {
 				service.hide();
 				selections.push('settings');
@@ -115,7 +101,7 @@ suite('Combined mode and permissions picker', () => {
 		const permissionHeader = () => container.querySelector<HTMLElement>('.agent-host-mode-permissions')!;
 		const popup = container.querySelector<HTMLElement>('.agent-host-mode-permissions-popup')!;
 		const labels = () => Array.from(popup.querySelectorAll('.monaco-list-row.action > .title'), label => label.textContent);
-		return { container, service, popup, modeHeader, permissionHeader, labels, selections, show, items, getCloses: () => closes, isSandboxed: () => sandboxed };
+		return { container, service, popup, modeHeader, permissionHeader, labels, selections, show, items, getCloses: () => closes };
 	}
 
 	function highlightedLabels(popup: HTMLElement): (string | null)[] {
@@ -252,7 +238,7 @@ suite('Combined mode and permissions picker', () => {
 			lists: popup.querySelectorAll('.actionList').length,
 		}, {
 			initial: { labels: ['Agent mode', 'Interactive', 'Plan', 'Permissions'], expanded: 'false' },
-			afterExpansion: { labels: ['Agent mode', 'Interactive', 'Plan', 'Permissions', 'Manual permissions', 'Assisted permissions', 'Allow all', 'Sandboxing for terminal'], expanded: 'true' },
+			afterExpansion: { labels: ['Agent mode', 'Interactive', 'Plan', 'Permissions', 'Manual permissions', 'Assisted permissions', 'Allow all'], expanded: 'true' },
 			final: { labels: ['Agent mode', 'Interactive', 'Plan', 'Permissions'], expanded: 'false' },
 			grew: true,
 			anchorStable: true,
@@ -288,7 +274,7 @@ suite('Combined mode and permissions picker', () => {
 			activeDescendant: true,
 			highlights: ['Manual permissions'],
 			listFocused: true,
-			labels: ['Agent mode', 'Permissions', 'Manual permissions', 'Assisted permissions', 'Allow all', 'Sandboxing for terminal'],
+			labels: ['Agent mode', 'Permissions', 'Manual permissions', 'Assisted permissions', 'Allow all'],
 			popups: 1,
 			lists: 1,
 		});
@@ -347,26 +333,6 @@ suite('Combined mode and permissions picker', () => {
 			hoverAfterNavigation: 'Assisted permissions details',
 			activated: [],
 		});
-	});
-
-	test('sandbox shields remain neutral after opening or expanding permissions', () => {
-		const states = [false, true].map(openPermissions => {
-			const { container, service, popup } = setup(openPermissions);
-			container.style.setProperty('--vscode-editorLightBulb-foreground', '#ffcc00');
-			container.style.setProperty('--vscode-menu-foreground', '#123456');
-			if (!openPermissions) {
-				service.focusItemById('agentHostModePicker.permissions');
-				service.expandSection();
-			}
-			const row = getRow(popup, 'Sandboxing for terminal');
-			const icon = row.querySelector<HTMLElement>('.codicon-shield')!;
-			return {
-				openPermissions,
-				inlineColor: icon.style.color,
-				inheritsRowColor: dom.getWindow(icon).getComputedStyle(icon).color === dom.getWindow(row).getComputedStyle(row).color,
-			};
-		});
-		assert.deepStrictEqual(states, [false, true].map(openPermissions => ({ openPermissions, inlineColor: '', inheritsRowColor: true })));
 	});
 
 	test('the permissions disclosure remains keyboard-accessible after opening on the current permission', () => {
@@ -563,7 +529,7 @@ suite('Combined mode and permissions picker', () => {
 		service.expandSection();
 		container.style.setProperty('--vscode-list-hoverBackground', '#234567');
 		const highlights = [highlightedLabels(popup)];
-		for (const label of ['Plan', 'Allow all', 'Interactive', 'Assisted permissions', 'Sandboxing for terminal', 'Permissions']) {
+		for (const label of ['Plan', 'Allow all', 'Interactive', 'Assisted permissions', 'Permissions']) {
 			hoverRow(popup, label);
 			highlights.push(highlightedLabels(popup));
 		}
@@ -578,7 +544,6 @@ suite('Combined mode and permissions picker', () => {
 				['Allow all'],
 				['Interactive'],
 				['Assisted permissions'],
-				['Sandboxing for terminal'],
 				['Permissions'],
 			],
 			selections: ['Interactive', 'Manual permissions'],
@@ -624,7 +589,7 @@ suite('Combined mode and permissions picker', () => {
 			reopenedSelections: selectedLabels(reopened),
 		}, {
 			initial: {
-				labels: ['Agent mode', 'Permissions', 'Manual permissions', 'Assisted permissions', 'Allow all', 'Sandboxing for terminal'],
+				labels: ['Agent mode', 'Permissions', 'Manual permissions', 'Assisted permissions', 'Allow all'],
 				highlights: ['Manual permissions'],
 				selections: ['Manual permissions'],
 			},
@@ -640,7 +605,7 @@ suite('Combined mode and permissions picker', () => {
 				selections: ['Interactive', 'Manual permissions'],
 				focused: 'Interactive',
 			},
-			reopenedLabels: ['Agent mode', 'Permissions', 'Manual permissions', 'Assisted permissions', 'Allow all', 'Sandboxing for terminal'],
+			reopenedLabels: ['Agent mode', 'Permissions', 'Manual permissions', 'Assisted permissions', 'Allow all'],
 			reopenedHighlights: ['Manual permissions'],
 			reopenedSelections: ['Manual permissions'],
 		});
@@ -690,23 +655,6 @@ suite('Combined mode and permissions picker', () => {
 			modes: createModePickerModeItems(modes, false),
 			accessibility: getModePermissionsPickerAccessibilityProvider(false),
 		}, { modes, accessibility: {} });
-	});
-
-	test('keyboard expansion and the sandbox toggle do not close the menu', () => {
-		const { service, permissionHeader, isSandboxed, getCloses } = setup();
-		service.focusItemById('agentHostModePicker.permissions');
-		service.expandSection();
-		service.focusItemById('sandbox');
-		service.acceptSelected();
-		const expanded = permissionHeader().ariaExpanded;
-		service.collapseSection();
-		assert.deepStrictEqual({
-			sandboxed: isSandboxed(),
-			expanded,
-			collapsed: permissionHeader().ariaExpanded,
-			headerFocused: permissionHeader().classList.contains('focused'),
-			closes: getCloses(),
-		}, { sandboxed: true, expanded: 'true', collapsed: 'false', headerFocused: true, closes: 0 });
 	});
 
 	test('permission selections and the gear retain single ownership of popup closure', () => {

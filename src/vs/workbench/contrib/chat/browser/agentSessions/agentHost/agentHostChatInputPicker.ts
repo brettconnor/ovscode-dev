@@ -159,12 +159,6 @@ export function getConfigPickerTriggerLabel(schema: SessionConfigPropertySchema,
 	return label;
 }
 
-export function getConfigPickerAccessibleTriggerLabel(label: string, sandboxed: boolean): string {
-	return sandboxed
-		? localize('agentHostChatInputPicker.sandboxedLabel', "{0} (sandboxed)", label)
-		: label;
-}
-
 function isSelectedValue(currentValue: unknown | undefined, itemValue: string): boolean {
 	if (typeof currentValue === 'boolean') {
 		return currentValue === (itemValue === 'true');
@@ -194,7 +188,7 @@ function getEnumValueDescription(schema: SessionConfigPropertySchema, value: unk
 	return index >= 0 ? schema.enumDescriptions?.[index] : undefined;
 }
 
-export function getConfigPickerTriggerHover(property: string, schema: SessionConfigPropertySchema, value: unknown | undefined, isReadOnly: boolean, sandboxed = false): string {
+export function getConfigPickerTriggerHover(property: string, schema: SessionConfigPropertySchema, value: unknown | undefined, isReadOnly: boolean): string {
 	if (property === CodexSessionConfigKey.PermissionsPreset) {
 		return getEnumValueDescription(schema, value) ?? schema.description ?? schema.title;
 	}
@@ -205,9 +199,6 @@ export function getConfigPickerTriggerHover(property: string, schema: SessionCon
 	let hover = getAutoApproveHover(value, getEnumValueDescription(schema, value));
 	if (isReadOnly) {
 		hover = localize('agentHostChatInputPicker.approvalsLevelHoverReadOnly', "{0} Read-only.", hover);
-	}
-	if (sandboxed) {
-		hover = localize('agentHostChatInputPicker.approvalsLevelHoverSandboxed', "{0} Terminal commands are sandboxed.", hover);
 	}
 	return hover;
 }
@@ -621,10 +612,9 @@ export class AgentHostChatInputPicker extends Disposable {
 		}
 		const labelSpan = dom.append(trigger, dom.$('span.agent-host-chat-input-picker-label'));
 		labelSpan.textContent = label;
-		const accessibleLabel = getConfigPickerAccessibleTriggerLabel(label);
 		trigger.setAttribute('aria-label', isReadOnly
-			? localize('agentHostChatInputPicker.triggerAriaReadOnly', "{0}: {1}, Read-Only", schema.title, accessibleLabel)
-			: localize('agentHostChatInputPicker.triggerAria', "{0}: {1}", schema.title, accessibleLabel));
+			? localize('agentHostChatInputPicker.triggerAriaReadOnly', "{0}: {1}, Read-Only", schema.title, label)
+			: localize('agentHostChatInputPicker.triggerAria', "{0}: {1}", schema.title, label));
 	}
 
 	private _refreshTrigger(): void {
@@ -662,7 +652,6 @@ export class AgentHostChatInputPicker extends Disposable {
 		return ctx ? {
 			label: getConfigPickerTriggerLabel(ctx.schema, ctx.value),
 			level: isChatPermissionLevel(ctx.value) ? ctx.value : ChatPermissionLevel.Default,
-			sandboxed: false,
 		} : undefined;
 	}
 

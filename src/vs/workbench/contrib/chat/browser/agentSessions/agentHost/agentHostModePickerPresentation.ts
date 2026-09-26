@@ -34,13 +34,11 @@ export const AGENT_HOST_PERMISSIONS_SETTINGS_QUERY = `@id:${[
 	TerminalContribSettingId.AutoApproveWorkspaceNpmScripts,
 	TerminalContribSettingId.IgnoreDefaultAutoApproveRules,
 	TerminalContribSettingId.BlockDetectedFileWrites,
-	'chat.agent.sandbox.*',
 ].join(',')}`;
 
 export interface IModePickerPermissions {
 	readonly label: string;
 	readonly level: ChatPermissionLevel;
-	readonly sandboxed: boolean;
 }
 
 export interface IModePickerTrigger extends IDisposable {
@@ -139,9 +137,7 @@ export function renderModePickerTrigger(
 	trigger.removeAttribute('aria-haspopup');
 	trigger.removeAttribute('aria-expanded');
 	modeButton.ariaLabel = localize('agentHostModePicker.modeButton', "Pick Mode, {0}", mode.label);
-	permissionsButton.ariaLabel = permissions.sandboxed
-		? localize('agentHostModePicker.permissionsButtonSandboxed', "Pick Permissions, {0}, terminal sandboxed", permissions.label)
-		: localize('agentHostModePicker.permissionsButton', "Pick Permissions, {0}", permissions.label);
+	permissionsButton.ariaLabel = localize('agentHostModePicker.permissionsButton', "Pick Permissions, {0}", permissions.label);
 	for (const button of [modeButton, permissionsButton]) {
 		button.role = 'button';
 		button.tabIndex = trigger.ariaDisabled === 'true' ? -1 : 0;
@@ -194,21 +190,14 @@ export function renderModePickerPermissions(trigger: HTMLElement, permissions: I
 	if (style) {
 		summary.classList.add(style);
 	}
-	if (permissions.sandboxed) {
-		const shield = dom.append(trigger, renderIcon(Codicon.shieldCompact));
-		shield.classList.add('agent-host-mode-sandbox-icon');
-		shield.ariaHidden = 'true';
-	}
 }
 
 export function getModePickerAriaLabel(mode: string, permissions: IModePickerPermissions): string {
-	return permissions.sandboxed
-		? localize('agentHostModePicker.withSandboxedPermissions', "Pick Mode and Permissions, {0}, {1}, terminal sandboxed", mode, permissions.label)
-		: localize('agentHostModePicker.withPermissions', "Pick Mode and Permissions, {0}, {1}", mode, permissions.label);
+	return localize('agentHostModePicker.withPermissions', "Pick Mode and Permissions, {0}, {1}", mode, permissions.label);
 }
 
 export function getModePickerAccessibilityHelp(): string {
-	return localize('agentHostModePicker.accessibilityHelp', "When the experimental combined picker is enabled for a Copilot Agent Host session, Tab reaches separate Mode and Permissions buttons. Press Enter or Space on Mode to open the picker with Agent Mode expanded, or on Permissions to open it with Permissions expanded. Each section header shows its current selection, and the opened section initially focuses that selection. Press Enter or Space on a section header to expand or collapse it, or use Right Arrow to expand and Left Arrow to collapse. Hover or keyboard navigation moves the single row highlight without changing the selection until you activate a choice. Focus the Permissions header and press Tab to reach Configure Permissions, which opens the related settings. Use Up and Down Arrow to navigate and Enter to select a mode, permission level, or terminal sandboxing. Assisted permissions is experimental and evaluates risk before running tools. Enterprise policy can disable Assisted permissions and Allow all. Escape closes the picker and returns focus to the button that opened it.");
+	return localize('agentHostModePicker.accessibilityHelp', "When the experimental combined picker is enabled for a Copilot Agent Host session, Tab reaches separate Mode and Permissions buttons. Press Enter or Space on Mode to open the picker with Agent Mode expanded, or on Permissions to open it with Permissions expanded. Each section header shows its current selection, and the opened section initially focuses that selection. Press Enter or Space on a section header to expand or collapse it, or use Right Arrow to expand and Left Arrow to collapse. Hover or keyboard navigation moves the single row highlight without changing the selection until you activate a choice. Focus the Permissions header and press Tab to reach Configure Permissions, which opens the related settings. Use Up and Down Arrow to navigate and Enter to select a mode or permission level. Assisted permissions is experimental and evaluates risk before running tools. Enterprise policy can disable Assisted permissions and Allow all. Escape closes the picker and returns focus to the button that opened it.");
 }
 
 function getPermissionLevelStyle(level: ChatPermissionLevel): string | undefined {
@@ -237,9 +226,7 @@ export function createModePickerPermissionsItems<T>(permissions: IModePickerPerm
 		section: PERMISSIONS_SECTION_ID,
 		isSectionToggle: true,
 		description: getShortPermissionLabel(permissions),
-		ariaDescription: permissions.sandboxed
-			? localize('agentHostModePicker.permissionsSandboxed', "{0}, terminal sandboxed", permissions.label)
-			: permissions.label,
+		ariaDescription: permissions.label,
 		className: ['agent-host-mode-permissions', getPermissionLevelStyle(permissions.level)].filter(Boolean).join(' '),
 		toolbarActions: [toAction({
 			id: 'agentHostModePicker.configurePermissions',
