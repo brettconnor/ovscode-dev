@@ -99,7 +99,7 @@ const PODMAN_PROBE_TIMEOUT_MS = 60_000;
 
 function probeLinuxPodman(): Promise<{ readonly available: boolean; readonly reason?: string }> {
 	return new Promise(resolve => {
-		cp.execFile('podman', ['info', '--format', '{{.Host.Os}}'], {
+		cp.execFile('podman', ['info', '--format', '{{.Host.OS}}'], {
 			encoding: 'utf8',
 			timeout: PODMAN_PROBE_TIMEOUT_MS,
 			windowsHide: true,
