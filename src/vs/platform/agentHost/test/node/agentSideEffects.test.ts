@@ -5205,8 +5205,7 @@ suite('AgentSideEffects', () => {
 			await sideEffects.initialize();
 
 			const cases = [
-				['tc-shell-rules-1', { requestSandboxBypass: false, shellLanguage: 'bash' as const }],
-				['tc-shell-rules-2', { requestSandboxBypass: true, shellLanguage: 'bash' as const }],
+				['tc-shell-rules-1', { shellLanguage: 'bash' as const }],
 				['tc-shell-rules-3', { managedApprovalRequired: true, shellLanguage: 'bash' as const }],
 			] as const;
 			for (const [toolCallId, signalOverrides] of cases) {
@@ -5238,8 +5237,8 @@ suite('AgentSideEffects', () => {
 			});
 			assert.deepStrictEqual(
 				state.activeTurn?.responseParts.map(p => p.kind === ResponsePartKind.ToolCall ? p.toolCall._meta?.['autoApproveRuleResolvable'] : undefined),
-				[true, undefined, undefined],
-				'only the rule-resolvable shell confirmation is marked; sandbox-bypass and managed confirmations are not');
+				[true, undefined],
+				'only the rule-resolvable shell confirmation is marked; managed confirmations are not');
 		});
 
 		test('tool_ready forwards the signal shell language into shell approval', async () => {
@@ -5760,39 +5759,6 @@ suite('AgentSideEffects', () => {
 			assert.deepStrictEqual(agent.respondToPermissionCalls, [
 				{ requestId: 'tc-bypass-shell-1', approved: true },
 			]);
-		});
-
-		test('does NOT auto-approve a shell command that opted out of the sandbox, even in bypass mode', () => {
-			setupSessionWithConfig('autoApprove');
-			startTurn('turn-1');
-			disposables.add(sideEffects.registerProgressListener(agent));
-
-			agent.fireProgress({
-				kind: 'action', resource: URI.parse(defaultChatUri),
-				action: {
-					type: ActionType.ChatToolCallStart, turnId: 'turn-1',
-					toolCallId: 'tc-sandboxbypass-1', toolName: 'shell', displayName: 'Shell', contributor: undefined,
-					_meta: { toolKind: undefined, language: undefined },
-				},
-			});
-
-			agent.fireProgress({
-				kind: 'pending_confirmation', chat: URI.parse(defaultChatUri),
-				state: {
-					status: ToolCallStatus.PendingConfirmation,
-					toolCallId: 'tc-sandboxbypass-1', toolName: '', displayName: '',
-					invocationMessage: 'Run cat ~/something.txt', toolInput: 'cat ~/something.txt',
-					confirmationTitle: 'Run command', edits: undefined,
-				},
-				permissionKind: 'shell', permissionPath: undefined,
-				requestSandboxBypass: true,
-			});
-
-			// A read-only command like `cat` (or even session-level bypass)
-			// would normally auto-approve, but opting out of the sandbox is an
-			// elevation of privilege the user must confirm, so no auto-approval
-			// response is sent.
-			assert.deepStrictEqual(agent.respondToPermissionCalls, []);
 		});
 
 		test('marks pending client tool approval for client-side auto-approval in bypass mode', async () => {

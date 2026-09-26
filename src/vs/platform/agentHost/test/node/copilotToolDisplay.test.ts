@@ -12,7 +12,7 @@ import { getEditFilePath, getEditFilePaths, getInvocationMessage, getPastTenseMe
 type CopilotShellPermissionRequest = Extract<PermissionRequest, { kind: 'shell' }>;
 type CopilotCustomToolPermissionRequest = Extract<PermissionRequest, { kind: 'custom-tool' }>;
 
-function shellPermissionRequest(fullCommandText: string, requestSandboxBypass?: boolean): CopilotShellPermissionRequest {
+function shellPermissionRequest(fullCommandText: string): CopilotShellPermissionRequest {
 	return {
 		kind: 'shell',
 		canOfferSessionApproval: false,
@@ -22,7 +22,6 @@ function shellPermissionRequest(fullCommandText: string, requestSandboxBypass?: 
 		intention: '',
 		possiblePaths: [],
 		possibleUrls: [],
-		requestSandboxBypass,
 	};
 }
 
@@ -193,8 +192,8 @@ suite('getPermissionDisplay — read confirmation title', () => {
 
 	const wd = URI.file('/repo/project');
 
-	function readRequest(path: string, requestSandboxBypass?: boolean): PermissionRequest {
-		return { kind: 'read', intention: `Read file: ${path}`, path, ...(requestSandboxBypass ? { requestSandboxBypass } : {}) } as PermissionRequest;
+	function readRequest(path: string): PermissionRequest {
+		return { kind: 'read', intention: `Read file: ${path}`, path } as PermissionRequest;
 	}
 
 	/**
@@ -215,7 +214,6 @@ suite('getPermissionDisplay — read confirmation title', () => {
 			pathGate: getPermissionDisplay(unauthorizedPathGateRequest('/etc/hosts'), wd).confirmationTitle,
 			relative: getPermissionDisplay(readRequest('README.md'), wd).confirmationTitle,
 			unknownWorkspace: getPermissionDisplay(readRequest('/repo/project/src/app.ts'), undefined).confirmationTitle,
-			sandboxBypass: getPermissionDisplay(readRequest('/repo/project/src/app.ts', true), wd).confirmationTitle,
 		}, {
 			inside: 'Allow reading file?',
 			insideDirectory: 'Allow reading file?',
@@ -225,7 +223,6 @@ suite('getPermissionDisplay — read confirmation title', () => {
 			pathGate: 'Allow reading file outside of workspace?',
 			relative: 'Allow reading file?',
 			unknownWorkspace: 'Allow reading file?',
-			sandboxBypass: 'Read file outside the sandbox?',
 		});
 	});
 });
@@ -326,14 +323,6 @@ suite('getPermissionDisplay — cd-prefix stripping', () => {
 		const request = customToolPermissionRequest('powershell', { command: 'cd /repo/project; dir' });
 		const display = getPermissionDisplay(request, wd);
 		assert.strictEqual(display.toolInput, 'dir');
-	});
-
-	test('confirmation title reflects sandbox bypass for shell requests', () => {
-		const sandboxed = getPermissionDisplay(shellPermissionRequest('npm test'), wd);
-		const bypass = getPermissionDisplay(shellPermissionRequest('npm test', true), wd);
-
-		assert.notStrictEqual(bypass.confirmationTitle, sandboxed.confirmationTitle);
-		assert.ok(/sandbox/i.test(bypass.confirmationTitle), `expected title to mention the sandbox, got: ${bypass.confirmationTitle}`);
 	});
 
 });
