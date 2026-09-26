@@ -51,7 +51,6 @@ import { isManagedSettingsFreshnessBlocking } from '../../../platform/policy/com
 import { IAuthenticationService } from '../../services/authentication/common/authentication.js';
 import { IAuthenticationAccessService } from '../../services/authentication/browser/authenticationAccessService.js';
 import { IPolicyService, PolicyValueSource } from '../../../platform/policy/common/policy.js';
-import { IWorkspaceContextService } from '../../../platform/workspace/common/workspace.js';
 import { COPILOT_ENABLED_PLUGINS_KEY, COPILOT_EXTRA_MARKETPLACES_KEY, COPILOT_STRICT_MARKETPLACES_KEY, INativeManagedSettingsService, IFileManagedSettingsService, ManagedSettingsChannel, ManagedSettingsSource, normalizeManagedSettings, projectManagedSettings, pickManagedSettings } from '../../../platform/policy/common/copilotManagedSettings.js';
 import { IManagedSettingPolicyDefinition, ManagedSettingsData } from '../../../base/common/policy.js';
 import { APPROVED_ACCOUNT_ORGANIZATIONS_POLICY_NAME, IAccountPolicyGateService } from '../../services/policies/common/accountPolicyService.js';
@@ -753,7 +752,6 @@ interface IPolicyDiagnosticsServices {
 	accountPolicyGateService: IAccountPolicyGateService;
 	agentHostService: IAgentHostService;
 	agentHostEnablementService: IAgentHostEnablementService;
-	workspaceContextService: IWorkspaceContextService;
 	nativeManagedSettingsService: INativeManagedSettingsService | undefined;
 	fileManagedSettingsService: IFileManagedSettingsService | undefined;
 }
@@ -782,7 +780,6 @@ class PolicyDiagnosticsAction extends Action2 {
 		const accountPolicyGateService = accessor.get(IAccountPolicyGateService);
 		const agentHostService = accessor.get(IAgentHostService);
 		const agentHostEnablementService = accessor.get(IAgentHostEnablementService);
-		const workspaceContextService = accessor.get(IWorkspaceContextService);
 		const progressService = accessor.get(IProgressService);
 		// Native MDM is a desktop-only channel, registered in the renderer service collection on
 		// desktop and Agents windows but absent in web. Resolve it now, synchronously, because the
@@ -819,7 +816,6 @@ class PolicyDiagnosticsAction extends Action2 {
 			accountPolicyGateService,
 			agentHostService,
 			agentHostEnablementService,
-			workspaceContextService,
 			nativeManagedSettingsService,
 			fileManagedSettingsService,
 		}));
@@ -839,7 +835,6 @@ class PolicyDiagnosticsAction extends Action2 {
 			accountPolicyGateService,
 			agentHostService,
 			agentHostEnablementService,
-			workspaceContextService,
 			nativeManagedSettingsService,
 			fileManagedSettingsService,
 		} = services;

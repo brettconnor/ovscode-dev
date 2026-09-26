@@ -11,8 +11,7 @@ import { URI } from '../../../../../../base/common/uri.js';
 import { mock } from '../../../../../../base/test/common/mock.js';
 import { ActionWidgetService, IActionWidgetService } from '../../../../../../platform/actionWidget/browser/actionWidget.js';
 import { MenuItemAction } from '../../../../../../platform/actions/common/actions.js';
-import { IAgentHostEnablementService } from '../../../../../../platform/agentHost/common/agentHostEnablementService.js';
-import { getAgentHostCopilotSandboxSettingId, IAgentConnection, IAgentHostNetworkDiagnosticsInfo, IAgentHostService } from '../../../../../../platform/agentHost/common/agentService.js';
+import { IAgentConnection, IAgentHostNetworkDiagnosticsInfo, IAgentHostService } from '../../../../../../platform/agentHost/common/agentService.js';
 import { AMBIENT_AGENT_HOST_AUTHORITY, IAgentHostConnectionsService } from '../../../../../../platform/agentHost/common/agentHostConnectionsService.js';
 import { getAgentHostOperatingSystem } from '../../../../../../platform/agentHost/common/agentHostOperatingSystem.js';
 import { IAgentSubscription } from '../../../../../../platform/agentHost/common/state/agentSubscription.js';
@@ -51,7 +50,7 @@ import '../../../../chat/browser/media/chatWidget.css';
 import '../../../../chat/browser/media/chatInput.css';
 import '../../../../../browser/media/style.css';
 
-async function render(context: ComponentFixtureContext, mode: string, permissions: ChatPermissionLevel, sandboxed = false, openPermissions = false, options: { readonly editor?: boolean; readonly openMode?: boolean; readonly newChat?: boolean; readonly compact?: boolean; readonly combined?: boolean; readonly phoneWidth?: number } = {}): Promise<void> {
+async function render(context: ComponentFixtureContext, mode: string, permissions: ChatPermissionLevel, openPermissions = false, options: { readonly editor?: boolean; readonly openMode?: boolean; readonly newChat?: boolean; readonly compact?: boolean; readonly combined?: boolean; readonly phoneWidth?: number } = {}): Promise<void> {
 	const { editor = false, openMode = false, newChat = false, compact = false, combined = true, phoneWidth } = options;
 	const { container, disposableStore, theme } = context;
 	container.classList.add('monaco-workbench', 'interactive-session', 'modern-ui', 'monaco-enable-motion');
@@ -81,8 +80,6 @@ async function render(context: ComponentFixtureContext, mode: string, permission
 		}
 	}({
 		[ChatConfiguration.ExperimentalModePermissionsPicker]: combined,
-		[ChatConfiguration.PermissionsSandboxToggleEnabled]: true,
-		[getAgentHostCopilotSandboxSettingId(false)]: sandboxed ? 'on' : 'off',
 	});
 	disposableStore.add(configuration.onDidChangeConfigurationEmitter);
 	const config: ResolveSessionConfigResult = {
@@ -144,7 +141,6 @@ async function render(context: ComponentFixtureContext, mode: string, permission
 	}());
 	instantiationService.stub(IChatPetService, { unlockAchievement: () => false });
 	instantiationService.stub(IChatPhoneInputPresenter, { enabled: constObservable(false) });
-	instantiationService.stub(IAgentHostEnablementService, { enabled: constObservable(true), managedSandboxEnforced: constObservable(false), managedSandboxAllowsBypass: constObservable(false) });
 	instantiationService.set(ILayoutService, new class extends mock<ILayoutService>() {
 		override readonly mainContainer = container;
 		override readonly activeContainer = container;
@@ -274,19 +270,18 @@ export default defineThemedFixtureGroup({ path: 'sessions/agentHostModePicker' }
 	Manual: defineComponentFixture({ render: context => render(context, 'interactive', ChatPermissionLevel.Default) }),
 	Assisted: defineComponentFixture({ render: context => render(context, 'plan', ChatPermissionLevel.Assisted) }),
 	AllowAll: defineComponentFixture({ render: context => render(context, 'autopilot', ChatPermissionLevel.AutoApprove) }),
-	Sandboxed: defineComponentFixture({ render: context => render(context, 'interactive', ChatPermissionLevel.Default, true) }),
-	Mode: defineComponentFixture({ render: context => render(context, 'interactive', ChatPermissionLevel.Default, true, false, { openMode: true }) }),
-	Permissions: defineComponentFixture({ render: context => render(context, 'interactive', ChatPermissionLevel.Default, true, true) }),
-	AssistedPermissions: defineComponentFixture({ additionalThemes: ['darkHighContrast', 'lightHighContrast'], render: context => render(context, 'autopilot', ChatPermissionLevel.Assisted, false, true) }),
-	SeparatePermissions: defineComponentFixture({ additionalThemes: ['darkHighContrast', 'lightHighContrast'], render: context => render(context, 'autopilot', ChatPermissionLevel.Assisted, false, true, { combined: false }) }),
-	EditorMode: defineComponentFixture({ render: context => render(context, 'interactive', ChatPermissionLevel.Default, false, false, { editor: true }) }),
-	EditorPermissions: defineComponentFixture({ additionalThemes: ['darkHighContrast', 'lightHighContrast'], render: context => render(context, 'interactive', ChatPermissionLevel.Assisted, false, true, { editor: true }) }),
-	EditorSeparatePermissions: defineComponentFixture({ additionalThemes: ['darkHighContrast', 'lightHighContrast'], render: context => render(context, 'interactive', ChatPermissionLevel.Assisted, false, true, { editor: true, combined: false }) }),
-	EditorAllowAllPermissions: defineComponentFixture({ render: context => render(context, 'interactive', ChatPermissionLevel.AutoApprove, true, true, { editor: true }) }),
-	NewChat: defineComponentFixture({ render: context => render(context, 'autopilot', ChatPermissionLevel.Assisted, false, false, { newChat: true }) }),
-	NewChatPermissions: defineComponentFixture({ additionalThemes: ['darkHighContrast', 'lightHighContrast'], render: context => render(context, 'autopilot', ChatPermissionLevel.Assisted, false, true, { newChat: true }) }),
-	NewChatSeparatePermissions: defineComponentFixture({ additionalThemes: ['darkHighContrast', 'lightHighContrast'], render: context => render(context, 'autopilot', ChatPermissionLevel.Assisted, false, true, { newChat: true, combined: false }) }),
-	MobilePermissions: defineComponentFixture({ additionalThemes: ['darkHighContrast', 'lightHighContrast'], render: context => render(context, 'interactive', ChatPermissionLevel.Assisted, false, true, { newChat: true, combined: false, phoneWidth: 390 }) }),
-	MobilePermissionsNarrow: defineComponentFixture({ additionalThemes: ['darkHighContrast', 'lightHighContrast'], render: context => render(context, 'interactive', ChatPermissionLevel.Assisted, false, true, { newChat: true, combined: false, phoneWidth: 320 }) }),
-	NewChatCompact: defineComponentFixture({ render: context => render(context, 'autopilot', ChatPermissionLevel.Assisted, false, false, { newChat: true, compact: true }) }),
+	Mode: defineComponentFixture({ render: context => render(context, 'interactive', ChatPermissionLevel.Default, false, { openMode: true }) }),
+	Permissions: defineComponentFixture({ render: context => render(context, 'interactive', ChatPermissionLevel.Default, true) }),
+	AssistedPermissions: defineComponentFixture({ additionalThemes: ['darkHighContrast', 'lightHighContrast'], render: context => render(context, 'autopilot', ChatPermissionLevel.Assisted, true) }),
+	SeparatePermissions: defineComponentFixture({ additionalThemes: ['darkHighContrast', 'lightHighContrast'], render: context => render(context, 'autopilot', ChatPermissionLevel.Assisted, true, { combined: false }) }),
+	EditorMode: defineComponentFixture({ render: context => render(context, 'interactive', ChatPermissionLevel.Default, false, { editor: true }) }),
+	EditorPermissions: defineComponentFixture({ additionalThemes: ['darkHighContrast', 'lightHighContrast'], render: context => render(context, 'interactive', ChatPermissionLevel.Assisted, true, { editor: true }) }),
+	EditorSeparatePermissions: defineComponentFixture({ additionalThemes: ['darkHighContrast', 'lightHighContrast'], render: context => render(context, 'interactive', ChatPermissionLevel.Assisted, true, { editor: true, combined: false }) }),
+	EditorAllowAllPermissions: defineComponentFixture({ render: context => render(context, 'interactive', ChatPermissionLevel.AutoApprove, true, { editor: true }) }),
+	NewChat: defineComponentFixture({ render: context => render(context, 'autopilot', ChatPermissionLevel.Assisted, false, { newChat: true }) }),
+	NewChatPermissions: defineComponentFixture({ additionalThemes: ['darkHighContrast', 'lightHighContrast'], render: context => render(context, 'autopilot', ChatPermissionLevel.Assisted, true, { newChat: true }) }),
+	NewChatSeparatePermissions: defineComponentFixture({ additionalThemes: ['darkHighContrast', 'lightHighContrast'], render: context => render(context, 'autopilot', ChatPermissionLevel.Assisted, true, { newChat: true, combined: false }) }),
+	MobilePermissions: defineComponentFixture({ additionalThemes: ['darkHighContrast', 'lightHighContrast'], render: context => render(context, 'interactive', ChatPermissionLevel.Assisted, true, { newChat: true, combined: false, phoneWidth: 390 }) }),
+	MobilePermissionsNarrow: defineComponentFixture({ additionalThemes: ['darkHighContrast', 'lightHighContrast'], render: context => render(context, 'interactive', ChatPermissionLevel.Assisted, true, { newChat: true, combined: false, phoneWidth: 320 }) }),
+	NewChatCompact: defineComponentFixture({ render: context => render(context, 'autopilot', ChatPermissionLevel.Assisted, false, { newChat: true, compact: true }) }),
 });

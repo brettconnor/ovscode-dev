@@ -22,7 +22,7 @@ import { AbstractPolicyService, IPolicyService, PolicyDefinition, PolicyValue, P
 import { Registry } from '../../../../../platform/registry/common/platform.js';
 import { TestContextService, TestProductService, TestStorageService } from '../../../../test/common/workbenchTestServices.js';
 import { getComputedDefaultSessionType, getDefaultNewChatSessionType } from '../../../../contrib/chat/common/constants.js';
-import { localChatSessionType, SessionType } from '../../../../contrib/chat/common/chatSessionsService.js';
+import { localChatSessionType } from '../../../../contrib/chat/common/chatSessionsService.js';
 import { storeUserSelectedSessionType } from '../../../../contrib/chat/common/chatSessionTypePreference.js';
 import { DefaultAccountService } from '../../../accounts/browser/defaultAccount.js';
 import { AccountPolicyGateState, AccountPolicyGateUnsatisfiedReason, AccountPolicyService, APPROVED_ACCOUNT_ORGANIZATIONS_POLICY_NAME, IAccountPolicyGateInfo } from '../../common/accountPolicyService.js';
