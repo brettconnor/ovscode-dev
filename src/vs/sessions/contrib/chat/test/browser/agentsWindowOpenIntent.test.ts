@@ -6,7 +6,7 @@
 import assert from 'assert';
 import { URI } from '../../../../../base/common/uri.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
-import { getAgentsWindowWorkspaceArgumentKind, resolveAgentsWindowFolderIntent } from '../../browser/agentsWindowOpenIntent.js';
+import { getAgentsWindowWorkspaceArgumentKind } from '../../browser/agentsWindowOpenIntent.js';
 
 suite('Agents Window open intent', () => {
 	ensureNoDisposablesAreLeakedInTestSuite();

@@ -1653,7 +1653,7 @@ export class WorkspacePicker extends Disposable {
 						label: localize('workspacePicker.manageRemoteHost', "Manage {0}", action.label),
 						tooltip: action.tooltip,
 						enabled: action.enabled,
-						run: () => setRemotePickerRun(() => action.run()),
+						run: () => action.run(),
 					});
 					Object.assign(submenuAction, {
 						icon: extended.icon,
@@ -1689,7 +1689,7 @@ export class WorkspacePicker extends Disposable {
 							label: menuAction.label,
 							tooltip: menuAction.tooltip,
 							enabled: menuAction.enabled,
-							run: () => setRemotePickerRun(() => menuAction.run()),
+							run: () => menuAction.run(),
 						});
 						Object.assign(submenuAction, { icon });
 						remoteSubmenuActions.push(submenuAction);

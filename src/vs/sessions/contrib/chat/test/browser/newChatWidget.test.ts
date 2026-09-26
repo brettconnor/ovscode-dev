@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import assert from 'assert';
-import { DeferredPromise, timeout } from '../../../../../base/common/async.js';
+import { DeferredPromise } from '../../../../../base/common/async.js';
 import { CancellationToken, CancellationTokenSource } from '../../../../../base/common/cancellation.js';
 import { CancellationError } from '../../../../../base/common/errors.js';
 import { Emitter, Event } from '../../../../../base/common/event.js';
@@ -26,9 +26,8 @@ import { IChatRequestVariableEntry, toFileVariableEntry, toPasteVariableEntry } 
 import { Codicon } from '../../../../../base/common/codicons.js';
 import { getAdditionalFolderContextId, getAdditionalRepositoryContextId } from '../../common/newChatContextIds.js';
 import { LOCAL_AGENT_HOST_PROVIDER_ID } from '../../../../common/agentHostSessionsProvider.js';
-import { IWorkspacePickerNoWorkspaceOption, WorkspacePicker } from '../../browser/sessionWorkspacePicker.js';
+import { IWorkspacePickerNoWorkspaceOption } from '../../browser/sessionWorkspacePicker.js';
 import { IWorkspaceSelectionSnapshot, WorkspaceSelectionOrigin } from '../../../../common/workspaceSelection.js';
-import { ISelectWorkspaceOptions } from '../../../../browser/parts/chatView.js';
 import { NewChatInputWidget } from '../../browser/newChatInput.js';
 import { IChatDraft, serializeChatDraft } from '../../../../../workbench/contrib/chat/common/attachments/chatDraft.js';
 
