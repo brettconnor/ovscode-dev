@@ -290,6 +290,12 @@ async function setupRepository(): Promise<void> {
 			cp.spawnSync('git', ['clean', '-xdf'], { cwd: workspacePath, stdio: 'inherit' });
 		}
 	}
+
+	// AgentHost creates checkpoint commits in this disposable smoke fixture.
+	// Keep the identity local to the temporary repository; never depend on the
+	// range account's global Git configuration.
+	cp.execFileSync('git', ['config', 'user.name', 'brettconnor'], { cwd: workspacePath, stdio: 'pipe' });
+	cp.execFileSync('git', ['config', 'user.email', 'brettconnor@localhost'], { cwd: workspacePath, stdio: 'pipe' });
 }
 
 async function ensureStableCode(): Promise<void> {

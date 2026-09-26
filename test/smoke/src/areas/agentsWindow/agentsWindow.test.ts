@@ -79,9 +79,9 @@ function cleanupDevContainerWorkspace(workspacePath: string): void {
 function removeDevContainer(workspacePath: string): number {
 	// URI.fsPath normalizes the Windows drive letter in the container label.
 	const labeledPath = process.platform === 'win32' ? workspacePath.replace(/^[A-Z]:/, drive => drive.toLowerCase()) : workspacePath;
-	const containerIds = cp.execFileSync('docker', ['ps', '-aq', '--filter', `label=devcontainer.local_folder=${labeledPath}`], { encoding: 'utf8' }).trim().split(/\s+/).filter(Boolean);
+	const containerIds = cp.execFileSync('podman', ['ps', '-aq', '--filter', `label=devcontainer.local_folder=${labeledPath}`], { encoding: 'utf8' }).trim().split(/\s+/).filter(Boolean);
 	if (containerIds.length > 0) {
-		cp.execFileSync('docker', ['rm', '--force', ...containerIds], { stdio: 'pipe' });
+		cp.execFileSync('podman', ['rm', '--force', ...containerIds], { stdio: 'pipe' });
 	}
 	return containerIds.length;
 }
@@ -95,13 +95,13 @@ const AGENT_HOST_SDK_SANDBOX_REPLY = 'MOCKED_AGENT_HOST_SDK_SANDBOX_RESPONSE';
 const AGENT_HOST_WARMUP_SCENARIO_ID = 'smoke-hello-agent-host-warmup';
 const AGENT_HOST_WARMUP_REPLY = 'MOCKED_AGENT_HOST_WARMUP_RESPONSE';
 
-const DOCKER_PROBE_TIMEOUT_MS = 60_000;
+const PODMAN_PROBE_TIMEOUT_MS = 60_000;
 
-function probeLinuxDocker(): Promise<{ readonly available: boolean; readonly reason?: string }> {
+function probeLinuxPodman(): Promise<{ readonly available: boolean; readonly reason?: string }> {
 	return new Promise(resolve => {
-		cp.execFile('docker', ['info', '--format', '{{.OSType}}'], {
+		cp.execFile('podman', ['info', '--format', '{{.Host.Os}}'], {
 			encoding: 'utf8',
-			timeout: DOCKER_PROBE_TIMEOUT_MS,
+			timeout: PODMAN_PROBE_TIMEOUT_MS,
 			windowsHide: true,
 		}, (error, stdout, stderr) => {
 			const operatingSystem = stdout.trim().toLowerCase();
@@ -111,25 +111,25 @@ function probeLinuxDocker(): Promise<{ readonly available: boolean; readonly rea
 					available: false,
 					reason: error?.message
 						?? (stderr.trim() || undefined)
-						?? `Docker daemon reports '${operatingSystem || 'unknown'}' containers`,
+						?? `Podman reports '${operatingSystem || 'unknown'}' as the host OS`,
 				});
 		});
 	});
 }
 
-function installDockerPrerequisite(logger: Logger, required: boolean): void {
-	before('check Linux Docker availability', async function () {
-		this.timeout(DOCKER_PROBE_TIMEOUT_MS + 15_000);
+function installPodmanPrerequisite(logger: Logger, required: boolean): void {
+	before('check Linux Podman availability', async function () {
+		this.timeout(PODMAN_PROBE_TIMEOUT_MS + 15_000);
 		const label = this.test?.parent?.title ?? 'Dev Container';
 		const start = Date.now();
-		logger.log(`${label}: checking Linux Docker availability (timeout ${DOCKER_PROBE_TIMEOUT_MS}ms)`);
-		const docker = await probeLinuxDocker();
-		logger.log(`${label}: Docker probe completed in ${Date.now() - start}ms: ${docker.available ? 'available' : docker.reason}`);
-		if (!docker.available && !required) {
-			logger.log(`Skipping ${label}: ${docker.reason}`);
+		logger.log(`${label}: checking Linux Podman availability (timeout ${PODMAN_PROBE_TIMEOUT_MS}ms)`);
+		const podman = await probeLinuxPodman();
+		logger.log(`${label}: Podman probe completed in ${Date.now() - start}ms: ${podman.available ? 'available' : podman.reason}`);
+		if (!podman.available && !required) {
+			logger.log(`Skipping ${label}: ${podman.reason}`);
 			this.skip();
 		}
-		assert.ok(docker.available, `Expected a reachable Linux Docker daemon: ${docker.reason}`);
+		assert.ok(podman.available, `Expected a reachable Linux Podman engine: ${podman.reason}`);
 	});
 }
 
@@ -212,7 +212,7 @@ export function setup(logger: Logger, quality: Quality) {
 		logger.log('Skipping Agents Window (Dev Container AgentHost) on Exploration builds');
 	}
 	(runDevContainerSuite ? describe : describe.skip)('Agents Window (Dev Container AgentHost)', () => {
-		installDockerPrerequisite(logger, process.platform === 'linux');
+		installPodmanPrerequisite(logger, process.platform === 'linux');
 
 		const devContainer = setupAgentHostSuite(logger, {
 			serverLabel: 'Dev Container AgentHost',
@@ -304,7 +304,7 @@ export function setup(logger: Logger, quality: Quality) {
 		}
 		(enabled ? describe : describe.skip)(`Agents Window (${label} Dev Container AgentHost)`, () => {
 			if (transport !== 'wsl') {
-				installDockerPrerequisite(logger, process.platform === 'linux' || transport === 'tunnel');
+				installPodmanPrerequisite(logger, process.platform === 'linux' || transport === 'tunnel');
 			}
 			before(() => {
 				if (required) {
@@ -411,6 +411,9 @@ export function setup(logger: Logger, quality: Quality) {
 				// override path.
 				'chat.agentHost.sdkSandbox.enabled': 'on',
 				'chat.agent.sandbox.enabled': 'on',
+				// This test uses a local mock LLM and shell only. Keep the unrelated
+				// built-in GitHub MCP endpoint out of the sandboxed session.
+				'chat.agentHost.githubMcpServer.enabled': false,
 			},
 		});
 
