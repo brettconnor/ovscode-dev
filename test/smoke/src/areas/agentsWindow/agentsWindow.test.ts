@@ -48,7 +48,14 @@ const DEV_CONTAINER_SCENARIO_ID = 'smoke-dev-container-agent-host';
 function prepareDevContainerWorkspace(workspacePath: string, port: number): void {
 	const configDirectory = path.join(workspacePath, '.devcontainer');
 	const mockServerUrl = `http://vscode-smoke.test:${port}`;
+	const cliArchitecture = process.arch === 'arm64' ? 'arm64' : 'x64';
+	const cliArchivePath = path.join(configDirectory, 'code-cli-linux.tar.gz');
 	fs.mkdirSync(configDirectory, { recursive: true });
+	cp.execFileSync('curl', [
+		'-fsSL',
+		`https://update.code.visualstudio.com/latest/cli-linux-${cliArchitecture}/insider`,
+		'-o', cliArchivePath,
+	], { timeout: 120_000 });
 	fs.writeFileSync(path.join(configDirectory, 'devcontainer.json'), JSON.stringify({
 		name: 'Agents Window Smoke',
 		image: 'mcr.microsoft.com/devcontainers/base:ubuntu-24.04',
@@ -63,9 +70,8 @@ function prepareDevContainerWorkspace(workspacePath: string, port: number): void
 		},
 		postCreateCommand: [
 			'set -e',
-			'case "$(uname -m)" in x86_64) cli_arch=x64 ;; aarch64|arm64) cli_arch=arm64 ;; *) exit 1 ;; esac',
 			'mkdir -p ~/.vscode-cli-insider',
-			'curl -fsSL "https://update.code.visualstudio.com/latest/cli-linux-${cli_arch}/insider" | tar xz -C ~/.vscode-cli-insider',
+			'tar xz -f .devcontainer/code-cli-linux.tar.gz -C ~/.vscode-cli-insider',
 			'chmod +x ~/.vscode-cli-insider/code-insiders',
 		].join(' && '),
 	}, null, 2));
