@@ -1292,8 +1292,6 @@ function expectedSnapshotReadonlyNote(paths: string[]): string {
  * Session-scoped shell init root granted read access while a script is active.
  * Scripts land in an instance-scoped subdirectory beneath it.
  */
-const TEST_SHELL_INIT_DIRECTORY = URI.file('/mock-userdata/agentHost/shellInit/test-session-1');
-const TEST_SHELL_INIT_DIR = TEST_SHELL_INIT_DIRECTORY.fsPath;
 
 function defaultNonPtyShellTerminalUri(toolCallId: string): string {
 	const session = AgentSession.uri('copilot', 'test-session-1');

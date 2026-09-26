@@ -785,7 +785,6 @@ export interface IAgentHostToolApprovalReport extends IAgentHostTurnAttributedRe
 	toolSourceKind: string;
 	confirmKind: AgentHostToolApprovalConfirmKind;
 	confirmationNotNeededReason: string | undefined;
-	requestUnsandboxedExecution: boolean | undefined;
 }
 
 type AgentHostToolApprovalConfirmKind = 'userAction' | 'setting' | 'confirmationNotNeeded' | 'denied';
@@ -1235,7 +1234,7 @@ export class AgentHostTelemetryReporter {
 			customButtonKind: undefined,
 			confirmationNotNeededReason: report.confirmationNotNeededReason,
 			sandboxWrapped: undefined,
-			requestUnsandboxedExecution: report.requestUnsandboxedExecution,
+			requestUnsandboxedExecution: undefined,
 		});
 	}
 

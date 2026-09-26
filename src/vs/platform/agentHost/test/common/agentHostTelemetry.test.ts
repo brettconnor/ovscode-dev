@@ -6,7 +6,7 @@
 import assert from 'assert';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../base/test/common/utils.js';
 import { TelemetryConfiguration, TelemetryLevel } from '../../../telemetry/common/telemetry.js';
-import { AgentHostClientConnectionKind, readClientConnectionKind, telemetryLevelToAgentHostValue, toAgentHostClientMeta } from '../../common/agentHostTelemetry.js';
+import { telemetryLevelToAgentHostValue } from '../../common/agentHostTelemetry.js';
 
 suite('AgentHostTelemetry', () => {
 	ensureNoDisposablesAreLeakedInTestSuite();

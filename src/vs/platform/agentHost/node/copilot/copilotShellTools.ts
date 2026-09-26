@@ -63,7 +63,6 @@ export class ShellManager extends Disposable {
 	readonly onDidAssociateTerminal: Event<{ toolCallId: string; terminalUri: string; displayName: string }> = this._onDidAssociateTerminal.event;
 
 	constructor(
-		private readonly _sessionUri: URI,
 		workingDirectory: URI | undefined,
 		@IAgentHostTerminalManager private readonly _terminalManager: IAgentHostTerminalManager,
 		@ILogService private readonly _logService: ILogService,
@@ -378,8 +377,8 @@ export async function createShellTools(
 	const primaryTool: Tool<IShellToolArgs> = {
 		name: shellType,
 		description: shellType === 'bash'
-			? (isZsh(executable) ? createZshModelDescription(false) : createBashModelDescription(false))
-			: createPowerShellModelDescription(shellType, executable, false),
+			? (isZsh(executable) ? createZshModelDescription() : createBashModelDescription())
+			: createPowerShellModelDescription(shellType, executable),
 		parameters: {
 			type: 'object',
 			properties: {

@@ -531,7 +531,6 @@ suite('AgentHostTelemetryReporter', () => {
 			toolId: 'grep', toolSourceKind: 'internal',
 			confirmKind: 'confirmationNotNeeded',
 			confirmationNotNeededReason: 'auto-approve-all',
-			requestUnsandboxedExecution: undefined,
 		});
 		reporter.toolApproval({
 			provider: 'copilot', session, turnId: 'turn-2',
@@ -540,14 +539,12 @@ suite('AgentHostTelemetryReporter', () => {
 			toolId: 'bash', toolSourceKind: 'internal',
 			confirmKind: 'userAction',
 			confirmationNotNeededReason: undefined,
-			requestUnsandboxedExecution: true,
 		});
 		reporter.toolApproval({
 			provider: 'copilot', session, turnId: 'turn-3',
 			toolId: 'my-mcp-tool', toolSourceKind: 'mcp',
 			confirmKind: 'denied',
 			confirmationNotNeededReason: undefined,
-			requestUnsandboxedExecution: undefined,
 		});
 
 		assert.deepStrictEqual(service.standardEvents, [{
@@ -590,7 +587,7 @@ suite('AgentHostTelemetryReporter', () => {
 				customButtonKind: undefined,
 				confirmationNotNeededReason: undefined,
 				sandboxWrapped: undefined,
-				requestUnsandboxedExecution: true,
+				requestUnsandboxedExecution: undefined,
 			},
 		}, {
 			eventName: 'chat.toolApproval',

@@ -513,12 +513,6 @@ export interface ICopilotAgentSessionOptions {
 	 */
 	readonly onTurnEnded?: () => void;
 
-	/**
-	 * Platform used to compute the SDK sandbox policy. Defaults to
-	 * `process.platform`; injectable so tests can exercise the per-OS gating
-	 * (notably that the sandbox is ignored on Windows) deterministically.
-	 */
-	readonly platform?: NodeJS.Platform;
 	/** Resolves symlinks for plugin resource permission checks. */
 	readonly realpath?: (path: string) => Promise<string>;
 	/** Overrides the control-plane RPC timeout for deterministic tests. */
@@ -901,7 +895,7 @@ export class CopilotAgentSession extends Disposable {
 	 * Reuses one user approval for repeated native read/write/shell requests
 	 * from the SDK's internal path and operation prompts. Grants are keyed by
 	 * tool call ID and consumed once, only when the full {@link safeStringify}
-	 * payload matches, including canonical paths and sandbox privileges.
+	 * payload matches, including canonical paths and permission requirements.
 	 * Managed approval requests never reuse an approval.
 	 */
 	private readonly _approvedDuplicablePermissionSignatures = new Map<string, string>();
@@ -4420,7 +4414,7 @@ export class CopilotAgentSession extends Disposable {
 							kind: ToolCallRiskAssessmentKind.Judge,
 							status: ToolCallRiskAssessmentStatus.Complete,
 							reason: autoApproval.reason,
-							safety: recommendation === 'approve' ? 1 : 0,
+						safety: 0,
 						}
 						: undefined,
 					edits,

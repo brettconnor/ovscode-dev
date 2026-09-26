@@ -472,8 +472,7 @@ export class SessionPermissionManager extends Disposable {
 
 	/**
 	 * Handles the side effect of a `ChatToolCallConfirmed` action when the
-	 * user selected "Allow in this Session": persist a sandbox opt-out for
-	 * escapes, or a tool permission for ordinary confirmations.
+	 * user selected "Allow in this Session" by persisting a tool permission.
 	 */
 	handleToolCallConfirmed(chatChannel: ProtocolURI, toolCallId: string, selectedOptionId: string | undefined): void {
 		if (!isAhpChatChannel(chatChannel)) {
@@ -481,7 +480,6 @@ export class SessionPermissionManager extends Disposable {
 		}
 		const sessionKey = resolveAgentHostSession(URI.parse(chatChannel)).toString();
 		if (selectedOptionId === ALLOW_SESSION_OPTION_ID) {
-			const part = this._stateManager.getSessionState(chatChannel)?.activeTurn?.responseParts.find(part => part.kind === ResponsePartKind.ToolCall && part.toolCall.toolCallId === toolCallId);
 			const toolName = this._getToolNameForToolCall(chatChannel, toolCallId);
 			if (toolName) {
 				this._addToolToSessionPermissions(sessionKey, toolName);
