@@ -1205,7 +1205,8 @@ suite('NewChatWidget', () => {
 		});
 	}
 
-	test(`draft handoff preserves ownership for ${existing} destination input`, async () => {
+	for (const existing of ['empty', 'text', 'attachments', 'lateEdit', 'cancelled'] as const) {
+		test(`draft handoff preserves ownership for ${existing} destination input`, async () => {
 			const changed = disposables.add(new Emitter<void>());
 			const cancellation = disposables.add(new CancellationTokenSource());
 			const ready = new DeferredPromise<void>();
