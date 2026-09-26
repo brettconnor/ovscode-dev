@@ -114,7 +114,8 @@ function setup(store: Pick<DisposableStore, 'add'>, activeSession: IActiveSessio
 		}
 	})();
 	const activeSessionObs = observableValue<IActiveSession | undefined>('activeSession', activeSession);
-	const configurationService = store.add(new TestConfigurationService());
+	const configurationService = new TestConfigurationService();
+	store.add(configurationService.onDidChangeConfigurationEmitter);
 	const sessionsManagementService = new (class extends mock<ISessionsService>() {
 		override readonly activeSession = activeSessionObs;
 	})();

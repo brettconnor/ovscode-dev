@@ -485,8 +485,6 @@ function createConfigurationService(enabled: boolean, disposables: DisposableSto
 		getEffectiveWorkingDirectories: () => undefined,
 		updateSessionConfig: () => { },
 		getSessionConfigValues: () => undefined,
-		getSessionSandboxPolicy: () => undefined,
-		setSessionSandboxPolicy: () => { },
 		getRootValue: (schema, key) => schema.validate(key, enabled) ? enabled : undefined,
 		updateRootConfig: () => { },
 		persistRootConfig: () => { },

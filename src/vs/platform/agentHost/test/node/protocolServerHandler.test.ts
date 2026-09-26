@@ -45,7 +45,6 @@ import { AgentHostManagedSettingsService } from '../../node/agentHostManagedSett
 import { AgentHostTelemetryService } from '../../node/agentHostTelemetryService.js';
 import { buildAnnotationsUri } from '../../common/annotationsUri.js';
 import { buildSessionChangesetUri } from '../../common/changesetUri.js';
-import { MockDevContainerService } from '../common/mockDevContainerService.js';
 
 // ---- Mock helpers -----------------------------------------------------------
 
@@ -404,7 +403,6 @@ suite('ProtocolServerHandler', () => {
 	let telemetryService: TestTelemetryService;
 	let agentHostTelemetryService: AgentHostTelemetryService;
 	let clientConnections: AgentHostClientConnectionService;
-	let devContainerService: MockDevContainerService;
 
 	const sessionUri = URI.from({ scheme: 'copilot', path: '/test-session' }).toString();
 	const defaultChatUri = buildDefaultChatUri(sessionUri);
@@ -459,7 +457,6 @@ suite('ProtocolServerHandler', () => {
 			agentHostTelemetryService,
 			managedSettingsService,
 			clientConnections,
-			devContainerService = disposables.add(new MockDevContainerService()),
 			NullAgentHostOTelService,
 		));
 	});
@@ -1454,7 +1451,6 @@ suite('ProtocolServerHandler', () => {
 			NullTelemetryService,
 			managedSettingsService,
 			clientConnections,
-			localDisposables.add(new MockDevContainerService()),
 			NullAgentHostOTelService,
 		));
 		const transport = new MockProtocolTransport();
@@ -2959,7 +2955,6 @@ suite('ProtocolServerHandler', () => {
 				telemetryService,
 				managedSettingsService,
 				tracker,
-				localDisposables.add(new MockDevContainerService()),
 				NullAgentHostOTelService,
 			)));
 		}
@@ -3006,7 +3001,6 @@ suite('ProtocolServerHandler', () => {
 				telemetryService,
 				managedSettingsService,
 				tracker,
-				localDisposables.add(new MockDevContainerService()),
 				NullAgentHostOTelService,
 			));
 			const transport = new MockProtocolTransport();
@@ -3056,7 +3050,6 @@ suite('ProtocolServerHandler', () => {
 			localTelemetry,
 			managedSettingsService,
 			clientConnections,
-			localDisposables.add(new MockDevContainerService()),
 			NullAgentHostOTelService,
 		));
 		const counts: number[] = [];
@@ -3107,7 +3100,6 @@ suite('ProtocolServerHandler', () => {
 			localTelemetry,
 			managedSettingsService,
 			clientConnections,
-			localDisposables.add(new MockDevContainerService()),
 			NullAgentHostOTelService,
 		));
 		const countEvents: number[] = [];
@@ -3150,7 +3142,6 @@ suite('ProtocolServerHandler', () => {
 			localTelemetry,
 			managedSettingsService,
 			clientConnections,
-			localDisposables.add(new MockDevContainerService()),
 			NullAgentHostOTelService,
 		));
 		const countEvents: number[] = [];
@@ -3201,7 +3192,6 @@ suite('ProtocolServerHandler', () => {
 			localTelemetry,
 			managedSettingsService,
 			clientConnections,
-			localDisposables.add(new MockDevContainerService()),
 			NullAgentHostOTelService,
 		));
 		const counts: number[] = [];
@@ -4470,7 +4460,6 @@ suite('ProtocolServerHandler', () => {
 			NullTelemetryService,
 			managedSettingsService,
 			clientConnections,
-			localDisposables.add(new MockDevContainerService()),
 			NullAgentHostOTelService,
 		));
 		const secondTransport = new MockProtocolTransport();
@@ -4577,7 +4566,6 @@ suite('ProtocolServerHandler', () => {
 			NullTelemetryService,
 			managedSettingsService,
 			clientConnections,
-			localDisposables.add(new MockDevContainerService()),
 			NullAgentHostOTelService,
 		));
 		const counts: number[] = [];
@@ -4718,7 +4706,6 @@ suite('ProtocolServerHandler', () => {
 				NullTelemetryService,
 				managedSettingsService,
 				clientConnections,
-				localDisposables.add(new MockDevContainerService()),
 				NullAgentHostOTelService,
 			));
 		});
@@ -4892,7 +4879,6 @@ suite('ProtocolServerHandler', () => {
 				NullTelemetryService,
 				managedSettingsService,
 				clientConnections,
-				localDisposables.add(new MockDevContainerService()),
 				NullAgentHostOTelService,
 			));
 		});

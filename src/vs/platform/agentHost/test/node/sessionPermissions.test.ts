@@ -472,7 +472,6 @@ suite('SessionPermissionManager', () => {
 			['already approved', shellEvent('echo hello', 'bash'), false],
 			['denied', shellEvent('rm file.txt', 'bash'), false],
 			['unapproved write redirect', shellEvent('my-custom-script > /etc/passwd', 'bash'), false],
-			['sandbox bypass', { ...shellEvent('my-custom-script', 'bash'), requestSandboxBypass: true }, false],
 			['non-shell', writeEvent('/outside/app.ts'), false],
 		];
 		assert.deepStrictEqual(
