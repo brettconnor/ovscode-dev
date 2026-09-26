@@ -70,9 +70,9 @@ function prepareDevContainerWorkspace(workspacePath: string, port: number): void
 		},
 		postCreateCommand: [
 			'set -e',
-			'mkdir -p ~/.vscode-cli-insider',
-			'tar xz -f .devcontainer/code-cli-linux.tar.gz -C ~/.vscode-cli-insider',
-			'chmod +x ~/.vscode-cli-insider/code-insiders',
+			'mkdir -p ~/.vscode-server-oss-dev',
+			'tar xz -f .devcontainer/code-cli-linux.tar.gz -C ~/.vscode-server-oss-dev',
+			'chmod +x ~/.vscode-server-oss-dev/code-insiders',
 		].join(' && '),
 	}, null, 2));
 }
