@@ -1230,7 +1230,6 @@ async function createAgentSession(disposables: DisposableStore, options?: {
 			workingDirectory: options?.workingDirectory,
 			customizationDirectory: options?.customizationDirectory,
 			serverToolHost: options?.serverToolHost,
-			platform: 'linux',
 			onTurnEnded: options?.onTurnEnded,
 			enableDevelopmentErrorInjection: options?.enableDevelopmentErrorInjection ?? true,
 			realpath: options?.realpath,
