@@ -40,7 +40,6 @@ import { IWorkbenchLayoutService } from '../../../../../../../workbench/services
 import { IAgentWorkbenchLayoutService } from '../../../../../../browser/workbench.js';
 import { Menus } from '../../../../../../browser/menus.js';
 import { IAgentHostSessionsProvider, LOCAL_AGENT_HOST_PROVIDER_ID } from '../../../../../../common/agentHostSessionsProvider.js';
-import { DevContainerWorktreeEnabledSettingId } from '../../../../../../common/devContainerAgentHostService.js';
 import { ISessionChangesService } from '../../../../../../contrib/changes/browser/sessionChangesService.js';
 import { CHANGES_VIEW_ID } from '../../../../../../contrib/changes/common/changes.js';
 import { ISessionsProvidersService } from '../../../../../../services/sessions/browser/sessionsProvidersService.js';
@@ -145,7 +144,7 @@ function makeNoGitConfig(): ResolveSessionConfigResult {
  * provider (not the picker) owns the seeded schema, so a picker recreated by a
  * toolbar rebuild still reads the seeded chips from here.
  */
-class FakeProvider implements Pick<IAgentHostSessionsProvider, 'id' | 'onDidChangeSessionConfig' | 'getSessionConfig' | 'getCreateSessionConfig' | 'isSessionConfigResolving' | 'setSessionConfigValue' | 'trackSessionConfigOperation' | 'getSessionConfigCompletions' | 'isDevContainerEnabled'> {
+class FakeProvider implements Pick<IAgentHostSessionsProvider, 'id' | 'onDidChangeSessionConfig' | 'getSessionConfig' | 'getCreateSessionConfig' | 'isSessionConfigResolving' | 'setSessionConfigValue' | 'trackSessionConfigOperation' | 'getSessionConfigCompletions'> {
 	readonly id = LOCAL_AGENT_HOST_PROVIDER_ID;
 	readonly onDidChangeSessionConfig: Event<string>;
 	config: ResolveSessionConfigResult = makeRepoConfig('main');
@@ -153,7 +152,6 @@ class FakeProvider implements Pick<IAgentHostSessionsProvider, 'id' | 'onDidChan
 	isNew = true;
 	setSessionConfigValueCalls = 0;
 	readonly setSessionConfigValueArguments: { sessionId: string; property: string; value: unknown }[] = [];
-	devContainerEnabled = false;
 	/** Completions returned by `getSessionConfigCompletions`, e.g. for the dynamic branch picker. */
 	completions: readonly SessionConfigValueItem[] = [];
 	readonly completionQueries: (string | undefined)[] = [];
@@ -187,7 +185,6 @@ class FakeProvider implements Pick<IAgentHostSessionsProvider, 'id' | 'onDidChan
 			? this.completions
 			: this.completions.filter(item => item.value.toLowerCase().includes(query.toLowerCase()));
 	}
-	isDevContainerEnabled(): boolean { return this.devContainerEnabled; }
 
 	/** Swap the config + resolving flag and pulse, as the real provider does. */
 	set(config: ResolveSessionConfigResult, resolving: boolean): void {
@@ -273,7 +270,6 @@ function setupServices(
 	instantiationService.stub(IHoverService, { setupDelayedHover: () => ({ dispose: () => { } }) } as Partial<IHoverService> as IHoverService);
 	instantiationService.stub(ITelemetryService, NullTelemetryService);
 	const configurationService = new TestConfigurationService({
-		[DevContainerWorktreeEnabledSettingId]: false,
 	});
 	store.add(configurationService.onDidChangeConfigurationEmitter);
 	instantiationService.stub(IConfigurationService, configurationService);
@@ -1661,27 +1657,6 @@ suite('Agent Host Session Config Picker', () => {
 		assert.strictEqual(isolationSlot(second.container)!.classList.contains('resolving'), false, 'isolation re-enables after resolve');
 		assert.strictEqual(branchSlot(second.container)!.classList.contains('resolving'), false, 'branch re-enables after resolve');
 		assert.strictEqual(branchLabel(second.container), 'dev', 'branch label reflects the resolved value');
-	});
-
-	test('does not render a Dev Container checkbox and disables New Worktree while Dev Container is selected', () => {
-		const services = setupServices(store);
-		services.provider.config = makeRepoConfig('main', 'folder');
-		services.provider.devContainerEnabled = true;
-		const { container } = renderPicker(store, services);
-		const worktree = isolationSlot(container)!;
-		worktree.querySelector<HTMLElement>('.action-label')!.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
-
-		assert.deepStrictEqual({
-			devContainerCheckbox: container.querySelector('.sessions-chat-dev-container-checkbox'),
-			worktreeDisabled: worktree.classList.contains('disabled'),
-			worktreeAriaDisabled: worktree.querySelector('.monaco-checkbox')?.getAttribute('aria-disabled'),
-			setSessionConfigValueCalls: services.provider.setSessionConfigValueCalls,
-		}, {
-			devContainerCheckbox: null,
-			worktreeDisabled: true,
-			worktreeAriaDisabled: 'true',
-			setSessionConfigValueCalls: 0,
-		});
 	});
 
 	test('keeps the isolation checkbox node and focus stable while config resolves', () => {

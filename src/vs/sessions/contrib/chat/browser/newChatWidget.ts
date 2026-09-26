@@ -91,7 +91,6 @@ export class NewChatWidget extends Disposable {
 	private readonly _newSessionCreation = new MutableDisposable<IDisposable>();
 	private _pendingWorkspaceCreation: Promise<IOpenNewSessionResult> | undefined;
 	private _createdSessionId: string | undefined;
-	private _preferredDevContainerFolderUri: URI | undefined;
 
 	/**
 	 * The currently mounted no-agent-host empty state, if any. Set by
@@ -210,24 +209,6 @@ export class NewChatWidget extends Disposable {
 				return undefined;
 			},
 			getNoWorkspaceOption: () => this._getNoWorkspaceOption(),
-		}));
-		const providersChanged = observableSignalFromEvent(this, this.sessionsProvidersService.onDidChangeProviders);
-		this._register(autorun(reader => {
-			providersChanged.read(reader);
-			const activeSession = this._session.read(reader);
-			activeSession?.isQuickChat?.read(reader);
-			this._workspacePicker.refreshTriggerLabel();
-			if (!activeSession) {
-				return;
-			}
-			const provider = this.sessionsProvidersService.getProvider(activeSession.providerId);
-			if (!provider || !isAgentHostProvider(provider)) {
-				return;
-			}
-			reader.store.add(Event.filter(
-				provider.onDidChangeSessionConfig,
-				sessionId => sessionId === activeSession.sessionId,
-			)(() => this._syncWorkspacePickerDevContainerMode(activeSession, false, WorkspaceSelectionOrigin.SessionSync)));
 		}));
 
 		const feedbackChanged = observableSignalFromEvent(this, this.agentFeedbackService.onDidChangeFeedback);
@@ -350,9 +331,6 @@ export class NewChatWidget extends Disposable {
 		this._register(this._workspacePicker.onDidSelectWorkspace(async folderUri => {
 			await this._onWorkspaceSelected(folderUri);
 			this._newChatInput.focus();
-		}));
-		this._register(this._workspacePicker.onDidSelectWorkspaceMode(({ folderUri, preferDevContainer }) => {
-			this._preferredDevContainerFolderUri = preferDevContainer ? folderUri : undefined;
 		}));
 		this._register(this._workspacePicker.onDidSelectContext(context => {
 			const contextUri = context.uri.toString();
@@ -672,7 +650,6 @@ export class NewChatWidget extends Disposable {
 	private _hasEnoughSessionsForFirstRunNotices(): boolean {
 		return this.storageService.getNumber(TOTAL_SESSIONS_KEY, StorageScope.APPLICATION, 0) >= MIN_SESSIONS_FOR_FIRST_RUN_NOTICES;
 	}
-
 	/**
 	 * Seed the new-session draft from the workspace picker's restored folder,
 	 * unless an active session already exists (then just sync the picker to it).
@@ -713,7 +690,10 @@ export class NewChatWidget extends Disposable {
 			return false;
 		}
 
-		const folderUri = this._syncWorkspacePickerDevContainerMode(activeSession, true, WorkspaceSelectionOrigin.RestoredDraft);
+		const folderUri = activeSession.workspace.get()?.folders[0]?.root;
+		if (folderUri) {
+			this._workspacePicker.setSelectedWorkspace(folderUri, { fireEvent: false, providerId: activeSession.providerId, persist: true, origin: WorkspaceSelectionOrigin.RestoredDraft });
+		}
 		if (folderUri) {
 			this._replaceDraftOnUnservableHarness(folderUri, activeSession);
 		}
@@ -721,16 +701,6 @@ export class NewChatWidget extends Disposable {
 		return true;
 	}
 
-	private _syncWorkspacePickerDevContainerMode(activeSession: IActiveSession, persist: boolean, origin: WorkspaceSelectionOrigin): URI | undefined {
-		const folderUri = activeSession.workspace.get()?.folders[0]?.root;
-		if (!folderUri) {
-			return undefined;
-		}
-		const provider = this.sessionsProvidersService.getProvider(activeSession.providerId);
-		const preferDevContainer = !!provider && isAgentHostProvider(provider) && provider.isDevContainerEnabled?.(activeSession.sessionId) === true;
-		this._workspacePicker.setSelectedWorkspace(folderUri, { fireEvent: false, providerId: activeSession.providerId, persist, preferDevContainer, origin });
-		return folderUri;
-	}
 
 	/**
 	 * Replaces a restored draft whose harness the folder can no longer serve.
@@ -758,11 +728,10 @@ export class NewChatWidget extends Disposable {
 			&& (pick.providerId === undefined || t.providerId === pick.providerId)
 			&& t.sessionType.id === pick.sessionTypeId);
 	}
-
 	private async _createNewSession(
 		folderUri: URI,
 		userPick = this._newChatInput.sessionTypePicker.getUserPickedSessionType(),
-		handoff?: { readonly token: CancellationToken; readonly providerId?: string; readonly preferDevContainer?: boolean },
+		handoff?: { readonly token: CancellationToken; readonly providerId?: string },
 	): Promise<IOpenNewSessionResult> {
 		this._pendingPreferredUpgrade.clear();
 		const creationCts = new CancellationTokenSource(handoff?.token);
@@ -801,12 +770,7 @@ export class NewChatWidget extends Disposable {
 		if (cancelled) {
 			return result;
 		}
-		if (handoff) {
-			this._preferredDevContainerFolderUri = handoff.preferDevContainer ? folderUri : undefined;
-		}
-		this._applyPreferredDevContainer(result.session, folderUri);
 		if (result.trustDeclined) {
-			this._preferredDevContainerFolderUri = undefined;
 			// The user explicitly declined trust: don't schedule a retry, which
 			// would silently recreate (and possibly re-prompt) the draft once a
 			// provider registers/changes without any further user action.
@@ -829,17 +793,6 @@ export class NewChatWidget extends Disposable {
 		return result;
 	}
 
-	private _applyPreferredDevContainer(session: ISession | undefined, folderUri: URI): void {
-		if (!session || !this._preferredDevContainerFolderUri || !this.uriIdentityService.extUri.isEqual(this._preferredDevContainerFolderUri, folderUri)) {
-			return;
-		}
-		const provider = this.sessionsProvidersService.getProvider(session.providerId);
-		if (!provider || !isAgentHostProvider(provider) || !provider.preferDevContainer) {
-			return;
-		}
-		provider.preferDevContainer(session.sessionId);
-		this._preferredDevContainerFolderUri = undefined;
-	}
 
 	private async _createSessionNow(folderUri: URI, userPick: IPreferredSessionType | undefined, token: CancellationToken, providerId?: string): Promise<IOpenNewSessionResult> {
 		// Prefer the user's explicit pick when its provider can serve the
@@ -1269,9 +1222,6 @@ export class NewChatWidget extends Disposable {
 	private async _onWorkspaceSelected(folderUri: URI | undefined, userPick?: IPreferredSessionType): Promise<void> {
 		// Cancel any in-flight upgrade for a previous selection.
 		this._pendingPreferredUpgrade.clear();
-		if (!folderUri || !this._preferredDevContainerFolderUri || !this.uriIdentityService.extUri.isEqual(this._preferredDevContainerFolderUri, folderUri)) {
-			this._preferredDevContainerFolderUri = undefined;
-		}
 		const currentFolderUri = this._session.get()?.workspace.get()?.folders[0]?.root;
 		const refreshingPromptOptions = !!currentFolderUri
 			&& (!folderUri || !this.uriIdentityService.extUri.isEqual(currentFolderUri, folderUri))
@@ -1349,7 +1299,7 @@ export class NewChatWidget extends Disposable {
 		try {
 			if (folderUri) {
 				const result = await this._createNewSession(folderUri, this._newChatInput.sessionTypePicker.getUserPickedSessionType(), {
-					token: cancellation.token, providerId: options.providerId, preferDevContainer: options.preferDevContainer,
+					token: cancellation.token, providerId: options.providerId,
 				});
 				if (cancellation.token.isCancellationRequested || this._store.isDisposed || this._newChatInput.hasInput || result.trustDeclined) {
 					return 'preserved';
@@ -1360,7 +1310,6 @@ export class NewChatWidget extends Disposable {
 				this._workspacePicker.setSelectedWorkspace(folderUri, {
 					fireEvent: false,
 					providerId: result.session.providerId,
-					preferDevContainer: options.preferDevContainer,
 					origin: options.selectionOrigin,
 				});
 			}
@@ -1389,8 +1338,7 @@ export class NewChatWidget extends Disposable {
 				return 'preserved';
 			}
 		}
-		this._preferredDevContainerFolderUri = options?.preferDevContainer ? folderUri : undefined;
-		this._workspacePicker.setSelectedWorkspace(folderUri, { providerId: options?.providerId, preferDevContainer: options?.preferDevContainer, origin: options?.selectionOrigin });
+		this._workspacePicker.setSelectedWorkspace(folderUri, { providerId: options?.providerId, origin: options?.selectionOrigin });
 		const selection = this._workspacePicker.selectionSnapshot;
 		return selection.state === 'selected' && this.uriIdentityService.extUri.isEqual(selection.folderUri, folderUri) ? 'applied' : 'notReady';
 	}

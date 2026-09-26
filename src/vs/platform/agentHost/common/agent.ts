@@ -103,7 +103,6 @@ export interface IAgentHostManagedSettingsSnapshot {
 	readonly failClosed: boolean;
 	readonly bypassPermissionsDisabled: boolean;
 	readonly permissionsAllowIntersected?: boolean;
-	readonly sandboxEnabledByUndeterminedPolicy?: boolean;
 	readonly managedKeys: readonly string[];
 	readonly settings?: unknown;
 }
@@ -964,12 +963,6 @@ export interface IAgentToolPendingConfirmationSignal {
 	 * The runtime currently sets it for managed Shell, Read, Edit, and Domain selector asks.
 	 */
 	readonly managedApprovalRequired?: boolean;
-	/**
-	 * Host-only flag (not part of the dispatched action): the model requested
-	 * this shell command run OUTSIDE the sandbox (and the host opted in via
-	 * `sandbox.allowBypass`).
-	 */
-	readonly requestSandboxBypass?: boolean;
 	/**
 	 * Host-only shell language for terminal auto-approval.
 	 * Only `bash` and `powershell` are eligible for terminal-rule analysis;

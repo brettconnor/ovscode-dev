@@ -45,16 +45,6 @@ export default defineThemedFixtureGroup({ path: 'sessions/remoteHostUnavailable/
 		}),
 	}),
 
-	DevContainerConnecting: defineComponentFixture({
-		labels: { kind: 'screenshot' },
-		render: context => renderUnavailableState(context, {
-			title: 'Connecting to project Dev Container',
-			description: 'Starting project Dev Container.',
-			progress: 'Waiting for agent host connection...',
-			detail: { label: 'Show Log', run: () => { } },
-		}),
-	}),
-
 	// A host that supplies its own wording, and whose heading needs no description under it.
 	EnvironmentOffline: defineComponentFixture({
 		labels: { kind: 'screenshot' },

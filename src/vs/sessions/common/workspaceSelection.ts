@@ -22,7 +22,7 @@ export const enum WorkspaceSelectionOrigin {
 
 export type WorkspaceHistoryLoadState = 'loading' | 'loaded' | 'error';
 export type WorkspaceSessionFallbackState = 'idle' | 'pending' | 'completed' | 'error' | 'disabled';
-export type WorkspaceArgumentKind = 'none' | 'local' | 'devContainer' | 'remote' | 'other';
+export type WorkspaceArgumentKind = 'none' | 'local' | 'remote' | 'other';
 
 /** Selection and lookup state at the instant it is read, not a guarantee that a session can run. */
 export interface IWorkspaceSelectionSnapshot {

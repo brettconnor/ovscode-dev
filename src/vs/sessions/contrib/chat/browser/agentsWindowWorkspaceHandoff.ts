@@ -32,7 +32,6 @@ export const WORKSPACE_HANDOFF_TIMEOUT_MS = 15_000;
 
 export interface IAgentsWindowWorkspaceHandoff {
 	readonly folderUri?: URI;
-	readonly preferDevContainer: boolean;
 	readonly isDefault: boolean;
 	readonly draft?: IAgentsWindowDraft;
 }
@@ -168,7 +167,6 @@ export class AgentsWindowWorkspaceHandoff extends Disposable {
 				const view = draftNeedsNavigation ? undefined : this.sessionsPartService.getSessionView(session?.sessionId);
 				const options = {
 					providerId: resolved?.providerId,
-					preferDevContainer: intent.preferDevContainer,
 					selectionOrigin: intent.isDefault && !intent.draft ? WorkspaceSelectionOrigin.WindowContext : WorkspaceSelectionOrigin.WindowOpen,
 					isDefault: intent.isDefault && !intent.draft,
 				};

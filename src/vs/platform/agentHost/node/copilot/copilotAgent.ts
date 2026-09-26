@@ -2506,23 +2506,6 @@ export class CopilotAgent extends Disposable implements IAgent {
 			delete env['COPILOT_MODEL_FAMILY'];
 			setCopilotBuiltinGitHubMcpEnvironment(env, startupConfig.githubMcpServer);
 
-			// On Linux the MXC bubblewrap sandbox backend does not forward a PTY into
-			// the container, so the CLI's default PTY-backed interactive shell can
-			// never start bash under the sandbox: the inner shell sees a non-tty
-			// stdin, runs non-interactively, reads EOF and exits immediately, which
-			// surfaces as "Failed to start bash process". Force the CLI's pipe-based
-			// spawn shell backend (`SHELL_SPAWN_BACKEND`), which runs each command as
-			// a one-shot child process and works correctly under bubblewrap. The CLI
-			// already force-enables this on Alpine/musl; glibc Linux needs it too for
-			// sandboxed shells. This becomes a no-op once the bundled CLI defaults the
-			// spawn backend on for all of Linux.
-			if (process.platform === 'linux') {
-				const enabledFlags = env['COPILOT_CLI_ENABLED_FEATURE_FLAGS'];
-				const flags = new Set((enabledFlags ?? '').split(',').map(f => f.trim()).filter(Boolean));
-				flags.add('SHELL_SPAWN_BACKEND');
-				env['COPILOT_CLI_ENABLED_FEATURE_FLAGS'] = [...flags].join(',');
-			}
-
 			// Identify VS Code's agent host traffic in CAPI
 			env['GITHUB_COPILOT_INTEGRATION_ID'] = COPILOT_INTEGRATION_ID;
 			this._logService.info(`[Copilot] Set CLI env: GITHUB_COPILOT_INTEGRATION_ID=${COPILOT_INTEGRATION_ID}`);
@@ -2563,13 +2546,6 @@ export class CopilotAgent extends Disposable implements IAgent {
 			} else {
 				this._logService.info(`[Copilot] Using bundled runtime path: ${runtimePath}`);
 			}
-
-			// The SDK's sandbox auto-detection looks for `<MXC_BIN_DIR>/<arch>/wxc-exec.exe`
-			// (and the Linux/macOS equivalents). VS Code core ships the MXC sandbox binaries
-			// at `<nodeModules>/@microsoft/mxc-sdk/bin/<arch>/`, so point `MXC_BIN_DIR` there.
-			// The @github/copilot package's own `mxc-bin/` is excluded from the product build
-			// (see build/.moduleignore), mirroring `CopilotCLISDK.getPackage` in the extension.
-			env['MXC_BIN_DIR'] = URI.joinPath(nodeModulesUri, '@microsoft', 'mxc-sdk', 'bin').fsPath;
 
 			// Add VS Code's built-in ripgrep to PATH so the CLI subprocess can find it.
 			const resolvedRgDiskPath = await rgDiskPath();

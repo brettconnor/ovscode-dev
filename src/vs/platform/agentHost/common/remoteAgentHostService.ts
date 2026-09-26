@@ -142,7 +142,6 @@ export const enum RemoteAgentHostEntryType {
 	WSL = 'wsl',
 	Tunnel = 'tunnel',
 	CloudSandbox = 'cloudSandbox',
-	DevContainer = 'devContainer',
 }
 
 export interface IRemoteAgentHostWebSocketConnection {
@@ -227,21 +226,7 @@ export interface IRemoteAgentHostCloudSandboxConnection {
 	readonly sessionId?: string;
 }
 
-/**
- * A runtime-only connection to an agent host running inside a Dev Container.
- * The Dev Container integration stages its transport for its connection factory.
- */
-export interface IRemoteAgentHostDevContainerConnection {
-	readonly type: RemoteAgentHostEntryType.DevContainer;
-	/** Stable address for the container connection. */
-	readonly address: string;
-	/** Source folder on the parent host containing the Dev Container configuration. */
-	readonly hostPath: string;
-	/** VS Code SSH, tunnel, or WSL authority of the source host, absent for local containers. */
-	readonly hostAuthority?: string;
-}
-
-export type RemoteAgentHostConnection = IRemoteAgentHostWebSocketConnection | IRemoteAgentHostSSHConnection | IRemoteAgentHostWSLConnection | IRemoteAgentHostTunnelConnection | IRemoteAgentHostCloudSandboxConnection | IRemoteAgentHostDevContainerConnection;
+export type RemoteAgentHostConnection = IRemoteAgentHostWebSocketConnection | IRemoteAgentHostSSHConnection | IRemoteAgentHostWSLConnection | IRemoteAgentHostTunnelConnection | IRemoteAgentHostCloudSandboxConnection;
 
 /** A configured remote agent host entry. WebSocket entries are persisted in {@link RemoteAgentHostsSettingId}; SSH entries are persisted in storage. */
 export interface IRemoteAgentHostEntry {
@@ -636,22 +621,12 @@ const TUNNEL_ENTRY_TYPE_CONFIG: IRemoteAgentHostEntryTypeConfig<IRemoteAgentHost
 	autoConnectGated: true,
 };
 const CLOUD_SANDBOX_ENTRY_TYPE_CONFIG = runtimeEntryTypeConfig<IRemoteAgentHostCloudSandboxConnection>(RemoteAgentHostEntryType.CloudSandbox, true, connection => connection.address);
-// Relay failures are cheap, but a cold container can make `devcontainer up` rebuild Docker for minutes; retry slower and favor explicit recovery.
-const DEV_CONTAINER_RECONNECT_POLICY: IRemoteAgentHostReconnectPolicy = {
-	autoRestore: true,
-	initialDelayMs: 2000,
-	maxDelayMs: 60_000,
-	maxAttempts: 3,
-};
-const DEV_CONTAINER_ENTRY_TYPE_CONFIG = runtimeEntryTypeConfig<IRemoteAgentHostDevContainerConnection>(RemoteAgentHostEntryType.DevContainer, true, connection => connection.address, DEV_CONTAINER_RECONNECT_POLICY);
-
 const ENTRY_TYPE_CONFIGS: { readonly [K in RemoteAgentHostEntryType]: IRemoteAgentHostEntryTypeConfig<Extract<RemoteAgentHostConnection, { type: K }>> } = {
 	[RemoteAgentHostEntryType.WebSocket]: WEBSOCKET_ENTRY_TYPE_CONFIG,
 	[RemoteAgentHostEntryType.SSH]: SSH_ENTRY_TYPE_CONFIG,
 	[RemoteAgentHostEntryType.WSL]: WSL_ENTRY_TYPE_CONFIG,
 	[RemoteAgentHostEntryType.Tunnel]: TUNNEL_ENTRY_TYPE_CONFIG,
 	[RemoteAgentHostEntryType.CloudSandbox]: CLOUD_SANDBOX_ENTRY_TYPE_CONFIG,
-	[RemoteAgentHostEntryType.DevContainer]: DEV_CONTAINER_ENTRY_TYPE_CONFIG,
 };
 
 /** Gets the static persistence and connection policy for an entry type. */

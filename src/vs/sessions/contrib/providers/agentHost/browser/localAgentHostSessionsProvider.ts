@@ -26,7 +26,7 @@ import { IStorageService } from '../../../../../platform/storage/common/storage.
 import { ITelemetryService } from '../../../../../platform/telemetry/common/telemetry.js';
 import { IUriIdentityService } from '../../../../../platform/uriIdentity/common/uriIdentity.js';
 import { IDialogService } from '../../../../../platform/dialogs/common/dialogs.js';
-import { IWorkspaceTrustManagementService, IWorkspaceTrustRequestService } from '../../../../../platform/workspace/common/workspaceTrust.js';
+import { IWorkspaceTrustManagementService } from '../../../../../platform/workspace/common/workspaceTrust.js';
 import { ISessionsProviderAutomations, type SessionResourceResolveReason } from '../../../../services/sessions/common/sessionsProvider.js';
 import { IAgentHostActiveClientService } from '../../../../../workbench/contrib/chat/browser/agentSessions/agentHost/agentHostActiveClientService.js';
 import { IChatWidgetService } from '../../../../../workbench/contrib/chat/browser/chat.js';
@@ -39,14 +39,11 @@ import { IWorkbenchEnvironmentService } from '../../../../../workbench/services/
 import { LOCAL_AGENT_HOST_PROVIDER_ID } from '../../../../common/agentHostSessionsProvider.js';
 import { IPathService } from '../../../../../workbench/services/path/common/pathService.js';
 import { buildAgentHostSessionWorkspace, readBranchProtectionPatterns } from '../../../../common/agentHostSessionWorkspace.js';
-import { IDevContainerAgentHostService } from '../../../../common/devContainerAgentHostService.js';
 import { IGitHubInfo, ISession, ISessionWorkspace, ISessionWorkspaceBrowseAction, SESSION_WORKSPACE_GROUP_LOCAL } from '../../../../services/sessions/common/session.js';
 import { ISessionsService } from '../../../../services/sessions/browser/sessionsService.js';
 import { ISessionsRecentWorkspacesService } from '../../../../services/sessions/browser/sessionsRecentWorkspacesService.js';
-import { ISessionsProvidersService } from '../../../../services/sessions/browser/sessionsProvidersService.js';
 import { IGitHubService } from '../../../github/browser/githubService.js';
-import { AgentHostSessionAdapter } from './baseAgentHostSessionsProvider.js';
-import { DevContainerAgentHostSessionsProvider } from './devContainerAgentHostSessionsProvider.js';
+import { AgentHostSessionAdapter, BaseAgentHostSessionsProvider } from './baseAgentHostSessionsProvider.js';
 import { ReconnectableAgentHostAutomationStore } from './reconnectableAgentHostAutomationStore.js';
 
 const LOCAL_RESOURCE_SCHEME_PREFIX = 'agent-host-';
@@ -63,12 +60,11 @@ const LOCAL_AGENT_HOST_CACHED_SESSIONS_STORAGE_KEY_LEGACY = 'localAgentHost.cach
 /**
  * Local-window sessions provider backed by the in-process
  * {@link IAgentHostService}. A thin subclass of
- * {@link DevContainerAgentHostSessionsProvider} that supplies the local-only
- * variation: a built-in connection that is always present, session-type
- * synchronization from the local agent host's `rootState`, and a local
- * file-picker browse action.
+ * {@link BaseAgentHostSessionsProvider} that supplies the local-only variation:
+ * a built-in connection that is always present, session-type synchronization
+ * from the local agent host's `rootState`, and a local file-picker browse action.
  */
-export class LocalAgentHostSessionsProvider extends DevContainerAgentHostSessionsProvider {
+export class LocalAgentHostSessionsProvider extends BaseAgentHostSessionsProvider {
 
 	readonly id = LOCAL_AGENT_HOST_PROVIDER_ID;
 	readonly label: string;
@@ -142,15 +138,11 @@ export class LocalAgentHostSessionsProvider extends DevContainerAgentHostSession
 		@IDialogService dialogService: IDialogService,
 		@IWorkbenchEnvironmentService environmentService: IWorkbenchEnvironmentService,
 		@IWorkspaceTrustManagementService workspaceTrustManagementService: IWorkspaceTrustManagementService,
-		@IWorkspaceTrustRequestService workspaceTrustRequestService: IWorkspaceTrustRequestService,
-		@IDevContainerAgentHostService devContainerAgentHostService: IDevContainerAgentHostService,
-		@ISessionsProvidersService sessionsProvidersService: ISessionsProvidersService,
 		@IPathService pathService: IPathService,
 		@ISessionsRecentWorkspacesService recentWorkspacesService: ISessionsRecentWorkspacesService,
 		@IUriIdentityService uriIdentityService: IUriIdentityService,
 	) {
 		super(chatSessionsService, chatService, chatWidgetService, languageModelsService, _configurationService, logService, gitHubService, instantiationService, sessionsService, activeClientService, storageService, dialogService, workspaceTrustManagementService, recentWorkspacesService, uriIdentityService);
-		this.initializeDevContainerSupport(devContainerAgentHostService, sessionsProvidersService, workspaceTrustRequestService);
 		const automations = this._register(instantiationService.createInstance(ReconnectableAgentHostAutomationStore, this.id, {
 			toHost: resource => resource,
 			fromHost: resource => resource,
@@ -266,10 +258,6 @@ export class LocalAgentHostSessionsProvider extends DevContainerAgentHostSession
 				this._onDidChangeSessions.fire({ added: [], removed: [], changed: [] });
 			}
 		}));
-	}
-
-	protected override supportsDevContainerWorkspace(workspaceUri: URI): boolean {
-		return workspaceUri.scheme === Schemas.file;
 	}
 
 	override getSessions(): ISession[] {

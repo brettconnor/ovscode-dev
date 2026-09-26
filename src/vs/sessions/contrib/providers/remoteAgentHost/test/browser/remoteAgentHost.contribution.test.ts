@@ -331,7 +331,6 @@ suite('Remote agent host provider ownership', () => {
 			{ name: 'Tunnel', connection: { type: RemoteAgentHostEntryType.Tunnel, tunnelId: 'my-tunnel', clusterId: 'usw2' } },
 			{ name: 'WSL', connection: { type: RemoteAgentHostEntryType.WSL, address: 'wsl:Ubuntu-24.04', distro: 'Ubuntu-24.04' } },
 			{ name: 'Sandbox', connection: { type: RemoteAgentHostEntryType.CloudSandbox, address: 'cloudsandbox:abc', environmentId: 'abc' } },
-			{ name: 'Dev Container', connection: { type: RemoteAgentHostEntryType.DevContainer, address: 'devcontainer:abc', hostPath: '/repo' } },
 			{ name: 'Socket', connection: { type: RemoteAgentHostEntryType.WebSocket, address: 'ws://host:8080' } },
 			{ name: 'Remote', connection: { type: RemoteAgentHostEntryType.SSH, address: 'localhost:4321', sshConfigHost: 'myserver', hostName: 'myserver' } },
 		];

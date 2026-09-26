@@ -22,9 +22,7 @@ import { Emitter } from '../../../../../base/common/event.js';
 import { ISession } from '../../../../services/sessions/common/session.js';
 import { InMemoryStorageService } from '../../../../../platform/storage/common/storage.js';
 import { IAgentsWindowWorkspaceHandoff } from '../../browser/agentsWindowWorkspaceHandoff.js';
-import { TestConfigurationService } from '../../../../../platform/configuration/test/common/testConfigurationService.js';
 import { AGENT_HOST_SCHEME } from '../../../../../platform/agentHost/common/agentHostUri.js';
-import { DevContainerAgentHostEnabledSettingId } from '../../../../common/devContainerAgentHostService.js';
 
 const startWindowOpenTelemetry = Reflect.get(SelectAgentsFolderContribution.prototype, '_startWindowOpenTelemetry') as (
 	source: AgentsWindowOpenSource,
@@ -42,10 +40,7 @@ suite('Agents Window workspace handoff telemetry', () => {
 			this: typeof harness, folder: URI | undefined, session: URI | undefined,
 			isDefault: boolean, token: CancellationToken, telemetry: undefined, draft: IAgentsWindowDraft
 		) => Promise<void>;
-		const configurationService = new TestConfigurationService();
-		disposables.add(configurationService.onDidChangeConfigurationEmitter);
 		const harness = {
-			configurationService,
 			_workspaceHandoff: { selectWorkspace: async (intent: IAgentsWindowWorkspaceHandoff) => { drafts.push(intent); } },
 			openExistingSession: async (resource: URI) => { sessions.push(resource); },
 		};
@@ -53,17 +48,14 @@ suite('Agents Window workspace handoff telemetry', () => {
 		const persisted = URI.parse('agent-host-copilot:/persisted');
 		await handleOpenIntent.call(harness, URI.file('/source'), persisted, false, CancellationToken.None, undefined, draft);
 		assert.deepStrictEqual({ drafts, sessions }, {
-			drafts: [{ folderUri: undefined, preferDevContainer: false, isDefault: true, draft }],
+			drafts: [{ folderUri: undefined, isDefault: true, draft }],
 			sessions: [persisted],
 		});
 	});
 
 	test('preserves unresolved draft workspace intent instead of treating remote workspaces as absent', async () => {
-		const configurationService = new TestConfigurationService({ [DevContainerAgentHostEnabledSettingId]: true });
-		disposables.add(configurationService.onDidChangeConfigurationEmitter);
 		const calls: IAgentsWindowWorkspaceHandoff[] = [];
 		const harness = {
-			configurationService,
 			_workspaceHandoff: { selectWorkspace: async (intent: IAgentsWindowWorkspaceHandoff) => { calls.push(intent); } },
 			openExistingSession: async () => assert.fail('A draft must not open an existing session'),
 		};
@@ -87,10 +79,10 @@ suite('Agents Window workspace handoff telemetry', () => {
 		await handleOpenIntent.call(harness, localContainer, undefined, false, CancellationToken.None, undefined, draft);
 		await handleOpenIntent.call(harness, remoteWorkspaces[0], undefined, false, CancellationToken.None, undefined);
 		assert.deepStrictEqual(calls.map(intent => ({
-			folder: intent.folderUri?.toString(), preferDevContainer: intent.preferDevContainer, draft: intent.draft,
+			folder: intent.folderUri?.toString(), draft: intent.draft,
 		})), [
-			...remoteWorkspaces.map(workspace => ({ folder: workspace.toString(), preferDevContainer: false, draft })),
-			{ folder: hostFolder.toString(), preferDevContainer: true, draft },
+			...remoteWorkspaces.map(workspace => ({ folder: workspace.toString(), draft })),
+			{ folder: localContainer.toString(), draft },
 		]);
 	});
 

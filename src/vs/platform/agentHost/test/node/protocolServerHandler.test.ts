@@ -21,7 +21,7 @@ import { NullTelemetryService } from '../../../telemetry/common/telemetryUtils.j
 import { ITelemetryService, TelemetryLevel } from '../../../telemetry/common/telemetry.js';
 import { type IAgentCreateChatRequestOptions, type IAgentCreateSessionConfig, type IAgentResolveSessionConfigParams, type IAgentSessionConfigCompletionsParams, type IAgentSessionMetadata, type AuthenticateParams, type AuthenticateResult } from '../../common/agent.js';
 import { type IAgentHostManagedSettingsDiagnostics, type IAgentHostNetworkDiagnosticsInfo, type IAgentHostNetworkFetchResult, type IAgentService } from '../../common/agentService.js';
-import { DevContainerConnectExtensionMethod, DevContainerDisconnectExtensionMethod, DevContainerIsDockerAvailableExtensionMethod, DevContainerOutputNotification, RemoveSessionArtifactExtensionMethod, RequestAgentHostWorkspaceTrustExtensionMethod, supportsAgentHostArtifactRemoval, supportsAgentHostDevContainers } from '../../common/agentHostExtensionProtocol.js';
+import { RemoveSessionArtifactExtensionMethod, RequestAgentHostWorkspaceTrustExtensionMethod, supportsAgentHostArtifactRemoval } from '../../common/agentHostExtensionProtocol.js';
 import { ChatSourceKind, CompletionsParams, CompletionsResult, ContentEncoding, ListSessionsResult, ResourceReadResult, ResolveSessionConfigResult, SessionConfigCompletionsResult, ResourceMkdirParams, ResourceMkdirResult, ResourceResolveParams, ResourceResolveResult, ResourceCopyParams, ResourceCopyResult } from '../../common/state/protocol/commands.js';
 import type { AutomationCapabilities, Implementation } from '../../common/state/protocol/common/commands.js';
 import type { FetchAutomationRunsParams, FetchAutomationRunsResult, ListAutomationTriggerDefinitionsParams, ListAutomationTriggerDefinitionsResult, RunAutomationParams, RunAutomationResult } from '../../common/state/protocol/channels-automation/commands.js';
@@ -488,42 +488,8 @@ suite('ProtocolServerHandler', () => {
 				'vscode.getAgentHostSessionStateFile.chat': true,
 				'vscode.removeSessionArtifact': true,
 				'vscode.importSession': true,
-				'vscode.devContainers': true,
 			},
 		});
-	});
-
-	test('Dev Containers enforce initiating transport trust, ownership, and disconnect cleanup', async () => {
-		const first = connectClient('client-1');
-		const second = connectClient('client-1');
-		first.simulateMessage(request(2, DevContainerConnectExtensionMethod, { connectionId: 'container', workspaceFolder: '/repo', name: 'Project' }));
-		const trust = findRequest(first.sent, RequestAgentHostWorkspaceTrustExtensionMethod);
-		assert.ok(trust);
-		assert.strictEqual(findRequest(second.sent, RequestAgentHostWorkspaceTrustExtensionMethod), undefined);
-		assert.strictEqual(devContainerService.connects.length, 0);
-		first.simulateMessage({ jsonrpc: '2.0', id: trust.id, result: { trusted: true } });
-		await handler.whenIdle();
-		const connectionId = devContainerService.connects[0].connectionId;
-		devContainerService.output.fire({ connectionId, data: 'output' });
-		assert.deepStrictEqual(first.sent.at(-1), { jsonrpc: '2.0', method: DevContainerOutputNotification, params: { connectionId: 'container', data: 'output' } });
-		second.simulateMessage(request(3, DevContainerDisconnectExtensionMethod, { connectionId: 'container' }));
-		await handler.whenIdle();
-		const rejected = findResponse(second.sent, 3);
-		assert.ok(rejected && hasKey(rejected, { error: true }) && rejected.error?.code === AhpErrorCodes.NotFound);
-		first.simulateClose();
-		assert.deepStrictEqual(devContainerService.disconnects, [connectionId]);
-	});
-
-	test('Dev Containers reject denied trust before running the launcher', async () => {
-		const transport = connectClient('client-1');
-		transport.simulateMessage(request(2, DevContainerConnectExtensionMethod, { connectionId: 'container', workspaceFolder: '/repo', name: 'Project' }));
-		const trust = findRequest(transport.sent, RequestAgentHostWorkspaceTrustExtensionMethod);
-		assert.ok(trust);
-		transport.simulateMessage({ jsonrpc: '2.0', id: trust.id, result: { trusted: false } });
-		await handler.whenIdle();
-		const response = findResponse(transport.sent, 2);
-		assert.ok(response && hasKey(response, { error: true }) && response.error?.code === AhpErrorCodes.PermissionDenied);
-		assert.deepStrictEqual(devContainerService.connects, []);
 	});
 
 	test('routes a workspace trust request to the initiating client', async () => {
@@ -1031,7 +997,7 @@ suite('ProtocolServerHandler', () => {
 		disposables.add(new ProtocolServerHandler(
 			agentService, stateManager, localServer, { allowExtensionMethods: false },
 			disposables.add(new AgentHostFileSystemProvider()), logService, NullTelemetryService,
-			managedSettingsService, clientConnections, devContainerService,
+			managedSettingsService, clientConnections,
 			{ ...NullAgentHostOTelService, diagnosticsEnabled: true, emitFirstResponse: diagnostic => calls.push(diagnostic) },
 		));
 		const transport = new MockProtocolTransport();
@@ -1072,7 +1038,7 @@ suite('ProtocolServerHandler', () => {
 		disposables.add(new ProtocolServerHandler(
 			agentService, stateManager, localServer, { allowExtensionMethods: false },
 			disposables.add(new AgentHostFileSystemProvider()), logService, NullTelemetryService,
-			managedSettingsService, clientConnections, devContainerService,
+			managedSettingsService, clientConnections,
 			{
 				...NullAgentHostOTelService, diagnosticsEnabled: true,
 				emitUserInteraction: timing => calls.push(timing), flush: async () => { flushed++; }
@@ -1462,12 +1428,8 @@ suite('ProtocolServerHandler', () => {
 		const initializeResponse = findResponse(transport.sent, 1);
 		assert.ok(initializeResponse && hasKey(initializeResponse, { result: true }));
 		assert.strictEqual(supportsAgentHostArtifactRemoval(initializeResponse.result as InitializeResult), true);
-		assert.strictEqual(supportsAgentHostDevContainers(initializeResponse.result as InitializeResult), false);
 		transport.sent.length = 0;
 		transport.simulateMessage(request(2, 'shutdown', {}));
-		transport.simulateMessage(request(3, DevContainerIsDockerAvailableExtensionMethod, undefined));
-		const containerResponse = findResponse(transport.sent, 3);
-		assert.ok(containerResponse && hasKey(containerResponse, { error: true }) && containerResponse.error?.code === JsonRpcErrorCodes.MethodNotFound);
 		const removeResponsePromise = waitForResponse(transport, 4);
 		transport.simulateMessage(request(4, RemoveSessionArtifactExtensionMethod, {
 			session: 'copilotcli:/session-1',

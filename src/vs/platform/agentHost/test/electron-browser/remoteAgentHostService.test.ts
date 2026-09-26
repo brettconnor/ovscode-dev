@@ -1407,12 +1407,10 @@ suite('RemoteAgentHostService', () => {
 
 		test('does not persist runtime factory connections or their removal', async () => {
 			const cloudSandboxFactory = createFactory(RemoteAgentHostEntryType.CloudSandbox);
-			const devContainerFactory = createFactory(RemoteAgentHostEntryType.DevContainer);
 			const entries: IRemoteAgentHostEntry[] = [
 				{ name: 'Cloud Sandbox', connection: { type: RemoteAgentHostEntryType.CloudSandbox, address: 'cloud:runtime', environmentId: 'env_runtime' } },
-				{ name: 'Dev Container', connection: { type: RemoteAgentHostEntryType.DevContainer, address: 'devcontainer:runtime', hostPath: '/workspace' } },
 			];
-			const factories = [cloudSandboxFactory, devContainerFactory];
+			const factories = [cloudSandboxFactory];
 
 			for (let index = 0; index < entries.length; index++) {
 				const address = getEntryAddress(entries[index]);

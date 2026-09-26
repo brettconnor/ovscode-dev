@@ -98,7 +98,7 @@ export class ShellManager extends Disposable {
 		}
 	}
 
-	/** Re-anchors future shells and sandbox roots after safely discarding idle shell state. */
+	/** Re-anchors future shells after safely discarding idle shell state. */
 	setWorkingDirectory(workingDirectory: URI): void {
 		this.assertCanSetWorkingDirectory();
 

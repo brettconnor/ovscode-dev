@@ -13,7 +13,6 @@ import { InstantiationType, registerSingleton } from '../../../../platform/insta
 import { IAgentHostByokLmHandler } from '../../../../platform/agentHost/common/agentHostByokLm.js';
 import { IAgentHostConnectionsService } from '../../../../platform/agentHost/common/agentHostConnectionsService.js';
 import { buildExternalOpenSessionLinkUri, parseOpenSessionLinkChatId, parseOpenSessionLinkTurnId, parseOpenSessionLinkUri } from '../../../../platform/agentHost/common/openSessionLink.js';
-import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { AgentHostByokLmHandler } from '../../../../workbench/contrib/chat/browser/agentSessions/agentHost/agentHostByokLmHandler.js';
 import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase } from '../../../../workbench/common/contributions.js';
 import { ISessionsManagementService } from '../../../services/sessions/common/sessionsManagement.js';
@@ -60,7 +59,6 @@ export class SelectAgentsFolderContribution extends Disposable implements IWorkb
 		@IStorageService private readonly storageService: IStorageService,
 		@ITelemetryService private readonly telemetryService: ITelemetryService,
 		@INewSessionComposerService private readonly newSessionComposerService: INewSessionComposerService,
-		@IConfigurationService private readonly configurationService: IConfigurationService,
 		@IAgentHostConnectionsService private readonly agentHostConnectionsService: IAgentHostConnectionsService,
 		@INotificationService private readonly notificationService: INotificationService,
 		@IProductService private readonly productService: IProductService,
@@ -170,10 +168,10 @@ export class SelectAgentsFolderContribution extends Disposable implements IWorkb
 			await this.openExistingSession(sessionResource, token);
 			return;
 		}
-		const resolved = resolveAgentsWindowFolderIntent(workspaceUri, this.configurationService);
+		const resolved = resolveAgentsWindowFolderIntent(workspaceUri);
 		const folderUri = resolved.folderUri ?? (draft ? workspaceUri : undefined);
 		if (folderUri || draft) {
-			await this._workspaceHandoff.selectWorkspace({ folderUri, preferDevContainer: resolved.preferDevContainer, isDefault, draft }, state => telemetry?.recordWorkspaceHandoffState(state));
+			await this._workspaceHandoff.selectWorkspace({ folderUri, isDefault, draft }, state => telemetry?.recordWorkspaceHandoffState(state));
 		}
 	}
 

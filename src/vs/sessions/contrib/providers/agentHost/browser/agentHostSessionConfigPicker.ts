@@ -41,7 +41,6 @@ import { IChatInputPickerResponsiveState } from '../../../../../workbench/contri
 import { IViewsService } from '../../../../../workbench/services/views/common/viewsService.js';
 import { IAgentWorkbenchLayoutService } from '../../../../browser/workbench.js';
 import { getNewSessionRepositoryConfigGroup, Menus } from '../../../../browser/menus.js';
-import { DevContainerWorktreeEnabledSettingId } from '../../../../common/devContainerAgentHostService.js';
 import { SessionIdContext, SessionProviderIdContext, IsPhoneLayoutContext, IsQuickChatSessionContext } from '../../../../common/contextkeys.js';
 import { IsSessionsWindowContext } from '../../../../../workbench/common/contextkeys.js';
 import { IWorkbenchLayoutService } from '../../../../../workbench/services/layout/browser/layoutService.js';
@@ -503,11 +502,6 @@ export class AgentHostSessionConfigPicker extends Disposable {
 			this._renderConfigPickers();
 		}));
 		this._watchProviders(this._sessionsProvidersService.getProviders());
-		this._register(this._configurationService.onDidChangeConfiguration(e => {
-			if (e.affectsConfiguration(DevContainerWorktreeEnabledSettingId)) {
-				this._renderConfigPickers();
-			}
-		}));
 
 		// Re-render when the layout crosses the phone breakpoint so the
 		// isolation control swaps between the desktop checkbox and the
@@ -898,12 +892,7 @@ export class AgentHostSessionConfigPicker extends Disposable {
 		const label = localize('agentHostSessionConfig.isolation.worktree', "New Worktree");
 		const worktreeIndex = schema.enum?.indexOf('worktree') ?? -1;
 		const checked = value === 'worktree';
-		const combinationDisabled = !this._isDevContainerWorktreeEnabled()
-			&& provider.isDevContainerEnabled?.(sessionId) === true
-			&& !checked;
-		const tooltip = combinationDisabled
-			? localize('agentHostSessionConfig.isolation.devContainerDisabled', "New Worktree cannot be combined with Dev Container execution.")
-			: (worktreeIndex >= 0 ? schema.enumDescriptions?.[worktreeIndex] : undefined) ?? schema.description ?? schema.title;
+		const tooltip = (worktreeIndex >= 0 ? schema.enumDescriptions?.[worktreeIndex] : undefined) ?? schema.description ?? schema.title;
 
 		let control = this._isolationCheckbox.value;
 		if (!control || control.sessionId !== sessionId) {
@@ -918,11 +907,7 @@ export class AgentHostSessionConfigPicker extends Disposable {
 			this._isolationCheckbox.value = control;
 			this._container?.prepend(control.slot);
 		}
-		control.update(checked, isReadOnly || combinationDisabled, isLoading, tooltip);
-	}
-
-	private _isDevContainerWorktreeEnabled(): boolean {
-		return this._configurationService.getValue<boolean>(DevContainerWorktreeEnabledSettingId) === true;
+		control.update(checked, isReadOnly, isLoading, tooltip);
 	}
 
 	private _applyIsolationValue(sessionId: string, checked: boolean): void {

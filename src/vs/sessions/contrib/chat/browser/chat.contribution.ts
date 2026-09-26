@@ -39,9 +39,7 @@ import { IPromptsService } from '../../../../workbench/contrib/chat/common/promp
 import { IAICustomizationWorkspaceService } from '../../../../workbench/contrib/chat/common/aiCustomizationWorkspaceService.js';
 import { ICustomizationHarnessService } from '../../../../workbench/contrib/chat/common/customizationHarnessService.js';
 import { SessionsAICustomizationWorkspaceService } from './aiCustomizationWorkspaceService.js';
-import { resolveDevContainerSourceWorkspace } from '../../../browser/openInVSCodeUtils.js';
 import { ISessionsProvidersService } from '../../../services/sessions/browser/sessionsProvidersService.js';
-import { isAgentHostProvider } from '../../../common/agentHostSessionsProvider.js';
 import { SessionsCustomizationHarnessService } from './customizationHarnessService.js';
 import { IChatViewFactory } from '../../../services/chatView/browser/chatViewFactory.js';
 import { ChatViewFactory } from './chatView.js';
@@ -221,27 +219,16 @@ class NewChatInSessionsWindowAction extends Action2 {
 			return;
 		}
 		const activeFolderUri = isQuickChat ? undefined : activeSession?.workspace.get()?.uri;
-		const activeProvider = activeFolderUri && activeSession
-			? accessor.get(ISessionsProvidersService).getProvider(activeSession.providerId)
-			: undefined;
-		const devContainerSource = resolveDevContainerSourceWorkspace(activeProvider);
-		const folderUri = devContainerSource?.folderUri ?? activeFolderUri;
-		const draftRequestsDevContainer = !!activeSession && !!activeProvider && isAgentHostProvider(activeProvider)
-			&& activeProvider.isDevContainerRequested?.(activeSession.sessionId) === true;
-		const containerSourceProviderId = devContainerSource?.providerId ?? (draftRequestsDevContainer ? activeSession?.providerId : undefined);
+		const folderUri = activeFolderUri;
 		const inheritedTarget = inheritableSessionTarget(
 			sessionsManagementService,
-			devContainerSource && activeSession
-				? { providerId: devContainerSource.providerId, sessionType: activeSession.sessionType }
-				: activeSession,
+			activeSession,
 			folderUri,
 		);
 		await sessionsService.openNewSession({
 			folderUri,
 			toSide: options?.toSide,
-			...(containerSourceProviderId ? { providerId: containerSourceProviderId } : {}),
 			...inheritedTarget,
-			...(containerSourceProviderId ? { requireDevContainer: true } : {}),
 		});
 	}
 }

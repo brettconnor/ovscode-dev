@@ -34,7 +34,6 @@ export interface IChatViewOptions {
 
 export interface ISelectWorkspaceOptions {
 	readonly providerId?: string;
-	readonly preferDevContainer?: boolean;
 	readonly selectionOrigin?: WorkspaceSelectionOrigin;
 	/** Only replace an automatic default in a fresh, empty composer. */
 	readonly isDefault?: boolean;

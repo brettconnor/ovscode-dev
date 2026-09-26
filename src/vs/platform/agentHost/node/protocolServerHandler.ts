@@ -691,7 +691,7 @@ export class ProtocolServerHandler extends Disposable implements IAgentHostClien
 			const response: IAgentHostExtensionInitializeResult = {
 				protocolVersion: negotiated,
 				serverSeq: this._stateManager.serverSeq,
-				_meta: getAgentHostExtensionInitializeResultMeta(!!this._agentService.removeSessionArtifact, false, this._otelService?.diagnosticsEnabled, !!this._agentService.importSession),
+				_meta: getAgentHostExtensionInitializeResultMeta(!!this._agentService.removeSessionArtifact, this._otelService?.diagnosticsEnabled, !!this._agentService.importSession),
 				snapshots,
 				defaultDirectory: this._config.defaultDirectory,
 				completionTriggerCharacters: this._config.completionTriggerCharacters ? [...this._config.completionTriggerCharacters] : undefined,

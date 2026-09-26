@@ -148,8 +148,8 @@ suite('Agents Window workspace handoff', () => {
 			set draftReady(value: Promise<void>) { draftReady = value; },
 			get input() { return input; },
 			edit: (value: IChatDraft) => { input = value; inputChanged.fire(); },
-			openDraft: (draft: IChatDraft, folder: URI | undefined = folderUri) => handoff.selectWorkspace({ folderUri: folder, preferDevContainer: true, isDefault: false, draft: serializeChatDraft(draft) }, state => states.push(state)),
-			open: (isDefault = false, folder = folderUri) => handoff.selectWorkspace({ folderUri: folder, preferDevContainer: true, isDefault }, state => states.push(state)),
+			openDraft: (draft: IChatDraft, folder: URI | undefined = folderUri) => handoff.selectWorkspace({ folderUri: folder, isDefault: false, draft: serializeChatDraft(draft) }, state => states.push(state)),
+			open: (isDefault = false, folder = folderUri) => handoff.selectWorkspace({ folderUri: folder, isDefault }, state => states.push(state)),
 		};
 	}
 
@@ -176,7 +176,7 @@ suite('Agents Window workspace handoff', () => {
 			}, {
 				stages: ['waitingForSetup', 'waitingForSessionView', 'waitingForProvider', 'applied'],
 				openingOptions: [true],
-				selections: [{ folder: folderUri.toString(), options: { providerId: 'local', preferDevContainer: true, selectionOrigin: WorkspaceSelectionOrigin.WindowOpen, isDefault: false } }],
+				selections: [{ folder: folderUri.toString(), options: { providerId: 'local', selectionOrigin: WorkspaceSelectionOrigin.WindowOpen, isDefault: false } }],
 				notifications: 0,
 			});
 		});
@@ -236,14 +236,14 @@ suite('Agents Window workspace handoff', () => {
 			state: harness.states.at(-1), folder: harness.selections[0].folder, options: harness.selections[0].options,
 		}, {
 			state: 'applied', folder: folderUri,
-			options: { providerId: 'local', preferDevContainer: true, selectionOrigin: WorkspaceSelectionOrigin.WindowOpen, isDefault: false },
+			options: { providerId: 'local', selectionOrigin: WorkspaceSelectionOrigin.WindowOpen, isDefault: false },
 		});
 	});
 
 	test('copies a workspace-less draft into the new-session composer', async () => {
 		const harness = createHarness();
 		await harness.handoff.selectWorkspace({
-			preferDevContainer: false, isDefault: false, draft: serializeChatDraft({ inputText: 'No workspace yet', attachments: [] }),
+			isDefault: false, draft: serializeChatDraft({ inputText: 'No workspace yet', attachments: [] }),
 		}, state => harness.states.push(state));
 		assert.deepStrictEqual({ state: harness.states.at(-1), input: harness.input.inputText, selections: harness.selections }, {
 			state: 'applied', input: 'No workspace yet', selections: [],

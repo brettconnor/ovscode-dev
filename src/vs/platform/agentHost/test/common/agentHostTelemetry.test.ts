@@ -27,23 +27,4 @@ suite('AgentHostTelemetry', () => {
 		]);
 	});
 
-	test('Dev Container connection kind round trips through client metadata', () => {
-		const meta = toAgentHostClientMeta(
-			AgentHostClientConnectionKind.DevContainer,
-			TelemetryLevel.USAGE,
-			undefined,
-			undefined,
-		);
-
-		assert.deepStrictEqual({
-			meta,
-			connectionKind: readClientConnectionKind(meta),
-		}, {
-			meta: {
-				'vscode.telemetryLevel': TelemetryConfiguration.ON,
-				'vscode.clientConnectionKind': AgentHostClientConnectionKind.DevContainer,
-			},
-			connectionKind: AgentHostClientConnectionKind.DevContainer,
-		});
-	});
 });
