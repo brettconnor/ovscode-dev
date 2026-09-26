@@ -501,7 +501,7 @@ suite('AccountPolicyService', () => {
 		});
 	});
 
-	test('managed sandbox policy refresh selects Agent Host Copilot despite device false and remembered local', async () => {
+	test('managed sandbox policy does not change the selected chat harness', async () => {
 		const key = COPILOT_SANDBOX_ENABLED_KEY;
 		const nativeManagedSettingsService = disposables.add(new FakeNativeManagedSettingsService({ [key]: false }));
 		const policyDataChanged = disposables.add(new Emitter<IPolicyData | null>());
@@ -527,11 +527,9 @@ suite('AccountPolicyService', () => {
 		};
 		const snapshot = () => {
 			const enabled = enablementService.enabled.get();
-			const managedSandboxEnforced = enablementService.managedSandboxEnforced.get();
 			return {
-				managedSandboxEnforced,
-				computed: getComputedDefaultSessionType(configurationService, chatSessionsService, workspace, enabled, managedSandboxEnforced),
-				remembered: getDefaultNewChatSessionType(configurationService, chatSessionsService, storageService, workspace, enabled, { currentSessionType: localChatSessionType }, managedSandboxEnforced),
+				computed: getComputedDefaultSessionType(configurationService, chatSessionsService, workspace, enabled),
+				remembered: getDefaultNewChatSessionType(configurationService, chatSessionsService, storageService, workspace, enabled, { currentSessionType: localChatSessionType }),
 			};
 		};
 
@@ -548,9 +546,9 @@ suite('AccountPolicyService', () => {
 		await removed;
 
 		assert.deepStrictEqual({ before, after, removed: snapshot() }, {
-			before: { managedSandboxEnforced: false, computed: localChatSessionType, remembered: localChatSessionType },
-			after: { managedSandboxEnforced: true, computed: SessionType.AgentHostCopilot, remembered: SessionType.AgentHostCopilot },
-			removed: { managedSandboxEnforced: false, computed: localChatSessionType, remembered: localChatSessionType },
+			before: { computed: localChatSessionType, remembered: localChatSessionType },
+			after: { computed: localChatSessionType, remembered: localChatSessionType },
+			removed: { computed: localChatSessionType, remembered: localChatSessionType },
 		});
 	});
 

@@ -52,7 +52,6 @@ import { IAuthenticationService } from '../../services/authentication/common/aut
 import { IAuthenticationAccessService } from '../../services/authentication/browser/authenticationAccessService.js';
 import { IPolicyService, PolicyValueSource } from '../../../platform/policy/common/policy.js';
 import { IWorkspaceContextService } from '../../../platform/workspace/common/workspace.js';
-import { isVirtualWorkspace } from '../../../platform/workspace/common/virtualWorkspace.js';
 import { COPILOT_ENABLED_PLUGINS_KEY, COPILOT_EXTRA_MARKETPLACES_KEY, COPILOT_STRICT_MARKETPLACES_KEY, INativeManagedSettingsService, IFileManagedSettingsService, ManagedSettingsChannel, ManagedSettingsSource, normalizeManagedSettings, projectManagedSettings, pickManagedSettings } from '../../../platform/policy/common/copilotManagedSettings.js';
 import { IManagedSettingPolicyDefinition, ManagedSettingsData } from '../../../base/common/policy.js';
 import { APPROVED_ACCOUNT_ORGANIZATIONS_POLICY_NAME, IAccountPolicyGateService } from '../../services/policies/common/accountPolicyService.js';
@@ -738,7 +737,6 @@ interface IPolicyDiagnosticsSummary {
 	effectiveManagedSettings: string;
 	managedSettingsIssues: string;
 	agentRuntime: string;
-	chatHarnessEnforcement: string;
 	policyControlledSettings: string;
 }
 
@@ -853,7 +851,6 @@ class PolicyDiagnosticsAction extends Action2 {
 			effectiveManagedSettings: 'Unavailable',
 			managedSettingsIssues: 'Unavailable',
 			agentRuntime: 'Unavailable',
-			chatHarnessEnforcement: 'Unavailable',
 			policyControlledSettings: 'Unavailable'
 		};
 
@@ -1266,29 +1263,6 @@ class PolicyDiagnosticsAction extends Action2 {
 			content += '*No policy-controlled settings found*\n\n';
 		}
 
-		content += '## Chat Harness Enforcement\n\n';
-		try {
-			const sandboxEnforced = agentHostEnablementService.managedSandboxEnforced.get();
-			const virtualWorkspace = isVirtualWorkspace(workspaceContextService.getWorkspace());
-			const agentHostEnabled = agentHostEnablementService.enabled.get();
-
-			if (!sandboxEnforced) {
-				summary.chatHarnessEnforcement = 'Not enforced';
-			} else if (virtualWorkspace) {
-				summary.chatHarnessEnforcement = 'Mandated, not applied (virtual workspace)';
-			} else if (!agentHostEnabled) {
-				summary.chatHarnessEnforcement = 'Mandated, not applied (Agent Host disabled)';
-			} else {
-				summary.chatHarnessEnforcement = 'Local harness hidden, new chats use the Agent Host Copilot SDK';
-			}
-
-			content += `**Effective decision:** ${summary.chatHarnessEnforcement}.\n\n`;
-		} catch (error) {
-			const message = getErrorMessage(error);
-			summary.chatHarnessEnforcement = `Unavailable (${message})`;
-			content += `*Error resolving chat harness enforcement: ${markdownText(message)}*\n\n`;
-		}
-
 		// Authentication diagnostics
 		content += '## Authentication Information\n\n';
 		try {
@@ -1352,7 +1326,6 @@ class PolicyDiagnosticsAction extends Action2 {
 					['Effective managed settings', summary.effectiveManagedSettings],
 					['Managed-settings issues', summary.managedSettingsIssues],
 					['Agent Runtime', summary.agentRuntime],
-					['Chat harness enforcement', summary.chatHarnessEnforcement],
 					['Policy-controlled settings', summary.policyControlledSettings]
 				]
 			) +

@@ -249,7 +249,6 @@ export class PermissionPicker extends Disposable {
 		return {
 			label: this._getPermissionLevelMeta(level).label,
 			level,
-			sandboxed: this._delegate.isSandboxToggleApplicable?.() === true && this._isSandboxingEnabled(),
 		};
 	}
 

@@ -381,10 +381,6 @@ export class AgentHostModePicker extends AgentHostSessionEnumPicker {
 			if (e.affectsConfiguration(ChatConfiguration.GlobalAutoApprove)) {
 				this._hidePicker();
 			}
-			if (e.affectsConfiguration(ChatConfiguration.PermissionsSandboxToggleEnabled)
-				|| this._permissionDelegate.sandboxToggleConfigurationKeys.some(key => e.affectsConfiguration(key))) {
-				this._updateTrigger();
-			}
 		}));
 	}
 
@@ -435,10 +431,6 @@ export class AgentHostModePicker extends AgentHostSessionEnumPicker {
 
 	protected override _getActionItems(items: readonly IAgentHostSessionEnumPickerItem[], currentValue: string): IActionListItem<IAgentHostSessionEnumPickerItem | IAction>[] {
 		return createModePickerModeItems(super._getActionItems(items, currentValue), this._permissionDelegate.isModePickerCombined.get());
-	}
-
-	protected override _watchActionItems(items: readonly IActionListItem<IAgentHostSessionEnumPickerItem | IAction>[]): IDisposable {
-		return this._permissionPicker.watchSandboxToggle(items);
 	}
 
 	protected override _getAccessibilityProvider(): Partial<IListAccessibilityProvider<IActionListItem<IAgentHostSessionEnumPickerItem | IAction>>> {
