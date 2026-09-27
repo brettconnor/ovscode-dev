@@ -233,9 +233,6 @@ export interface IProductConfiguration {
 	readonly tunnelApplicationName?: string;
 	readonly tunnelApplicationConfig?: ITunnelApplicationConfig;
 
-	readonly npsSurveyUrl?: string;
-	readonly surveys?: readonly ISurveyData[];
-
 	readonly checksums?: { [path: string]: string };
 	readonly checksumFailMoreInfoUrl?: string;
 
@@ -404,14 +401,6 @@ export interface IVirtualWorkspaceExtensionTip {
 		startCommand: string;
 		priority: number;
 	};
-}
-
-export interface ISurveyData {
-	surveyId: string;
-	surveyUrl: string;
-	languageId: string;
-	editCount: number;
-	userProbability: number;
 }
 
 export interface IAiGeneratedWorkspaceTrust {
