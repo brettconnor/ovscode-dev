@@ -32,13 +32,17 @@ import { DeferredPromise } from '../../base/common/async.js';
 
 function shouldSpawnCliProcess(argv: NativeParsedArgs): boolean {
 	return !!argv['install-source']
-		|| !!argv['list-extensions']
-		|| !!argv['install-extension']
-		|| !!argv['uninstall-extension']
-		|| !!argv['update-extensions']
-		|| !!argv['locate-extension']
 		|| !!argv['add-mcp']
 		|| !!argv['telemetry'];
+}
+
+function hasUnsupportedExtensionManagementCommand(argv: NativeParsedArgs): boolean {
+	return !!argv['list-extensions']
+		|| !!argv['install-extension']
+		|| !!argv['install-builtin-extension']
+		|| !!argv['uninstall-extension']
+		|| !!argv['update-extensions']
+		|| !!argv['locate-extension'];
 }
 
 export async function main(argv: string[]): Promise<void> {
@@ -48,6 +52,12 @@ export async function main(argv: string[]): Promise<void> {
 		args = parseCLIProcessArgv(argv);
 	} catch (err) {
 		console.error(err.message);
+		return;
+	}
+
+	if (hasUnsupportedExtensionManagementCommand(args)) {
+		console.error('Extension installation, listing, updating, uninstalling, and location commands are not supported in this product.');
+		process.exitCode = 1;
 		return;
 	}
 
