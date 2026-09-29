@@ -8,7 +8,6 @@ import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { onUnexpectedError } from '../../../../base/common/errors.js';
 import { Event } from '../../../../base/common/event.js';
 import { KeyCode, KeyMod } from '../../../../base/common/keyCodes.js';
-import { mnemonicButtonLabel } from '../../../../base/common/labels.js';
 import { Disposable, DisposableStore, IDisposable, isDisposable } from '../../../../base/common/lifecycle.js';
 import { Schemas } from '../../../../base/common/network.js';
 import { isNative, isWeb } from '../../../../base/common/platform.js';
@@ -23,7 +22,7 @@ import { IClipboardService } from '../../../../platform/clipboard/common/clipboa
 import { CommandsRegistry, ICommandService } from '../../../../platform/commands/common/commands.js';
 import { Extensions as ConfigurationExtensions, ConfigurationScope, IConfigurationRegistry } from '../../../../platform/configuration/common/configurationRegistry.js';
 import { ContextKeyExpr, IContextKeyService, RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
-import { IDialogService, IFileDialogService } from '../../../../platform/dialogs/common/dialogs.js';
+import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
 import { ExtensionGalleryManifestStatus, ExtensionGalleryResourceType, ExtensionGalleryAuthProviderConfigKey, ExtensionGalleryServiceUrlConfigKey, getExtensionGalleryManifestResourceUri, IExtensionGalleryManifest, IExtensionGalleryManifestService } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
 import { IExtensionGalleryAccountService } from '../../../services/extensionManagement/common/extensionGalleryAccount.js';
 import { EXTENSION_INSTALL_SOURCE_CONTEXT, ExtensionInstallSource, ExtensionRequestsTimeoutConfigKey, ExtensionsLocalizedLabel, FilterType, IExtensionGalleryService, IExtensionManagementService, PreferencesLocalizedLabel, SortBy, VerifyExtensionSignatureConfigKey } from '../../../../platform/extensionManagement/common/extensionManagement.js';
@@ -47,7 +46,7 @@ import { IUriIdentityService } from '../../../../platform/uriIdentity/common/uri
 import { IUserDataProfilesService } from '../../../../platform/userDataProfile/common/userDataProfile.js';
 import { EditorPaneDescriptor, IEditorPaneRegistry } from '../../../browser/editor.js';
 import { Extensions as ConfigurationMigrationExtensions, IConfigurationMigrationRegistry } from '../../../common/configuration.js';
-import { IsSessionsWindowContext, ResourceContextKey, WorkbenchStateContext } from '../../../common/contextkeys.js';
+import { IsSessionsWindowContext, WorkbenchStateContext } from '../../../common/contextkeys.js';
 import { IWorkbenchContribution, IWorkbenchContributionsRegistry, registerWorkbenchContribution2, Extensions as WorkbenchExtensions, WorkbenchPhase } from '../../../common/contributions.js';
 import { EditorExtensions } from '../../../common/editor.js';
 import { IViewContainersRegistry, Extensions as ViewContainerExtensions, ViewContainerLocation } from '../../../common/views.js';
@@ -56,7 +55,6 @@ import { EnablementState, IExtensionManagementServerService, IPublisherInfo, IWo
 import { IExtensionIgnoredRecommendationsService, IExtensionRecommendationsService } from '../../../services/extensionRecommendations/common/extensionRecommendations.js';
 import { IWorkspaceExtensionsConfigService } from '../../../services/extensionRecommendations/common/workspaceExtensionsConfig.js';
 import { EXTENSIONS_SUPPORT_AGENTS_WINDOW } from '../../../services/extensions/common/extensionManifestPropertiesService.js';
-import { IHostService } from '../../../services/host/browser/host.js';
 import { LifecyclePhase } from '../../../services/lifecycle/common/lifecycle.js';
 import { IPreferencesService } from '../../../services/preferences/common/preferences.js';
 import { CONTEXT_SYNC_ENABLEMENT } from '../../../services/userDataSync/common/userDataSync.js';
@@ -67,7 +65,7 @@ import { ILanguageModelToolsService } from '../../chat/common/tools/languageMode
 import { CONTEXT_KEYBINDINGS_EDITOR } from '../../preferences/common/preferences.js';
 import { IWebview } from '../../webview/browser/webview.js';
 import { Query } from '../common/extensionQuery.js';
-import { AutoRestartConfigurationKey, AutoUpdateConfigurationKey, CONTEXT_EXTENSIONS_GALLERY_STATUS, CONTEXT_HAS_GALLERY, DefaultViewsContext, ExtensionEditorTab, ExtensionRuntimeActionType, EXTENSIONS_CATEGORY, extensionsFilterSubMenu, extensionsSearchActionsMenu, HasOutdatedExtensionsContext, IExtensionArg, IExtensionsViewPaneContainer, IExtensionsWorkbenchService, INSTALL_ACTIONS_GROUP, INSTALL_EXTENSION_FROM_VSIX_COMMAND_ID, IWorkspaceRecommendedExtensionsView, LIST_WORKSPACE_UNSUPPORTED_EXTENSIONS_COMMAND_ID, OUTDATED_EXTENSIONS_VIEW_ID, SELECT_INSTALL_VSIX_EXTENSION_COMMAND_ID, THEME_ACTIONS_GROUP, TOGGLE_IGNORE_EXTENSION_ACTION_ID, UPDATE_ACTIONS_GROUP, VIEWLET_ID, WORKSPACE_RECOMMENDATIONS_VIEW_ID } from '../common/extensions.js';
+import { AutoRestartConfigurationKey, AutoUpdateConfigurationKey, CONTEXT_EXTENSIONS_GALLERY_STATUS, CONTEXT_HAS_GALLERY, DefaultViewsContext, ExtensionEditorTab, ExtensionRuntimeActionType, EXTENSIONS_CATEGORY, extensionsFilterSubMenu, extensionsSearchActionsMenu, HasOutdatedExtensionsContext, IExtensionArg, IExtensionsViewPaneContainer, IExtensionsWorkbenchService, INSTALL_ACTIONS_GROUP, IWorkspaceRecommendedExtensionsView, LIST_WORKSPACE_UNSUPPORTED_EXTENSIONS_COMMAND_ID, OUTDATED_EXTENSIONS_VIEW_ID, THEME_ACTIONS_GROUP, TOGGLE_IGNORE_EXTENSION_ACTION_ID, UPDATE_ACTIONS_GROUP, VIEWLET_ID, WORKSPACE_RECOMMENDATIONS_VIEW_ID } from '../common/extensions.js';
 import { ExtensionsConfigurationSchema, ExtensionsConfigurationSchemaId } from '../common/extensionsFileTemplate.js';
 import { ExtensionsInput } from '../common/extensionsInput.js';
 import { KeymapExtensions } from '../common/extensionsUtils.js';
@@ -926,144 +924,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 				const extensionsToDisable = this.extensionsWorkbenchService.local.filter(e => !e.isBuiltin && !!e.local && this.extensionEnablementService.isEnabled(e.local) && this.extensionEnablementService.canChangeEnablement(e.local));
 				if (extensionsToDisable.length) {
 					await this.extensionsWorkbenchService.setEnablement(extensionsToDisable, EnablementState.DisabledWorkspace);
-				}
-			}
-		});
-
-		this.registerExtensionAction({
-			id: SELECT_INSTALL_VSIX_EXTENSION_COMMAND_ID,
-			title: localize2('InstallFromVSIX', 'Install from VSIX...'),
-			category: ExtensionsLocalizedLabel,
-			menu: [{
-				id: MenuId.CommandPalette,
-				when: ContextKeyExpr.or(CONTEXT_HAS_LOCAL_SERVER, CONTEXT_HAS_REMOTE_SERVER)
-			}, {
-				id: MenuId.ViewContainerTitle,
-				when: ContextKeyExpr.and(ContextKeyExpr.equals('viewContainer', VIEWLET_ID), ContextKeyExpr.or(CONTEXT_HAS_LOCAL_SERVER, CONTEXT_HAS_REMOTE_SERVER)),
-				group: '3_install',
-				order: 1
-			}],
-			run: async (accessor: ServicesAccessor) => {
-				const fileDialogService = accessor.get(IFileDialogService);
-				const commandService = accessor.get(ICommandService);
-				const vsixPaths = await fileDialogService.showOpenDialog({
-					title: localize('installFromVSIX', "Install from VSIX"),
-					filters: [{ name: 'VSIX Extensions', extensions: ['vsix'] }],
-					canSelectFiles: true,
-					canSelectMany: true,
-					openLabel: mnemonicButtonLabel(localize({ key: 'installButton', comment: ['&& denotes a mnemonic'] }, "&&Install"))
-				});
-				if (vsixPaths) {
-					await commandService.executeCommand(INSTALL_EXTENSION_FROM_VSIX_COMMAND_ID, vsixPaths);
-				}
-			}
-		});
-
-		this.registerExtensionAction({
-			id: INSTALL_EXTENSION_FROM_VSIX_COMMAND_ID,
-			title: localize('installVSIX', "Install Extension VSIX"),
-			menu: [{
-				id: MenuId.ExplorerContext,
-				group: 'extensions',
-				when: ContextKeyExpr.and(ResourceContextKey.Extension.isEqualTo('.vsix'), ContextKeyExpr.or(CONTEXT_HAS_LOCAL_SERVER, CONTEXT_HAS_REMOTE_SERVER)),
-			}],
-			run: async (accessor: ServicesAccessor, resources: URI[] | URI) => {
-				const extensionsWorkbenchService = accessor.get(IExtensionsWorkbenchService);
-				const hostService = accessor.get(IHostService);
-				const notificationService = accessor.get(INotificationService);
-
-				const vsixs = Array.isArray(resources) ? resources : [resources];
-				const result = await Promise.allSettled(vsixs.map(async (vsix) => await extensionsWorkbenchService.install(vsix, { installGivenVersion: true })));
-				let error: Error | undefined, requireReload = false, requireRestart = false;
-				for (const r of result) {
-					if (r.status === 'rejected') {
-						error = new Error(r.reason);
-						break;
-					}
-					requireReload = requireReload || r.value.runtimeState?.action === ExtensionRuntimeActionType.ReloadWindow;
-					requireRestart = requireRestart || r.value.runtimeState?.action === ExtensionRuntimeActionType.RestartExtensions;
-				}
-				if (error) {
-					throw error;
-				}
-				if (requireReload) {
-					notificationService.prompt(
-						Severity.Info,
-						vsixs.length > 1 ? localize('InstallVSIXs.successReload', "Completed installing extensions. Please reload Visual Studio Code to enable them.")
-							: localize('InstallVSIXAction.successReload', "Completed installing extension. Please reload Visual Studio Code to enable it."),
-						[{
-							label: localize('InstallVSIXAction.reloadNow', "Reload Now"),
-							run: () => hostService.reload()
-						}]
-					);
-				}
-				else if (requireRestart) {
-					notificationService.prompt(
-						Severity.Info,
-						vsixs.length > 1 ? localize('InstallVSIXs.successRestart', "Completed installing extensions. Please restart extensions to enable them.")
-							: localize('InstallVSIXAction.successRestart', "Completed installing extension. Please restart extensions to enable it."),
-						[{
-							label: localize('InstallVSIXAction.restartExtensions', "Restart Extensions"),
-							run: () => extensionsWorkbenchService.updateRunningExtensions()
-						}]
-					);
-				}
-				else {
-					notificationService.prompt(
-						Severity.Info,
-						vsixs.length > 1 ? localize('InstallVSIXs.successNoReload', "Completed installing extensions.") : localize('InstallVSIXAction.successNoReload', "Completed installing extension."),
-						[]
-					);
-				}
-			}
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.installExtensionFromLocation',
-			title: localize2('installExtensionFromLocation', 'Install Extension from Location...'),
-			category: Categories.Developer,
-			menu: [{
-				id: MenuId.CommandPalette,
-				when: ContextKeyExpr.or(CONTEXT_HAS_WEB_SERVER, CONTEXT_HAS_LOCAL_SERVER)
-			}],
-			run: async (accessor: ServicesAccessor) => {
-				const extensionManagementService = accessor.get(IWorkbenchExtensionManagementService);
-				if (isWeb) {
-					return new Promise<void>((c, e) => {
-						const quickInputService = accessor.get(IQuickInputService);
-						const disposables = new DisposableStore();
-						const quickPick = disposables.add(quickInputService.createQuickPick());
-						quickPick.title = localize('installFromLocation', "Install Extension from Location");
-						quickPick.customButton = true;
-						quickPick.customLabel = localize('install button', "Install");
-						quickPick.placeholder = localize('installFromLocationPlaceHolder', "Location of the web extension");
-						quickPick.ignoreFocusOut = true;
-						disposables.add(Event.any(quickPick.onDidAccept, quickPick.onDidCustom)(async () => {
-							quickPick.hide();
-							if (quickPick.value) {
-								try {
-									await extensionManagementService.installFromLocation(URI.parse(quickPick.value));
-								} catch (error) {
-									e(error);
-									return;
-								}
-							}
-							c();
-						}));
-						disposables.add(quickPick.onDidHide(() => disposables.dispose()));
-						quickPick.show();
-					});
-				} else {
-					const fileDialogService = accessor.get(IFileDialogService);
-					const extensionLocation = await fileDialogService.showOpenDialog({
-						canSelectFolders: true,
-						canSelectFiles: false,
-						canSelectMany: false,
-						title: localize('installFromLocation', "Install Extension from Location"),
-					});
-					if (extensionLocation?.[0]) {
-						await extensionManagementService.installFromLocation(extensionLocation[0]);
-					}
 				}
 			}
 		});

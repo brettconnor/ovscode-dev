@@ -11,7 +11,7 @@ import { Emitter, Event } from '../../../../base/common/event.js';
 import * as json from '../../../../base/common/json.js';
 import { IContextMenuService } from '../../../../platform/contextview/browser/contextView.js';
 import { disposeIfDisposable } from '../../../../base/common/lifecycle.js';
-import { IExtension, ExtensionState, IExtensionsWorkbenchService, IExtensionContainer, TOGGLE_IGNORE_EXTENSION_ACTION_ID, SELECT_INSTALL_VSIX_EXTENSION_COMMAND_ID, THEME_ACTIONS_GROUP, INSTALL_ACTIONS_GROUP, UPDATE_ACTIONS_GROUP, ExtensionEditorTab, ExtensionRuntimeActionType, IExtensionArg, AutoUpdateConfigurationKey } from '../common/extensions.js';
+import { IExtension, ExtensionState, IExtensionsWorkbenchService, IExtensionContainer, TOGGLE_IGNORE_EXTENSION_ACTION_ID, THEME_ACTIONS_GROUP, INSTALL_ACTIONS_GROUP, UPDATE_ACTIONS_GROUP, ExtensionEditorTab, ExtensionRuntimeActionType, IExtensionArg, AutoUpdateConfigurationKey } from '../common/extensions.js';
 import { ExtensionsConfigurationInitialContent } from '../common/extensionsFileTemplate.js';
 import { IGalleryExtension, IExtensionGalleryService, ILocalExtension, InstallOptions, InstallOperation, ExtensionManagementErrorCode, IAllowedExtensionsService, shouldRequireRepositorySignatureFor } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IWorkbenchExtensionEnablementService, EnablementState, IExtensionManagementServerService, IExtensionManagementServer, IWorkbenchExtensionManagementService } from '../../../services/extensionManagement/common/extensionManagement.js';
@@ -36,7 +36,7 @@ import { ITextModelService } from '../../../../editor/common/services/resolverSe
 import { IContextKeyService } from '../../../../platform/contextkey/common/contextkey.js';
 import { MenuId, IMenuService, MenuItemAction, SubmenuItemAction } from '../../../../platform/actions/common/actions.js';
 import { PICK_WORKSPACE_FOLDER_COMMAND_ID } from '../../../browser/actions/workspaceCommands.js';
-import { INotificationService, IPromptChoice, Severity } from '../../../../platform/notification/common/notification.js';
+import { INotificationService, Severity } from '../../../../platform/notification/common/notification.js';
 import { IOpenerService } from '../../../../platform/opener/common/opener.js';
 import { IEditorService } from '../../../services/editor/common/editorService.js';
 import { IQuickPickItem, IQuickInputService, QuickPickItem } from '../../../../platform/quickinput/common/quickInput.js';
@@ -65,7 +65,6 @@ import { IPreferencesService } from '../../../services/preferences/common/prefer
 import { getLocale } from '../../../../platform/languagePacks/common/languagePacks.js';
 import { ILocaleService } from '../../../services/localization/common/locale.js';
 import { isString } from '../../../../base/common/types.js';
-import { showWindowLogActionId } from '../../../services/log/common/logConstants.js';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
 import { Extensions, IExtensionFeaturesManagementService, IExtensionFeaturesRegistry } from '../../../services/extensionManagement/common/extensionFeatures.js';
 import { Registry } from '../../../../platform/registry/common/platform.js';
@@ -82,19 +81,14 @@ export class PromptExtensionInstallFailureAction extends Action {
 	constructor(
 		private readonly extension: IExtension,
 		private readonly options: InstallOptions | undefined,
-		private readonly version: string,
 		private readonly installOperation: InstallOperation,
 		private readonly error: Error,
 		@IProductService private readonly productService: IProductService,
 		@IOpenerService private readonly openerService: IOpenerService,
 		@INotificationService private readonly notificationService: INotificationService,
 		@IDialogService private readonly dialogService: IDialogService,
-		@ICommandService private readonly commandService: ICommandService,
 		@ILogService private readonly logService: ILogService,
-		@IExtensionManagementServerService private readonly extensionManagementServerService: IExtensionManagementServerService,
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
-		@IExtensionGalleryService private readonly galleryService: IExtensionGalleryService,
-		@IExtensionManifestPropertiesService private readonly extensionManifestPropertiesService: IExtensionManifestPropertiesService,
 		@IWorkbenchIssueService private readonly workbenchIssueService: IWorkbenchIssueService,
 	) {
 		super('extension.promptExtensionInstallFailure');
@@ -212,68 +206,7 @@ export class PromptExtensionInstallFailureAction extends Action {
 
 		const operationMessage = this.installOperation === InstallOperation.Update ? localize('update operation', "Error while updating '{0}' extension.", this.extension.displayName || this.extension.identifier.id)
 			: localize('install operation', "Error while installing '{0}' extension.", this.extension.displayName || this.extension.identifier.id);
-		let additionalMessage;
-		const promptChoices: IPromptChoice[] = [];
-
-		const downloadUrl = await this.getDownloadUrl();
-		if (downloadUrl) {
-			additionalMessage = localize('check logs', "Please check the [log]({0}) for more details.", createCommandUri(showWindowLogActionId).toString());
-			promptChoices.push({
-				label: localize('download', "Try Downloading Manually..."),
-				run: () => this.openerService.open(downloadUrl).then(() => {
-					this.notificationService.prompt(
-						Severity.Info,
-						localize('install vsix', 'Once downloaded, please manually install the downloaded VSIX of \'{0}\'.', this.extension.identifier.id),
-						[{
-							label: localize('installVSIX', "Install from VSIX..."),
-							run: () => this.commandService.executeCommand(SELECT_INSTALL_VSIX_EXTENSION_COMMAND_ID)
-						}]
-					);
-				})
-			});
-		}
-
-		const message = `${operationMessage}${additionalMessage ? ` ${additionalMessage}` : ''}`;
-		this.notificationService.prompt(Severity.Error, message, promptChoices);
-	}
-
-	private async getDownloadUrl(): Promise<URI | undefined> {
-		if (isIOS) {
-			return undefined;
-		}
-		if (!this.extension.gallery) {
-			return undefined;
-		}
-		if (!this.extensionManagementServerService.localExtensionManagementServer && !this.extensionManagementServerService.remoteExtensionManagementServer) {
-			return undefined;
-		}
-		let targetPlatform = this.extension.gallery.properties.targetPlatform;
-		if (targetPlatform !== TargetPlatform.UNIVERSAL && targetPlatform !== TargetPlatform.UNDEFINED && this.extensionManagementServerService.remoteExtensionManagementServer) {
-			try {
-				const manifest = await this.galleryService.getManifest(this.extension.gallery, CancellationToken.None);
-				if (manifest && this.extensionManifestPropertiesService.prefersExecuteOnWorkspace(manifest)) {
-					targetPlatform = await this.extensionManagementServerService.remoteExtensionManagementServer.extensionManagementService.getTargetPlatform();
-				}
-			} catch (error) {
-				this.logService.error(error);
-				return undefined;
-			}
-		}
-		if (targetPlatform === TargetPlatform.UNKNOWN) {
-			return undefined;
-		}
-
-		const [extension] = await this.galleryService.getExtensions([{
-			...this.extension.identifier,
-			version: this.version
-		}], {
-			targetPlatform
-		}, CancellationToken.None);
-
-		if (!extension) {
-			return undefined;
-		}
-		return URI.parse(extension.assets.download.uri);
+		this.notificationService.prompt(Severity.Error, operationMessage, []);
 	}
 
 }
@@ -641,7 +574,7 @@ export class InstallAction extends ExtensionAction {
 		try {
 			return await this.extensionsWorkbenchService.install(extension, this.options);
 		} catch (error) {
-			await this.instantiationService.createInstance(PromptExtensionInstallFailureAction, extension, this.options, extension.latestVersion, InstallOperation.Install, error).run();
+			await this.instantiationService.createInstance(PromptExtensionInstallFailureAction, extension, this.options, InstallOperation.Install, error).run();
 			return undefined;
 		}
 	}
@@ -1042,7 +975,7 @@ export class UpdateAction extends ExtensionAction {
 			await this.extensionsWorkbenchService.install(this.extension, installOptions);
 			alert(localize('updateExtensionComplete', "Updating extension {0} to version {1} completed.", this.extension.displayName, this.extension.latestVersion));
 		} catch (err) {
-			this.instantiationService.createInstance(PromptExtensionInstallFailureAction, this.extension, installOptions, this.extension.latestVersion, InstallOperation.Update, err).run();
+			this.instantiationService.createInstance(PromptExtensionInstallFailureAction, this.extension, installOptions, InstallOperation.Update, err).run();
 		}
 	}
 }
@@ -1639,7 +1572,7 @@ export class InstallAnotherVersionAction extends ExtensionAction {
 			try {
 				await this.extensionsWorkbenchService.install(this.extension, options);
 			} catch (error) {
-				this.instantiationService.createInstance(PromptExtensionInstallFailureAction, this.extension, options, pick.id, InstallOperation.Install, error).run();
+				this.instantiationService.createInstance(PromptExtensionInstallFailureAction, this.extension, options, InstallOperation.Install, error).run();
 			}
 		}
 		return null;
@@ -2385,7 +2318,7 @@ export class InstallRecommendedExtensionAction extends Action {
 			try {
 				await this.extensionWorkbenchService.install(extension);
 			} catch (err) {
-				this.instantiationService.createInstance(PromptExtensionInstallFailureAction, extension, undefined, extension.latestVersion, InstallOperation.Install, err).run();
+				this.instantiationService.createInstance(PromptExtensionInstallFailureAction, extension, undefined, InstallOperation.Install, err).run();
 			}
 		}
 	}

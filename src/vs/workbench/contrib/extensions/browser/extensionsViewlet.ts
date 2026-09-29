@@ -12,14 +12,14 @@ import { IWorkbenchContribution } from '../../../common/contributions.js';
 import { Disposable, DisposableStore, MutableDisposable } from '../../../../base/common/lifecycle.js';
 import { Event } from '../../../../base/common/event.js';
 import { Action } from '../../../../base/common/actions.js';
-import { append, $, Dimension, hide, show, DragAndDropObserver, trackFocus, addDisposableListener, EventType, clearNode } from '../../../../base/browser/dom.js';
+import { append, $, Dimension, trackFocus, addDisposableListener, EventType, clearNode } from '../../../../base/browser/dom.js';
 import { renderMarkdown, renderAsPlaintext } from '../../../../base/browser/markdownRenderer.js';
 import { isMarkdownString } from '../../../../base/common/htmlContent.js';
 import { IOpenerService } from '../../../../platform/opener/common/opener.js';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
 import { IInstantiationService, ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { IExtensionService } from '../../../services/extensions/common/extensions.js';
-import { IExtensionsWorkbenchService, IExtensionsViewPaneContainer, VIEWLET_ID, CloseExtensionDetailsOnViewChangeKey, INSTALL_EXTENSION_FROM_VSIX_COMMAND_ID, WORKSPACE_RECOMMENDATIONS_VIEW_ID, AutoCheckUpdatesConfigurationKey, OUTDATED_EXTENSIONS_VIEW_ID, CONTEXT_HAS_GALLERY, extensionsSearchActionsMenu, AutoRestartConfigurationKey, ExtensionRuntimeActionType, SearchMcpServersContext, SearchAgentPluginsContext, DefaultViewsContext, CONTEXT_EXTENSIONS_GALLERY_STATUS } from '../common/extensions.js';
+import { IExtensionsWorkbenchService, IExtensionsViewPaneContainer, VIEWLET_ID, CloseExtensionDetailsOnViewChangeKey, WORKSPACE_RECOMMENDATIONS_VIEW_ID, AutoCheckUpdatesConfigurationKey, OUTDATED_EXTENSIONS_VIEW_ID, CONTEXT_HAS_GALLERY, extensionsSearchActionsMenu, AutoRestartConfigurationKey, ExtensionRuntimeActionType, SearchMcpServersContext, SearchAgentPluginsContext, DefaultViewsContext, CONTEXT_EXTENSIONS_GALLERY_STATUS } from '../common/extensions.js';
 import { InstallLocalExtensionsInRemoteAction, InstallRemoteExtensionsInLocalAction } from './extensionsActions.js';
 import { IExtensionManagementService, ILocalExtension } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IWorkbenchExtensionEnablementService, IExtensionManagementServerService, IExtensionManagementServer } from '../../../services/extensionManagement/common/extensionManagement.js';
@@ -50,16 +50,12 @@ import { Registry } from '../../../../platform/registry/common/platform.js';
 import { ILabelService } from '../../../../platform/label/common/label.js';
 import { SyncDescriptor } from '../../../../platform/instantiation/common/descriptors.js';
 import { IPreferencesService } from '../../../services/preferences/common/preferences.js';
-import { SIDE_BAR_DRAG_AND_DROP_BACKGROUND } from '../../../common/theme.js';
 import { VirtualWorkspaceContext, WorkbenchStateContext } from '../../../common/contextkeys.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
 import { installLocalInRemoteIcon } from './extensionsIcons.js';
 import { registerAction2, Action2, MenuId } from '../../../../platform/actions/common/actions.js';
 import { IPaneComposite } from '../../../common/panecomposite.js';
 import { IPaneCompositePartService } from '../../../services/panecomposite/browser/panecomposite.js';
-import { coalesce } from '../../../../base/common/arrays.js';
-import { extractEditorsAndFilesDropData } from '../../../../platform/dnd/browser/dnd.js';
-import { extname } from '../../../../base/common/resources.js';
 import { ILocalizedString } from '../../../../platform/action/common/action.js';
 import { registerNavigableContainer } from '../../../browser/actions/widgetNavigationCommands.js';
 import { MenuWorkbenchToolBar } from '../../../../platform/actions/browser/toolbar.js';
@@ -573,7 +569,6 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 		@IExtensionService extensionService: IExtensionService,
 		@IViewDescriptorService viewDescriptorService: IViewDescriptorService,
 		@IPreferencesService private readonly preferencesService: IPreferencesService,
-		@ICommandService private readonly commandService: ICommandService,
 		@ILogService logService: ILogService,
 		@IOpenerService private readonly openerService: IOpenerService,
 	) {
@@ -624,11 +619,6 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 		parent.classList.add('extensions-viewlet');
 		this.root = parent;
 
-		const overlay = append(this.root, $('.overlay'));
-		const overlayBackgroundColor = this.getColor(SIDE_BAR_DRAG_AND_DROP_BACKGROUND) ?? '';
-		overlay.style.backgroundColor = overlayBackgroundColor;
-		hide(overlay);
-
 		this.header = append(this.root, $('.header'));
 		const placeholder = localize('searchExtensions', "Search Extensions in Marketplace");
 
@@ -669,43 +659,6 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 				primaryGroup: () => true,
 			},
 			actionViewItemProvider: (action, options) => createActionViewItem(this.instantiationService, action, options)
-		}));
-
-		// Register DragAndDrop support
-		this._register(new DragAndDropObserver(this.root, {
-			onDragEnter: (e: DragEvent) => {
-				if (this.isSupportedDragElement(e)) {
-					show(overlay);
-				}
-			},
-			onDragLeave: (e: DragEvent) => {
-				if (this.isSupportedDragElement(e)) {
-					hide(overlay);
-				}
-			},
-			onDragOver: (e: DragEvent) => {
-				if (this.isSupportedDragElement(e)) {
-					e.dataTransfer!.dropEffect = 'copy';
-				}
-			},
-			onDrop: async (e: DragEvent) => {
-				if (this.isSupportedDragElement(e)) {
-					hide(overlay);
-
-					const vsixs = coalesce((await this.instantiationService.invokeFunction(accessor => extractEditorsAndFilesDropData(accessor, e)))
-						.map(editor => editor.resource && extname(editor.resource) === '.vsix' ? editor.resource : undefined));
-
-					if (vsixs.length > 0) {
-						try {
-							// Attempt to install the extension(s)
-							await this.commandService.executeCommand(INSTALL_EXTENSION_FROM_VSIX_COMMAND_ID, vsixs);
-						}
-						catch (err) {
-							this.notificationService.error(err);
-						}
-					}
-				}
-			}
 		}));
 
 		super.create(append(this.root, $('.extensions')));
@@ -1011,15 +964,6 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 		}
 
 		this.notificationService.error(err);
-	}
-
-	private isSupportedDragElement(e: DragEvent): boolean {
-		if (e.dataTransfer) {
-			const typesLowerCase = e.dataTransfer.types.map(t => t.toLocaleLowerCase());
-			return typesLowerCase.indexOf('files') !== -1;
-		}
-
-		return false;
 	}
 }
 
