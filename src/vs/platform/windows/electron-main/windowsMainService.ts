@@ -300,7 +300,7 @@ export class WindowsMainService extends Disposable implements IWindowsMainServic
 
 		// Existing-session intent takes precedence over explicit or inferred workspace selection.
 		if (windows.length > 0) {
-			const openSource = source ?? (openConfig.cli.agents ? AgentsWindowOpenSource.CommandLine : AgentsWindowOpenSource.Unknown);
+			const openSource = source ?? AgentsWindowOpenSource.Unknown;
 			windows[0].sendWhenReady('vscode:selectAgentsFolder', CancellationToken.None, folderUri?.toJSON(), sessionResource?.toJSON(), openSource, folderUriIsDefault, draft);
 		}
 
