@@ -5,25 +5,31 @@
 
 import assert from 'assert';
 import { spawn, type ChildProcess } from 'child_process';
-import { dirname, join } from 'path';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
+import { dirname, join } from 'path';
+import { randomUUID } from 'crypto';
 import { fileURLToPath, pathToFileURL } from 'url';
-import { StdioRpcClient, RpcFrameDecoder, encodeRpcFrame, RpcCancelledError, RpcRemoteError, RpcBackendExitError, RpcTransportError, resolveOpenCircuitDataDirectory, startOpenCircuitBackend } from '../../node/stdioRpc.js';
+import { RpcBackendExitError, RpcCancelledError, RpcEventData, RpcFrameDecoder, RpcRemoteError, RpcTransportError, StdioRpcClient, encodeRpcFrame, resolveOpenCircuitDataDirectory, startOpenCircuitBackend } from '../../node/stdioRpc.js';
 
 const serverModule = pathToFileURL(join(dirname(fileURLToPath(import.meta.url)), '../../node/stdioRpc.js')).href;
 const serverScript = `
-const { runStdioRpcServer } = await import(process.argv[1]);
+const { randomUUID } = await import('node:crypto');
+const { runStdioRpcServer, encodeRpcFrame } = await import(process.argv[1]);
 const mode = process.argv[2];
 if (mode === 'malformed') {
-  process.stdin.once('data', () => process.stdout.write('Content-Length: nope\\r\\n\\r\\n{}'));
+  process.stdout.write(encodeRpcFrame({ protocolVersion: 1, kind: 'hello', requestId: randomUUID() }));
+  process.stdin.once('data', () => process.stdout.write(Buffer.alloc(4)));
 } else {
   await runStdioRpcServer({
-    echo: params => params,
+    echo: payload => payload,
     fail: () => { throw new Error('private transcript /secret/path / token=hidden'); },
     knownError: () => { throw Object.assign(new Error('sensitive details'), { code: 'HISTORY_NOT_FOUND' }); },
-    event: async (_params, context) => { await context.emit('progress', { step: 1 }); return 'done'; },
-    slow: (_params, context) => new Promise(resolve => {
+    conflict: () => { throw Object.assign(new Error('session contents leaked'), { code: 'HISTORY_SAVE_CONFLICT' }); },
+    event: async (_payload, context) => { await context.emit({ type: 'progress', step: 1 }); return 'done'; },
+    stream: async (_payload, context) => { for (let index = 1; index <= 40; index++) { await context.emit({ index }); } return 40; },
+    runtime: () => ({ dataRoot: process.env.OCIRCUIT_GLOBAL_DIR, runAsNode: process.env.ELECTRON_RUN_AS_NODE }),
+    slow: (_payload, context) => new Promise(resolve => {
       const timer = setTimeout(() => resolve('finished'), 5000);
       context.signal.addEventListener('abort', () => { clearTimeout(timer); resolve('cancelled'); }, { once: true });
     }),
@@ -57,34 +63,43 @@ suite('StdioRpcClient', () => {
 		}
 	});
 
-	test('decodes fragmented and coalesced Content-Length frames', () => {
-		const first = encodeRpcFrame({ type: 'event', name: 'a', payload: 1 });
-		const second = encodeRpcFrame({ type: 'event', name: 'b', payload: 2 });
+	test('decodes fragmented and coalesced protocol-v1 frames', () => {
+		const first = encodeRpcFrame({ protocolVersion: 1, kind: 'event', requestId: randomUUID(), sequence: 1, payload: { name: 'a' } });
+		const second = encodeRpcFrame({ protocolVersion: 1, kind: 'event', requestId: randomUUID(), sequence: 1, payload: { name: 'b' } });
 		const decoder = new RpcFrameDecoder();
 		assert.deepStrictEqual(decoder.push(first.subarray(0, 7)), []);
 		assert.deepStrictEqual(decoder.push(Buffer.concat([first.subarray(7), second])), [
-			{ type: 'event', name: 'a', payload: 1 },
-			{ type: 'event', name: 'b', payload: 2 },
+			{ protocolVersion: 1, kind: 'event', requestId: (JSON.parse(first.subarray(4).toString('utf8')) as { requestId: string }).requestId, sequence: 1, payload: { name: 'a' } },
+			{ protocolVersion: 1, kind: 'event', requestId: (JSON.parse(second.subarray(4).toString('utf8')) as { requestId: string }).requestId, sequence: 1, payload: { name: 'b' } },
 		]);
 	});
 
-	test('round trips real process requests, events, and sanitized errors', async () => {
+	test('round trips real process requests, sequenced events, and sanitized errors', async () => {
 		const { client } = startBackend();
 		try {
 			const events: unknown[] = [];
-			const subscription = client.onEvent((name, payload) => events.push({ name, payload }));
+			const subscription = client.onEvent(event => events.push(event));
 			assert.deepStrictEqual(await client.request('echo', { text: 'hello', count: 2 }), { text: 'hello', count: 2 });
 			assert.strictEqual(await client.request('event', null), 'done');
-			assert.deepStrictEqual(events, [{ name: 'progress', payload: { step: 1 } }]);
+			assert.strictEqual(events.length, 1);
+			assert.deepStrictEqual((events[0] as { sequence: number; payload: unknown }).payload, { type: 'progress', step: 1 });
+			assert.strictEqual((events[0] as { sequence: number }).sequence, 1);
+			const streamedEvents: RpcEventData[] = [];
+			assert.strictEqual(await client.request('stream', null, undefined, async event => {
+				await new Promise(resolve => setTimeout(resolve, 1));
+				streamedEvents.push(event);
+			}), 40);
+			assert.deepStrictEqual(streamedEvents.map(event => event.sequence), Array.from({ length: 40 }, (_, index) => index + 1));
 			await assert.rejects(client.request('fail', null), (error: unknown) => error instanceof RpcRemoteError && error.code === 'INTERNAL' && error.message === 'Request failed' && !error.stack?.includes('private transcript'));
 			await assert.rejects(client.request('knownError', null), (error: unknown) => error instanceof RpcRemoteError && error.code === 'HISTORY_NOT_FOUND' && error.message === 'Session not found' && !error.stack?.includes('sensitive details'));
+			await assert.rejects(client.request('conflict', null), (error: unknown) => error instanceof RpcRemoteError && error.code === 'HISTORY_SAVE_CONFLICT' && error.message === 'Session changed; reload and retry' && !error.stack?.includes('session contents leaked'));
 			subscription.dispose();
 		} finally {
 			client.dispose();
 		}
 	});
 
-	test('cancels a request over IPC and keeps the backend usable', async () => {
+	test('cancels over IPC and leaves the backend usable', async () => {
 		const { client } = startBackend();
 		try {
 			const abort = new AbortController();
@@ -97,7 +112,7 @@ suite('StdioRpcClient', () => {
 		}
 	});
 
-	test('bounds outstanding requests and allows cancellation to release capacity', async () => {
+	test('bounds outstanding requests and releases capacity after cancellations', async () => {
 		const { client } = startBackend();
 		try {
 			const controllers = Array.from({ length: 256 }, () => new AbortController());
@@ -114,7 +129,7 @@ suite('StdioRpcClient', () => {
 	test('rejects malformed frames from a real child process', async () => {
 		const { client } = startBackend('malformed');
 		try {
-			await assert.rejects(client.request('trigger', null), /Malformed IPC frame header/);
+			await assert.rejects(client.request('trigger', null), /Malformed IPC frame length/);
 		} finally {
 			client.dispose();
 		}

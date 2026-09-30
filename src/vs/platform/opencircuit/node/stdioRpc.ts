@@ -3,58 +3,101 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
+import { randomUUID } from 'crypto';
 import { spawn, type ChildProcess } from 'child_process';
-import { type Readable, type Writable } from 'stream';
 import { isAbsolute, join } from 'path';
+import { type Readable, type Writable } from 'stream';
 
-const MAX_FRAME_BYTES = 1024 * 1024;
-const MAX_HEADER_BYTES = 1024;
+const PROTOCOL_VERSION = 1;
+const MAX_FRAME_BYTES = 8 * 1024 * 1024;
 const MAX_ID_LENGTH = 128;
 const MAX_IN_FLIGHT_REQUESTS = 256;
-const STOP_GRACE_PERIOD_MS = 5000;
+const EVENT_CREDIT_WINDOW = 16;
+const STARTUP_TIMEOUT_MS = 10_000;
+const STOP_GRACE_PERIOD_MS = 5_000;
 
-export type RpcErrorCode = 'INVALID_REQUEST' | 'HISTORY_NOT_FOUND' | 'HISTORY_CONFLICT' | 'INTERNAL';
+export type RpcErrorCode = 'INVALID_REQUEST' | 'HISTORY_INVALID_CREATE_REQUEST' | 'HISTORY_NOT_FOUND' | 'HISTORY_CORRUPT' | 'HISTORY_STORAGE' | 'HISTORY_CREATE_IDEMPOTENCY_CONFLICT' | 'HISTORY_SAVE_CONFLICT' | 'INTERNAL';
 
 const SAFE_ERROR_MESSAGES: Record<RpcErrorCode, string> = {
 	INVALID_REQUEST: 'Invalid request',
+	HISTORY_INVALID_CREATE_REQUEST: 'Invalid session request',
 	HISTORY_NOT_FOUND: 'Session not found',
-	HISTORY_CONFLICT: 'Session changed; reload and retry',
+	HISTORY_CORRUPT: 'Session data is unreadable',
+	HISTORY_STORAGE: 'Unable to access session storage',
+	HISTORY_CREATE_IDEMPOTENCY_CONFLICT: 'Create request conflicts with an existing session',
+	HISTORY_SAVE_CONFLICT: 'Session changed; reload and retry',
 	INTERNAL: 'Request failed',
 };
 
 interface RpcRequest {
-	readonly type: 'request';
-	readonly id: string;
+	readonly protocolVersion: 1;
+	readonly kind: 'request';
+	readonly requestId: string;
 	readonly method: string;
-	readonly params: unknown;
-}
-
-interface RpcCancel {
-	readonly type: 'cancel';
-	readonly id: string;
-}
-
-interface RpcResponse {
-	readonly type: 'response';
-	readonly id: string;
-	readonly result?: unknown;
-	readonly error?: { readonly code: RpcErrorCode; readonly message: string };
-}
-
-interface RpcEvent {
-	readonly type: 'event';
-	readonly name: string;
 	readonly payload: unknown;
 }
 
-type RpcMessage = RpcRequest | RpcCancel | RpcResponse | RpcEvent;
+interface RpcCancel {
+	readonly protocolVersion: 1;
+	readonly kind: 'cancel';
+	readonly requestId: string;
+}
 
-/** Places Core session data below the per-user OVSCode data directory. The directory must be on a host-local filesystem. */
-export function resolveOpenCircuitDataDirectory(userDataPath: string): string {
-	if (!isAbsolute(userDataPath)) {
-		throw new RpcTransportError('OpenCircuit user-data path must be absolute');
-	}
-	return join(userDataPath, 'opencircuit');
+interface RpcCredit {
+	readonly protocolVersion: 1;
+	readonly kind: 'credit';
+	readonly requestId: string;
+	readonly credits: number;
+}
+
+interface RpcEvent {
+	readonly protocolVersion: 1;
+	readonly kind: 'event';
+	readonly requestId: string;
+	readonly sequence: number;
+	readonly payload: unknown;
+}
+
+interface RpcResult {
+	readonly protocolVersion: 1;
+	readonly kind: 'result';
+	readonly requestId: string;
+	readonly payload: unknown;
+}
+
+interface RpcError {
+	readonly protocolVersion: 1;
+	readonly kind: 'error';
+	readonly requestId: string;
+	readonly code: RpcErrorCode;
+	readonly message: string;
+	readonly retryable: boolean;
+	readonly correlationId?: string;
+}
+
+interface RpcHello {
+	readonly protocolVersion: 1;
+	readonly kind: 'hello';
+	readonly requestId: string;
+}
+
+type RpcMessage = RpcRequest | RpcCancel | RpcCredit | RpcEvent | RpcResult | RpcError | RpcHello;
+
+interface PendingRequest {
+	resolve(value: unknown): void;
+	reject(error: Error): void;
+	signal?: AbortSignal;
+	abort?: () => void;
+	lastSequence: number;
+	dispatch: Promise<void>;
+	onEvent?: (event: RpcEventData) => void | Promise<void>;
+	terminal?: RpcResult | RpcError;
+}
+
+export interface RpcEventData {
+	readonly requestId: string;
+	readonly sequence: number;
+	readonly payload: unknown;
 }
 
 export class RpcTransportError extends Error {
@@ -88,53 +131,44 @@ export class RpcRemoteError extends Error {
 	}
 }
 
-/** Encodes a JSON message as a Content-Length framed UTF-8 payload. */
-export function encodeRpcFrame(message: RpcMessage): Buffer {
-	const body = Buffer.from(JSON.stringify(message), 'utf8');
-	if (body.byteLength > MAX_FRAME_BYTES) {
-		throw new RpcTransportError('IPC message exceeds the size limit');
+/** Places Core session data below the per-user OVSCode data directory. The directory must be on a host-local filesystem. */
+export function resolveOpenCircuitDataDirectory(userDataPath: string): string {
+	if (!isAbsolute(userDataPath)) {
+		throw new RpcTransportError('OpenCircuit user-data path must be absolute');
 	}
-	return Buffer.concat([Buffer.from(`Content-Length: ${body.byteLength}\r\n\r\n`, 'ascii'), body]);
+	return join(userDataPath, 'opencircuit');
 }
 
-/** Incrementally decodes Content-Length frames from arbitrary stream chunks. */
+/** Encodes one JSON message using a four-byte big-endian byte length prefix. */
+export function encodeRpcFrame(message: RpcMessage): Buffer {
+	const body = Buffer.from(JSON.stringify(message), 'utf8');
+	if (body.byteLength === 0 || body.byteLength > MAX_FRAME_BYTES) {
+		throw new RpcTransportError('IPC message exceeds the size limit');
+	}
+	const header = Buffer.allocUnsafe(4);
+	header.writeUInt32BE(body.byteLength, 0);
+	return Buffer.concat([header, body]);
+}
+
+/** Incrementally decodes bounded length-prefixed UTF-8 JSON frames. */
 export class RpcFrameDecoder {
 	private _buffer: Buffer = Buffer.alloc(0);
+	private readonly _textDecoder = new TextDecoder('utf-8', { fatal: true });
 
 	push(chunk: Buffer): RpcMessage[] {
 		this._buffer = this._buffer.length ? Buffer.concat([this._buffer, chunk]) : chunk;
 		const messages: RpcMessage[] = [];
-		while (true) {
-			const headerEnd = this._buffer.indexOf('\r\n\r\n');
-			if (headerEnd < 0) {
-				if (this._buffer.length > MAX_HEADER_BYTES) {
-					throw new RpcTransportError('Malformed IPC frame header');
-				}
-				break;
+		while (this._buffer.length >= 4) {
+			const bodyLength = this._buffer.readUInt32BE(0);
+			if (bodyLength === 0 || bodyLength > MAX_FRAME_BYTES) {
+				throw new RpcTransportError('Malformed IPC frame length');
 			}
-			if (headerEnd > MAX_HEADER_BYTES) {
-				throw new RpcTransportError('Malformed IPC frame header');
-			}
-			const header = this._buffer.subarray(0, headerEnd);
-			if (header.some(byte => byte > 0x7f)) {
-				throw new RpcTransportError('Malformed IPC frame header');
-			}
-			const headerText = header.toString('ascii');
-			const match = /^Content-Length: (0|[1-9][0-9]*)$/.exec(headerText);
-			if (!match) {
-				throw new RpcTransportError('Malformed IPC frame header');
-			}
-			const bodyLength = Number(match[1]);
-			if (!Number.isSafeInteger(bodyLength) || bodyLength > MAX_FRAME_BYTES) {
-				throw new RpcTransportError('IPC message exceeds the size limit');
-			}
-			const frameEnd = headerEnd + 4 + bodyLength;
-			if (this._buffer.length < frameEnd) {
+			if (this._buffer.length < 4 + bodyLength) {
 				break;
 			}
 			let value: unknown;
 			try {
-				value = JSON.parse(this._buffer.toString('utf8', headerEnd + 4, frameEnd));
+				value = JSON.parse(this._textDecoder.decode(this._buffer.subarray(4, 4 + bodyLength)));
 			} catch {
 				throw new RpcTransportError('Malformed IPC JSON payload');
 			}
@@ -142,7 +176,7 @@ export class RpcFrameDecoder {
 				throw new RpcTransportError('Malformed IPC message');
 			}
 			messages.push(value);
-			this._buffer = this._buffer.subarray(frameEnd);
+			this._buffer = this._buffer.subarray(4 + bodyLength);
 		}
 		return messages;
 	}
@@ -153,32 +187,48 @@ function isRpcMessage(value: unknown): value is RpcMessage {
 		return false;
 	}
 	const message = value as Record<string, unknown>;
-	switch (message.type) {
-		case 'request':
-			return isId(message.id) && typeof message.method === 'string' && message.method.length > 0 && message.method.length <= 256 && 'params' in message;
+	if (message.protocolVersion !== PROTOCOL_VERSION || !isRequestId(message.requestId)) {
+		return false;
+	}
+	switch (message.kind) {
+		case 'hello':
 		case 'cancel':
-			return isId(message.id);
-		case 'response':
-			return isId(message.id) && ((('result' in message) !== ('error' in message)) || (message.result === undefined && message.error === undefined));
+			return true;
+		case 'request':
+			return typeof message.method === 'string' && message.method.length > 0 && message.method.length <= 256 && 'payload' in message;
+		case 'credit':
+			return Number.isInteger(message.credits) && (message.credits as number) > 0 && (message.credits as number) <= EVENT_CREDIT_WINDOW;
 		case 'event':
-			return typeof message.name === 'string' && message.name.length > 0 && message.name.length <= 128 && 'payload' in message;
+			return Number.isSafeInteger(message.sequence) && (message.sequence as number) > 0 && 'payload' in message;
+		case 'result':
+			return 'payload' in message;
+		case 'error':
+			return typeof message.code === 'string' && typeof message.message === 'string' && typeof message.retryable === 'boolean' && (message.correlationId === undefined || typeof message.correlationId === 'string');
 		default:
 			return false;
 	}
 }
 
-function isId(value: unknown): value is string {
-	return typeof value === 'string' && value.length > 0 && value.length <= MAX_ID_LENGTH;
+function isRequestId(value: unknown): value is string {
+	return typeof value === 'string' && value.length <= MAX_ID_LENGTH && /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function safeErrorCode(value: unknown): RpcErrorCode {
-	if (value === 'INVALID_REQUEST' || value === 'HISTORY_NOT_FOUND' || value === 'HISTORY_CONFLICT') {
-		return value;
+	switch (value) {
+		case 'INVALID_REQUEST':
+		case 'HISTORY_INVALID_CREATE_REQUEST':
+		case 'HISTORY_NOT_FOUND':
+		case 'HISTORY_CORRUPT':
+		case 'HISTORY_STORAGE':
+		case 'HISTORY_CREATE_IDEMPOTENCY_CONFLICT':
+		case 'HISTORY_SAVE_CONFLICT':
+			return value;
+		default:
+			return 'INTERNAL';
 	}
-	return 'INTERNAL';
 }
 
-function isSafeError(value: unknown): value is { code: RpcErrorCode } {
+function isSafeError(value: unknown): value is { code: unknown } {
 	return !!value && typeof value === 'object' && 'code' in value;
 }
 
@@ -218,23 +268,33 @@ export function startOpenCircuitBackend(options: OpenCircuitBackendProcessOption
 /** Client for one child process whose stdin/stdout carry framed RPC only. */
 export class StdioRpcClient {
 	private readonly _decoder = new RpcFrameDecoder();
-	private readonly _pending = new Map<string, { resolve(value: unknown): void; reject(error: Error): void; signal?: AbortSignal; abort?: () => void }>();
-	private readonly _eventListeners = new Set<(name: string, payload: unknown) => void>();
+	private readonly _pending = new Map<string, PendingRequest>();
+	private readonly _eventListeners = new Set<(event: RpcEventData) => void>();
 	private readonly _child: ChildProcess;
 	private _nextId = 0;
 	private _closed = false;
+	private _readyState = false;
+	private _readyResolve!: () => void;
+	private _readyReject!: (error: Error) => void;
+	private readonly _ready = new Promise<void>((resolve, reject) => {
+		this._readyResolve = resolve;
+		this._readyReject = reject;
+	});
+	private readonly _startupTimer: NodeJS.Timeout;
 
 	constructor(child: ChildProcess) {
 		this._child = child;
 		if (!this._child.stdin || !this._child.stdout) {
 			throw new RpcTransportError('Backend process requires piped stdin and stdout');
 		}
+		void this._ready.catch(() => undefined);
+		this._startupTimer = setTimeout(() => this._failAll(new RpcTransportError('Backend startup handshake timed out')), STARTUP_TIMEOUT_MS);
 		this._child.stdout.on('data', (chunk: Buffer) => this._onData(chunk));
 		this._child.on('error', () => this._failAll(new RpcBackendExitError()));
 		this._child.on('exit', () => this._failAll(new RpcBackendExitError()));
 	}
 
-	request<T>(method: string, params: unknown, signal?: AbortSignal): Promise<T> {
+	request<T>(method: string, payload: unknown, signal?: AbortSignal, onEvent?: (event: RpcEventData) => void | Promise<void>): Promise<T> {
 		if (this._closed) {
 			return Promise.reject(new RpcBackendExitError());
 		}
@@ -247,21 +307,27 @@ export class StdioRpcClient {
 		if (signal?.aborted) {
 			return Promise.reject(new RpcCancelledError());
 		}
-		const id = String(++this._nextId);
+		const requestId = randomUUID();
 		return new Promise<T>((resolve, reject) => {
-			const pending: { resolve(value: unknown): void; reject(error: Error): void; signal?: AbortSignal; abort?: () => void } = { resolve, reject, signal };
+			const pending: PendingRequest = { resolve, reject, signal, lastSequence: 0, dispatch: Promise.resolve(), onEvent };
 			if (signal) {
 				pending.abort = () => {
-					if (this._pending.delete(id)) {
-						void writeFrame(this._child.stdin!, { type: 'cancel', id }).catch(() => undefined);
+					if (this._pending.delete(requestId)) {
+						void writeFrame(this._child.stdin!, { protocolVersion: PROTOCOL_VERSION, kind: 'cancel', requestId }).catch(() => undefined);
 						reject(new RpcCancelledError());
 					}
 				};
 				signal.addEventListener('abort', pending.abort, { once: true });
 			}
-			this._pending.set(id, pending);
-			void writeFrame(this._child.stdin!, { type: 'request', id, method, params }).catch(() => {
-				if (this._pending.delete(id)) {
+			this._pending.set(requestId, pending);
+			void this._ready.then(async () => {
+				if (!this._pending.has(requestId)) {
+					return;
+				}
+				await writeFrame(this._child.stdin!, { protocolVersion: PROTOCOL_VERSION, kind: 'request', requestId, method, payload });
+				await writeFrame(this._child.stdin!, { protocolVersion: PROTOCOL_VERSION, kind: 'credit', requestId, credits: EVENT_CREDIT_WINDOW });
+			}).catch(() => {
+				if (this._pending.delete(requestId)) {
 					this._removeAbortListener(pending);
 					reject(new RpcTransportError('IPC write failed'));
 				}
@@ -269,7 +335,7 @@ export class StdioRpcClient {
 		});
 	}
 
-	onEvent(listener: (name: string, payload: unknown) => void): { dispose(): void } {
+	onEvent(listener: (event: RpcEventData) => void): { dispose(): void } {
 		this._eventListeners.add(listener);
 		return { dispose: () => this._eventListeners.delete(listener) };
 	}
@@ -301,20 +367,55 @@ export class StdioRpcClient {
 	private _onData(chunk: Buffer): void {
 		try {
 			for (const message of this._decoder.push(chunk)) {
-				if (message.type === 'response') {
-					const pending = this._pending.get(message.id);
-					if (pending) {
-						this._pending.delete(message.id);
-						this._removeAbortListener(pending);
-						if (message.error) {
-						pending.reject(new RpcRemoteError(safeErrorCode(message.error.code)));
-						} else {
-						pending.resolve(message.result);
-						}
+				if (!this._readyState) {
+					if (message.kind !== 'hello' || message.protocolVersion !== PROTOCOL_VERSION) {
+					throw new RpcTransportError('Invalid backend startup handshake');
 					}
-				} else if (message.type === 'event') {
-					for (const listener of this._eventListeners) {
-						listener(message.name, message.payload);
+					this._readyState = true;
+					clearTimeout(this._startupTimer);
+					this._readyResolve();
+					continue;
+				}
+				if (message.kind === 'event') {
+					const pending = this._pending.get(message.requestId);
+					if (!pending || pending.terminal) {
+						throw new RpcTransportError('Unexpected IPC event');
+					}
+					pending.dispatch = pending.dispatch.then(async () => {
+						if (message.sequence !== pending.lastSequence + 1) {
+							throw new RpcTransportError('Invalid IPC event sequence');
+						}
+						pending.lastSequence = message.sequence;
+						const event = { requestId: message.requestId, sequence: message.sequence, payload: message.payload };
+						await pending.onEvent?.(event);
+						for (const listener of this._eventListeners) {
+							listener(event);
+						}
+						await writeFrame(this._child.stdin!, { protocolVersion: PROTOCOL_VERSION, kind: 'credit', requestId: message.requestId, credits: 1 });
+					});
+					void pending.dispatch.catch(error => {
+						this._failAll(error instanceof RpcTransportError ? error : new RpcTransportError('IPC event delivery failed'));
+						this._child.kill();
+					});
+				} else if (message.kind === 'result' || message.kind === 'error') {
+					const pending = this._pending.get(message.requestId);
+					if (pending) {
+						if (pending.terminal) {
+							throw new RpcTransportError('Duplicate IPC terminal response');
+						}
+						pending.terminal = message;
+						void pending.dispatch.then(() => {
+							if (this._pending.get(message.requestId) !== pending) {
+								return;
+							}
+							this._pending.delete(message.requestId);
+							this._removeAbortListener(pending);
+							if (message.kind === 'error') {
+								pending.reject(new RpcRemoteError(safeErrorCode(message.code)));
+							} else {
+								pending.resolve(message.payload);
+							}
+						}).catch(error => this._failAll(error instanceof Error ? error : new RpcTransportError('IPC event delivery failed')));
 					}
 				} else {
 					throw new RpcTransportError('Unexpected IPC message from backend');
@@ -326,7 +427,7 @@ export class StdioRpcClient {
 		}
 	}
 
-	private _removeAbortListener(pending: { signal?: AbortSignal; abort?: () => void }): void {
+	private _removeAbortListener(pending: PendingRequest): void {
 		if (pending.signal && pending.abort) {
 			pending.signal.removeEventListener('abort', pending.abort);
 		}
@@ -337,6 +438,8 @@ export class StdioRpcClient {
 			return;
 		}
 		this._closed = true;
+		clearTimeout(this._startupTimer);
+		this._readyReject(error);
 		for (const pending of this._pending.values()) {
 			this._removeAbortListener(pending);
 			pending.reject(error);
@@ -347,49 +450,88 @@ export class StdioRpcClient {
 
 export interface RpcRequestContext {
 	readonly signal: AbortSignal;
-	emit(name: string, payload: unknown): Promise<void>;
+	emit(payload: unknown): Promise<void>;
 }
 
-export type RpcHandler = (params: unknown, context: RpcRequestContext) => unknown | Promise<unknown>;
+export type RpcHandler = (payload: unknown, context: RpcRequestContext) => unknown | Promise<unknown>;
 
-/** Serves requests from process stdin and writes framed responses/events to stdout. */
+interface ActiveRequest {
+	readonly controller: AbortController;
+	readonly waiters: Array<() => void>;
+	credits: number;
+	sequence: number;
+}
+
+/** Serves protocol-v1 requests from stdin and writes framed responses/events to stdout. */
 export async function runStdioRpcServer(handlers: Readonly<Record<string, RpcHandler>>, input: Readable = process.stdin, output: Writable = process.stdout): Promise<void> {
 	const decoder = new RpcFrameDecoder();
-	const controllers = new Map<string, AbortController>();
+	const active = new Map<string, ActiveRequest>();
 	const write = (message: RpcMessage) => writeFrame(output, message);
+	await write({ protocolVersion: PROTOCOL_VERSION, kind: 'hello', requestId: randomUUID() });
 	input.on('data', (chunk: Buffer) => {
 		let messages: RpcMessage[];
 		try {
 			messages = decoder.push(chunk);
 		} catch {
 			input.destroy();
+			output.end();
 			return;
 		}
 		for (const message of messages) {
-			if (message.type === 'cancel') {
-				const controller = controllers.get(message.id);
-				controllers.delete(message.id);
-				controller?.abort();
-			} else if (message.type === 'request') {
-				const controller = new AbortController();
-				controllers.set(message.id, controller);
+			if (message.kind === 'cancel') {
+				const request = active.get(message.requestId);
+				active.delete(message.requestId);
+				request?.controller.abort();
+				request?.waiters.splice(0).forEach(resolve => resolve());
+			} else if (message.kind === 'credit') {
+				const request = active.get(message.requestId);
+				if (request) {
+					if (request.credits + message.credits > EVENT_CREDIT_WINDOW) {
+						input.destroy();
+						output.end();
+						return;
+					}
+					request.credits += message.credits;
+					request.waiters.splice(0).forEach(resolve => resolve());
+				}
+			} else if (message.kind === 'request') {
+				if (active.has(message.requestId)) {
+					input.destroy();
+					output.end();
+					return;
+				}
+				const request: ActiveRequest = { controller: new AbortController(), waiters: [], credits: 0, sequence: 0 };
+				active.set(message.requestId, request);
 				const handler = Object.hasOwn(handlers, message.method) ? handlers[message.method] : undefined;
 				void (async () => {
 					try {
-						if (controllers.size > MAX_IN_FLIGHT_REQUESTS || !handler) {
+						if (active.size > MAX_IN_FLIGHT_REQUESTS || !handler) {
 							throw Object.assign(new Error(), { code: 'INVALID_REQUEST' });
 						}
-						const result = await handler(message.params, { signal: controller.signal, emit: (name, payload) => write({ type: 'event', name, payload }) });
-						if (!controller.signal.aborted) {
-							await write({ type: 'response', id: message.id, result });
+						const payload = await handler(message.payload, {
+							signal: request.controller.signal,
+							emit: async eventPayload => {
+								while (request.credits === 0 && !request.controller.signal.aborted) {
+									await new Promise<void>(resolve => request.waiters.push(resolve));
+								}
+								if (request.controller.signal.aborted) {
+									throw new RpcCancelledError();
+								}
+								request.credits--;
+								request.sequence++;
+								await write({ protocolVersion: PROTOCOL_VERSION, kind: 'event', requestId: message.requestId, sequence: request.sequence, payload: eventPayload });
+							},
+						});
+						if (!request.controller.signal.aborted) {
+							await write({ protocolVersion: PROTOCOL_VERSION, kind: 'result', requestId: message.requestId, payload: payload === undefined ? null : payload });
 						}
 					} catch (error) {
 						const code = isSafeError(error) ? safeErrorCode(error.code) : 'INTERNAL';
-						if (!controller.signal.aborted) {
-							await write({ type: 'response', id: message.id, error: { code, message: SAFE_ERROR_MESSAGES[code] } });
+						if (!request.controller.signal.aborted) {
+							await write({ protocolVersion: PROTOCOL_VERSION, kind: 'error', requestId: message.requestId, code, message: SAFE_ERROR_MESSAGES[code], retryable: code === 'INTERNAL' || code === 'HISTORY_SAVE_CONFLICT' });
 						}
 					} finally {
-						controllers.delete(message.id);
+						active.delete(message.requestId);
 					}
 				})().catch(() => input.destroy());
 			}
