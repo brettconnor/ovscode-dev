@@ -3,7 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { type ChildProcess } from 'child_process';
+import { spawn, type ChildProcess } from 'child_process';
 import { type Readable, type Writable } from 'stream';
 import { isAbsolute, join } from 'path';
 
@@ -11,6 +11,7 @@ const MAX_FRAME_BYTES = 1024 * 1024;
 const MAX_HEADER_BYTES = 1024;
 const MAX_ID_LENGTH = 128;
 const MAX_IN_FLIGHT_REQUESTS = 256;
+const STOP_GRACE_PERIOD_MS = 5000;
 
 export type RpcErrorCode = 'INVALID_REQUEST' | 'HISTORY_NOT_FOUND' | 'HISTORY_CONFLICT' | 'INTERNAL';
 
@@ -188,6 +189,32 @@ function writeFrame(stream: Writable, message: RpcMessage): Promise<void> {
 	});
 }
 
+export interface OpenCircuitBackendProcessOptions {
+	/** Absolute path to the packaged Core backend entrypoint. */
+	readonly entrypoint: string;
+	/** OVSCode's per-user data directory, required to be host-local. */
+	readonly userDataPath: string;
+	/** Caller-filtered environment variables; secrets should not be inherited implicitly. */
+	readonly environment: NodeJS.ProcessEnv;
+	readonly args?: readonly string[];
+}
+
+/** Starts Core with the Node runtime bundled in OVSCode's Electron executable. */
+export function startOpenCircuitBackend(options: OpenCircuitBackendProcessOptions): StdioRpcClient {
+	if (!isAbsolute(options.entrypoint)) {
+		throw new RpcTransportError('Backend entrypoint must be absolute');
+	}
+	const child = spawn(process.execPath, [options.entrypoint, ...(options.args ?? [])], {
+		stdio: ['pipe', 'pipe', 'ignore'],
+		env: {
+			...options.environment,
+			ELECTRON_RUN_AS_NODE: '1',
+			OCIRCUIT_GLOBAL_DIR: resolveOpenCircuitDataDirectory(options.userDataPath),
+		},
+	});
+	return new StdioRpcClient(child);
+}
+
 /** Client for one child process whose stdin/stdout carry framed RPC only. */
 export class StdioRpcClient {
 	private readonly _decoder = new RpcFrameDecoder();
@@ -248,10 +275,27 @@ export class StdioRpcClient {
 	}
 
 	dispose(): void {
+		void this.stop();
+	}
+
+	stop(): Promise<void> {
 		this._failAll(new RpcBackendExitError());
-		if (this._child.exitCode === null && this._child.signalCode === null) {
-			this._child.kill();
+		if (this._child.exitCode !== null || this._child.signalCode !== null) {
+			return Promise.resolve();
 		}
+		return new Promise(resolve => {
+			const finish = () => {
+				clearTimeout(forceKill);
+				resolve();
+			};
+			this._child.once('close', finish);
+			const forceKill = setTimeout(() => this._child.kill('SIGKILL'), STOP_GRACE_PERIOD_MS);
+			if (this._child.exitCode !== null || this._child.signalCode !== null) {
+				finish();
+			} else {
+				this._child.kill();
+			}
+		});
 	}
 
 	private _onData(chunk: Buffer): void {
@@ -323,7 +367,9 @@ export async function runStdioRpcServer(handlers: Readonly<Record<string, RpcHan
 		}
 		for (const message of messages) {
 			if (message.type === 'cancel') {
-				controllers.get(message.id)?.abort();
+				const controller = controllers.get(message.id);
+				controllers.delete(message.id);
+				controller?.abort();
 			} else if (message.type === 'request') {
 				const controller = new AbortController();
 				controllers.set(message.id, controller);
@@ -345,7 +391,7 @@ export async function runStdioRpcServer(handlers: Readonly<Record<string, RpcHan
 					} finally {
 						controllers.delete(message.id);
 					}
-				})();
+				})().catch(() => input.destroy());
 			}
 		}
 	});

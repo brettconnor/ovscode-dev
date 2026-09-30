@@ -6,8 +6,10 @@
 import assert from 'assert';
 import { spawn, type ChildProcess } from 'child_process';
 import { dirname, join } from 'path';
+import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
 import { fileURLToPath, pathToFileURL } from 'url';
-import { StdioRpcClient, RpcFrameDecoder, encodeRpcFrame, RpcCancelledError, RpcRemoteError, RpcBackendExitError, RpcTransportError, resolveOpenCircuitDataDirectory } from '../../node/stdioRpc.js';
+import { StdioRpcClient, RpcFrameDecoder, encodeRpcFrame, RpcCancelledError, RpcRemoteError, RpcBackendExitError, RpcTransportError, resolveOpenCircuitDataDirectory, startOpenCircuitBackend } from '../../node/stdioRpc.js';
 
 const serverModule = pathToFileURL(join(dirname(fileURLToPath(import.meta.url)), '../../node/stdioRpc.js')).href;
 const serverScript = `
@@ -39,6 +41,20 @@ suite('StdioRpcClient', () => {
 	test('uses an absolute per-user app data directory for Core sessions', () => {
 		assert.strictEqual(resolveOpenCircuitDataDirectory('/home/tester/.config/ovscode'), '/home/tester/.config/ovscode/opencircuit');
 		assert.throws(() => resolveOpenCircuitDataDirectory('relative/path'), RpcTransportError);
+	});
+
+	test('starts Core with Electron Node and a host-local per-user data root', async () => {
+		const userDataPath = mkdtempSync(join(tmpdir(), 'ovscode-opencircuit-'));
+		const backendPath = join(userDataPath, 'backend.mjs');
+		writeFileSync(backendPath, `import { runStdioRpcServer } from ${JSON.stringify(serverModule)}; await runStdioRpcServer({ runtime: () => ({ dataRoot: process.env.OCIRCUIT_GLOBAL_DIR, runAsNode: process.env.ELECTRON_RUN_AS_NODE }) });`);
+		const environment = Object.fromEntries(['PATH', 'Path', 'SystemRoot', 'HOME', 'USERPROFILE'].flatMap(key => process.env[key] ? [[key, process.env[key]]] : []));
+		const client = startOpenCircuitBackend({ entrypoint: backendPath, userDataPath, environment });
+		try {
+			assert.deepStrictEqual(await client.request('runtime', null), { dataRoot: resolveOpenCircuitDataDirectory(userDataPath), runAsNode: '1' });
+		} finally {
+			await client.stop();
+			rmSync(userDataPath, { recursive: true, force: true });
+		}
 	});
 
 	test('decodes fragmented and coalesced Content-Length frames', () => {
@@ -76,6 +92,20 @@ suite('StdioRpcClient', () => {
 			abort.abort();
 			await assert.rejects(pending, RpcCancelledError);
 			assert.strictEqual(await client.request('echo', 'still alive'), 'still alive');
+		} finally {
+			client.dispose();
+		}
+	});
+
+	test('bounds outstanding requests and allows cancellation to release capacity', async () => {
+		const { client } = startBackend();
+		try {
+			const controllers = Array.from({ length: 256 }, () => new AbortController());
+			const pending = controllers.map(controller => client.request('slow', null, controller.signal));
+			await assert.rejects(client.request('slow', null), /IPC request limit reached/);
+			controllers.forEach(controller => controller.abort());
+			await Promise.all(pending.map(request => assert.rejects(request, RpcCancelledError)));
+			assert.strictEqual(await client.request('echo', 'capacity released'), 'capacity released');
 		} finally {
 			client.dispose();
 		}
