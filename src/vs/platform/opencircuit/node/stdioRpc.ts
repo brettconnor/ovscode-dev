@@ -271,7 +271,6 @@ export class StdioRpcClient {
 	private readonly _pending = new Map<string, PendingRequest>();
 	private readonly _eventListeners = new Set<(event: RpcEventData) => void>();
 	private readonly _child: ChildProcess;
-	private _nextId = 0;
 	private _closed = false;
 	private _readyState = false;
 	private _readyResolve!: () => void;
@@ -280,7 +279,7 @@ export class StdioRpcClient {
 		this._readyResolve = resolve;
 		this._readyReject = reject;
 	});
-	private readonly _startupTimer: NodeJS.Timeout;
+	private readonly _startupTimer: ReturnType<typeof setTimeout>;
 
 	constructor(child: ChildProcess) {
 		this._child = child;

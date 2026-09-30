@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { randomUUID } from 'crypto';
-import { RpcBackendExitError, RpcCancelledError, RpcRemoteError, RpcTransportError, StdioRpcClient, startOpenCircuitBackend, type OpenCircuitBackendProcessOptions, type RpcErrorCode, type RpcEventData } from './stdioRpc.js';
+import { RpcBackendExitError, RpcCancelledError, RpcRemoteError, RpcTransportError, startOpenCircuitBackend, type OpenCircuitBackendProcessOptions, type RpcErrorCode, type RpcEventData } from './stdioRpc.js';
 
 export interface OpenCircuitChatRef {
 	readonly sessionId: string;
