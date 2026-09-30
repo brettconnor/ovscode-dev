@@ -30,6 +30,7 @@ if (mode === 'malformed') {
     stream: async (_payload, context) => { for (let index = 1; index <= 40; index++) { await context.emit({ index }); } return 40; },
     host: async (_payload, context) => await context.requestHost('readFile', { filepath: 'file:///trusted/README.md' }),
     hostError: async (_payload, context) => await context.requestHost('readFile', { filepath: 'file:///trusted/private.md' }),
+    hostNoPayload: async (_payload, context) => await context.requestHost('getIdeInfo', undefined),
     hostForbidden: async (_payload, context) => await context.requestHost('writeFile', { path: '/outside', contents: 'not allowed' }),
     runtime: () => ({ dataRoot: process.env.OCIRCUIT_GLOBAL_DIR, runAsNode: process.env.ELECTRON_RUN_AS_NODE }),
     slow: (_payload, context) => new Promise(resolve => {
@@ -119,6 +120,10 @@ suite('StdioRpcClient', () => {
 		const hostCalls: string[] = [];
 		const { client } = startBackend('normal', async (method, payload) => {
 				hostCalls.push(method);
+				if (method === 'getIdeInfo') {
+					assert.strictEqual(payload, undefined);
+					return { name: 'OVSCode' };
+				}
 				if ((payload as { filepath: string }).filepath.endsWith('private.md')) {
 					throw new Error('private file contents leaked');
 				}
@@ -127,9 +132,10 @@ suite('StdioRpcClient', () => {
 		});
 		try {
 			assert.deepStrictEqual(await client.request('host', null), { contents: 'from trusted workspace' });
+			assert.deepStrictEqual(await client.request('hostNoPayload', null), { name: 'OVSCode' });
 			await assert.rejects(client.request('hostError', null), error => error instanceof RpcRemoteError && error.code === 'INTERNAL' && error.message === 'Request failed' && !error.stack?.includes('private file'));
 			await assert.rejects(client.request('hostForbidden', null), error => error instanceof RpcRemoteError && error.code === 'INTERNAL' && error.message === 'Request failed');
-			assert.deepStrictEqual(hostCalls, ['readFile', 'readFile']);
+			assert.deepStrictEqual(hostCalls, ['readFile', 'getIdeInfo', 'readFile']);
 		} finally {
 			client.dispose();
 		}

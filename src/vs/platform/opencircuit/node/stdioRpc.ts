@@ -617,5 +617,5 @@ export async function runStdioRpcServer(handlers: Readonly<Record<string, RpcHan
 }
 
 function isHostRequestPayload(value: unknown): value is { readonly type: 'hostRequest'; readonly callId: string; readonly method: string; readonly payload: unknown } {
-	return !!value && typeof value === 'object' && (value as Record<string, unknown>).type === 'hostRequest' && isRequestId((value as Record<string, unknown>).callId) && typeof (value as Record<string, unknown>).method === 'string' && 'payload' in value;
+	return !!value && typeof value === 'object' && (value as Record<string, unknown>).type === 'hostRequest' && isRequestId((value as Record<string, unknown>).callId) && typeof (value as Record<string, unknown>).method === 'string';
 }
