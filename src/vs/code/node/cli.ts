@@ -45,7 +45,7 @@ function hasUnsupportedExtensionManagementCommand(argv: NativeParsedArgs): boole
 		|| !!argv['locate-extension'];
 }
 
-export async function main(argv: string[]): Promise<void> {
+export async function main(argv: string[]): Promise<number | void> {
 	let args: NativeParsedArgs;
 
 	try {
@@ -57,8 +57,7 @@ export async function main(argv: string[]): Promise<void> {
 
 	if (hasUnsupportedExtensionManagementCommand(args)) {
 		console.error('Extension installation, listing, updating, uninstalling, and location commands are not supported in this product.');
-		process.exitCode = 1;
-		return;
+		return 1;
 	}
 
 	for (const subcommand of NATIVE_CLI_COMMANDS) {
@@ -600,7 +599,7 @@ function eventuallyExit(code: number): void {
 }
 
 main(process.argv)
-	.then(() => eventuallyExit(0))
+	.then(code => eventuallyExit(code ?? 0))
 	.then(null, err => {
 		console.error(err.message || err.stack || err);
 		eventuallyExit(1);
