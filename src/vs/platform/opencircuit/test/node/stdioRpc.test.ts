@@ -28,6 +28,9 @@ if (mode === 'malformed') {
     conflict: () => { throw Object.assign(new Error('session contents leaked'), { code: 'HISTORY_SAVE_CONFLICT' }); },
     event: async (_payload, context) => { await context.emit({ type: 'progress', step: 1 }); return 'done'; },
     stream: async (_payload, context) => { for (let index = 1; index <= 40; index++) { await context.emit({ index }); } return 40; },
+    host: async (_payload, context) => await context.requestHost('readFile', { filepath: 'file:///trusted/README.md' }),
+    hostError: async (_payload, context) => await context.requestHost('readFile', { filepath: 'file:///trusted/private.md' }),
+    hostForbidden: async (_payload, context) => await context.requestHost('writeFile', { path: '/outside', contents: 'not allowed' }),
     runtime: () => ({ dataRoot: process.env.OCIRCUIT_GLOBAL_DIR, runAsNode: process.env.ELECTRON_RUN_AS_NODE }),
     slow: (_payload, context) => new Promise(resolve => {
       const timer = setTimeout(() => resolve('finished'), 5000);
@@ -38,9 +41,9 @@ if (mode === 'malformed') {
 }
 `;
 
-function startBackend(mode = 'normal'): { child: ChildProcess; client: StdioRpcClient } {
+function startBackend(mode = 'normal', onHostRequest?: (method: string, payload: unknown, signal?: AbortSignal) => unknown | Promise<unknown>): { child: ChildProcess; client: StdioRpcClient } {
 	const child = spawn(process.execPath, ['--input-type=module', '-e', serverScript, serverModule, mode], { stdio: ['pipe', 'pipe', 'ignore'] });
-	return { child, client: new StdioRpcClient(child) };
+	return { child, client: new StdioRpcClient(child, onHostRequest) };
 }
 
 suite('StdioRpcClient', () => {
@@ -107,6 +110,26 @@ suite('StdioRpcClient', () => {
 			abort.abort();
 			await assert.rejects(pending, RpcCancelledError);
 			assert.strictEqual(await client.request('echo', 'still alive'), 'still alive');
+		} finally {
+			client.dispose();
+		}
+	});
+
+	test('round trips bounded host capability calls and returns sanitized host errors', async () => {
+		const hostCalls: string[] = [];
+		const { client } = startBackend('normal', async (method, payload) => {
+				hostCalls.push(method);
+				if ((payload as { filepath: string }).filepath.endsWith('private.md')) {
+					throw new Error('private file contents leaked');
+				}
+				assert.deepStrictEqual(payload, { filepath: 'file:///trusted/README.md' });
+				return { contents: 'from trusted workspace' };
+		});
+		try {
+			assert.deepStrictEqual(await client.request('host', null), { contents: 'from trusted workspace' });
+			await assert.rejects(client.request('hostError', null), error => error instanceof RpcRemoteError && error.code === 'INTERNAL' && error.message === 'Request failed' && !error.stack?.includes('private file'));
+			await assert.rejects(client.request('hostForbidden', null), error => error instanceof RpcRemoteError && error.code === 'INTERNAL' && error.message === 'Request failed');
+			assert.deepStrictEqual(hostCalls, ['readFile', 'readFile']);
 		} finally {
 			client.dispose();
 		}

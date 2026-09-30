@@ -15,6 +15,11 @@ const MAX_IN_FLIGHT_REQUESTS = 256;
 const EVENT_CREDIT_WINDOW = 16;
 const STARTUP_TIMEOUT_MS = 10_000;
 const STOP_GRACE_PERIOD_MS = 5_000;
+const CORE_HOST_CAPABILITIES = new Set([
+	'getIdeInfo', 'getIdeSettings', 'getWorkspaceDirs', 'getUniqueId', 'isTelemetryEnabled', 'isWorkspaceRemote',
+	'fileExists', 'readFile', 'readRangeInFile', 'getSearchResults', 'getFileResults', 'getOpenFiles', 'getCurrentFile',
+	'getPinnedFiles', 'getProblems', 'getGitRootPath', 'getBranch', 'getRepoName', 'listDir', 'getFileStats', 'getTags',
+]);
 
 export type RpcErrorCode = 'INVALID_REQUEST' | 'HISTORY_INVALID_CREATE_REQUEST' | 'HISTORY_NOT_FOUND' | 'HISTORY_CORRUPT' | 'HISTORY_STORAGE' | 'HISTORY_CREATE_IDEMPOTENCY_CONFLICT' | 'HISTORY_SAVE_CONFLICT' | 'INTERNAL';
 
@@ -81,7 +86,16 @@ interface RpcHello {
 	readonly requestId: string;
 }
 
-type RpcMessage = RpcRequest | RpcCancel | RpcCredit | RpcEvent | RpcResult | RpcError | RpcHello;
+interface RpcHostResult {
+	readonly protocolVersion: 1;
+	readonly kind: 'hostResult';
+	readonly requestId: string;
+	readonly callId: string;
+	readonly payload?: unknown;
+	readonly code?: RpcErrorCode;
+}
+
+type RpcMessage = RpcRequest | RpcCancel | RpcCredit | RpcEvent | RpcResult | RpcError | RpcHello | RpcHostResult;
 
 interface PendingRequest {
 	resolve(value: unknown): void;
@@ -191,9 +205,11 @@ function isRpcMessage(value: unknown): value is RpcMessage {
 		return false;
 	}
 	switch (message.kind) {
-		case 'hello':
-		case 'cancel':
-			return true;
+	case 'hello':
+	case 'cancel':
+		return true;
+	case 'hostResult':
+		return isRequestId(message.callId) && ((Object.hasOwn(message, 'payload') && message.code === undefined) || (message.payload === undefined && typeof message.code === 'string'));
 		case 'request':
 			return typeof message.method === 'string' && message.method.length > 0 && message.method.length <= 256 && 'payload' in message;
 		case 'credit':
@@ -247,6 +263,8 @@ export interface OpenCircuitBackendProcessOptions {
 	/** Caller-filtered environment variables; secrets should not be inherited implicitly. */
 	readonly environment: NodeJS.ProcessEnv;
 	readonly args?: readonly string[];
+	/** Handles explicitly supported host operations; unsupported capabilities must fail closed. */
+	readonly onHostRequest?: (method: string, payload: unknown, signal?: AbortSignal) => unknown | Promise<unknown>;
 }
 
 /** Starts Core with the Node runtime bundled in OVSCode's Electron executable. */
@@ -262,7 +280,7 @@ export function startOpenCircuitBackend(options: OpenCircuitBackendProcessOption
 			OCIRCUIT_GLOBAL_DIR: resolveOpenCircuitDataDirectory(options.userDataPath),
 		},
 	});
-	return new StdioRpcClient(child);
+	return new StdioRpcClient(child, options.onHostRequest);
 }
 
 /** Client for one child process whose stdin/stdout carry framed RPC only. */
@@ -281,7 +299,7 @@ export class StdioRpcClient {
 	});
 	private readonly _startupTimer: ReturnType<typeof setTimeout>;
 
-	constructor(child: ChildProcess) {
+	constructor(child: ChildProcess, private readonly _onHostRequest?: OpenCircuitBackendProcessOptions['onHostRequest']) {
 		this._child = child;
 		if (!this._child.stdin || !this._child.stdout) {
 			throw new RpcTransportError('Backend process requires piped stdin and stdout');
@@ -386,9 +404,22 @@ export class StdioRpcClient {
 						}
 						pending.lastSequence = message.sequence;
 						const event = { requestId: message.requestId, sequence: message.sequence, payload: message.payload };
-						await pending.onEvent?.(event);
-						for (const listener of this._eventListeners) {
-							listener(event);
+						if (isHostRequestPayload(message.payload)) {
+							try {
+								if (!CORE_HOST_CAPABILITIES.has(message.payload.method) || !this._onHostRequest) {
+									throw new RpcTransportError('Unsupported host capability');
+								}
+								const payload = await this._onHostRequest(message.payload.method, message.payload.payload, pending.signal);
+								await writeFrame(this._child.stdin!, { protocolVersion: PROTOCOL_VERSION, kind: 'hostResult', requestId: message.requestId, callId: message.payload.callId, payload: payload === undefined ? null : payload });
+							} catch (error) {
+								const code = isSafeError(error) ? safeErrorCode(error.code) : 'INTERNAL';
+								await writeFrame(this._child.stdin!, { protocolVersion: PROTOCOL_VERSION, kind: 'hostResult', requestId: message.requestId, callId: message.payload.callId, code });
+							}
+						} else {
+							await pending.onEvent?.(event);
+							for (const listener of this._eventListeners) {
+								listener(event);
+							}
 						}
 						await writeFrame(this._child.stdin!, { protocolVersion: PROTOCOL_VERSION, kind: 'credit', requestId: message.requestId, credits: 1 });
 					});
@@ -450,6 +481,7 @@ export class StdioRpcClient {
 export interface RpcRequestContext {
 	readonly signal: AbortSignal;
 	emit(payload: unknown): Promise<void>;
+	requestHost(method: string, payload: unknown): Promise<unknown>;
 }
 
 export type RpcHandler = (payload: unknown, context: RpcRequestContext) => unknown | Promise<unknown>;
@@ -459,6 +491,7 @@ interface ActiveRequest {
 	readonly waiters: Array<() => void>;
 	credits: number;
 	sequence: number;
+	readonly hostCalls: Map<string, { resolve(payload: unknown): void; reject(error: Error): void }>;
 }
 
 /** Serves protocol-v1 requests from stdin and writes framed responses/events to stdout. */
@@ -482,6 +515,8 @@ export async function runStdioRpcServer(handlers: Readonly<Record<string, RpcHan
 				active.delete(message.requestId);
 				request?.controller.abort();
 				request?.waiters.splice(0).forEach(resolve => resolve());
+				request?.hostCalls.forEach(call => call.reject(new RpcCancelledError()));
+				request?.hostCalls.clear();
 			} else if (message.kind === 'credit') {
 				const request = active.get(message.requestId);
 				if (request) {
@@ -493,13 +528,27 @@ export async function runStdioRpcServer(handlers: Readonly<Record<string, RpcHan
 					request.credits += message.credits;
 					request.waiters.splice(0).forEach(resolve => resolve());
 				}
+			} else if (message.kind === 'hostResult') {
+				const request = active.get(message.requestId);
+				const call = request?.hostCalls.get(message.callId);
+				if (!request || !call) {
+					input.destroy();
+					output.end();
+					return;
+				}
+				request.hostCalls.delete(message.callId);
+				if (message.code) {
+					call.reject(new RpcRemoteError(message.code));
+				} else {
+					call.resolve(message.payload);
+				}
 			} else if (message.kind === 'request') {
 				if (active.has(message.requestId)) {
 					input.destroy();
 					output.end();
 					return;
 				}
-				const request: ActiveRequest = { controller: new AbortController(), waiters: [], credits: 0, sequence: 0 };
+				const request: ActiveRequest = { controller: new AbortController(), waiters: [], credits: 0, sequence: 0, hostCalls: new Map() };
 				active.set(message.requestId, request);
 				const handler = Object.hasOwn(handlers, message.method) ? handlers[message.method] : undefined;
 				void (async () => {
@@ -519,6 +568,30 @@ export async function runStdioRpcServer(handlers: Readonly<Record<string, RpcHan
 								request.credits--;
 								request.sequence++;
 								await write({ protocolVersion: PROTOCOL_VERSION, kind: 'event', requestId: message.requestId, sequence: request.sequence, payload: eventPayload });
+							},
+							requestHost: async (method, hostPayload) => {
+								if (!/^[a-z][A-Za-z0-9.]{0,127}$/.test(method)) {
+									throw new RpcTransportError('Invalid host capability');
+								}
+								const callId = randomUUID();
+								let resolve!: (payload: unknown) => void;
+								let reject!: (error: Error) => void;
+								const response = new Promise<unknown>((res, rej) => { resolve = res; reject = rej; });
+								request.hostCalls.set(callId, { resolve, reject });
+								try {
+									while (request.credits === 0 && !request.controller.signal.aborted) {
+										await new Promise<void>(wake => request.waiters.push(wake));
+									}
+									if (request.controller.signal.aborted) {
+										throw new RpcCancelledError();
+									}
+									request.credits--;
+									request.sequence++;
+									await write({ protocolVersion: PROTOCOL_VERSION, kind: 'event', requestId: message.requestId, sequence: request.sequence, payload: { type: 'hostRequest', callId, method, payload: hostPayload } });
+									return await response;
+								} finally {
+									request.hostCalls.delete(callId);
+								}
 							},
 						});
 						if (!request.controller.signal.aborted) {
@@ -541,4 +614,8 @@ export async function runStdioRpcServer(handlers: Readonly<Record<string, RpcHan
 		input.once('close', resolve);
 		input.once('error', resolve);
 	});
+}
+
+function isHostRequestPayload(value: unknown): value is { readonly type: 'hostRequest'; readonly callId: string; readonly method: string; readonly payload: unknown } {
+	return !!value && typeof value === 'object' && (value as Record<string, unknown>).type === 'hostRequest' && isRequestId((value as Record<string, unknown>).callId) && typeof (value as Record<string, unknown>).method === 'string' && 'payload' in value;
 }
