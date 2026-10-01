@@ -17,6 +17,7 @@ const serverScript = `
 const { randomUUID } = await import('node:crypto');
 const { runStdioRpcServer, encodeRpcFrame } = await import(process.argv[1]);
 const mode = process.argv[2];
+let backgroundHostResult;
 if (mode === 'malformed') {
   process.stdout.write(encodeRpcFrame({ protocolVersion: 1, kind: 'hello', requestId: randomUUID() }));
   process.stdin.once('data', () => process.stdout.write(Buffer.alloc(4)));
@@ -32,6 +33,8 @@ if (mode === 'malformed') {
     hostError: async (_payload, context) => await context.requestHost('readFile', { filepath: 'file:///trusted/private.md' }),
     hostNoPayload: async (_payload, context) => await context.requestHost('getIdeInfo', undefined),
     hostForbidden: async (_payload, context) => await context.requestHost('writeFile', { path: '/outside', contents: 'not allowed' }),
+    backgroundHost: async (_payload, context) => { setTimeout(() => { void context.requestHost('getIdeInfo', undefined).then(value => backgroundHostResult = value); }, 25); return 'returned before host response'; },
+    waitBackgroundHost: async () => new Promise(resolve => setTimeout(() => resolve(backgroundHostResult), 100)),
     runtime: () => ({ dataRoot: process.env.OCIRCUIT_GLOBAL_DIR, runAsNode: process.env.ELECTRON_RUN_AS_NODE }),
     slow: (_payload, context) => new Promise(resolve => {
       const timer = setTimeout(() => resolve('finished'), 5000);
@@ -121,7 +124,7 @@ suite('StdioRpcClient', () => {
 		const { client } = startBackend('normal', async (method, payload) => {
 				hostCalls.push(method);
 				if (method === 'getIdeInfo') {
-					assert.strictEqual(payload, undefined);
+					assert.strictEqual(payload, null);
 					return { name: 'OVSCode' };
 				}
 				if ((payload as { filepath: string }).filepath.endsWith('private.md')) {
@@ -133,9 +136,11 @@ suite('StdioRpcClient', () => {
 		try {
 			assert.deepStrictEqual(await client.request('host', null), { contents: 'from trusted workspace' });
 			assert.deepStrictEqual(await client.request('hostNoPayload', null), { name: 'OVSCode' });
+			assert.strictEqual(await client.request('backgroundHost', null), 'returned before host response');
+			assert.deepStrictEqual(await client.request('waitBackgroundHost', null), { name: 'OVSCode' });
 			await assert.rejects(client.request('hostError', null), error => error instanceof RpcRemoteError && error.code === 'INTERNAL' && error.message === 'Request failed' && !error.stack?.includes('private file'));
 			await assert.rejects(client.request('hostForbidden', null), error => error instanceof RpcRemoteError && error.code === 'INTERNAL' && error.message === 'Request failed');
-			assert.deepStrictEqual(hostCalls, ['readFile', 'getIdeInfo', 'readFile']);
+			assert.deepStrictEqual(hostCalls, ['readFile', 'getIdeInfo', 'getIdeInfo', 'readFile']);
 		} finally {
 			client.dispose();
 		}

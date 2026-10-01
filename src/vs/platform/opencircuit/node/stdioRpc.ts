@@ -12,11 +12,13 @@ const PROTOCOL_VERSION = 1;
 const MAX_FRAME_BYTES = 8 * 1024 * 1024;
 const MAX_ID_LENGTH = 128;
 const MAX_IN_FLIGHT_REQUESTS = 256;
+const MAX_IN_FLIGHT_HOST_REQUESTS = 64;
 const EVENT_CREDIT_WINDOW = 16;
 const STARTUP_TIMEOUT_MS = 10_000;
 const STOP_GRACE_PERIOD_MS = 5_000;
 const CORE_HOST_CAPABILITIES = new Set([
 	'getIdeInfo', 'getIdeSettings', 'getWorkspaceDirs', 'getUniqueId', 'isTelemetryEnabled', 'isWorkspaceRemote',
+	'indexProgress',
 	'fileExists', 'readFile', 'readRangeInFile', 'getSearchResults', 'getFileResults', 'getOpenFiles', 'getCurrentFile',
 	'getPinnedFiles', 'getProblems', 'getGitRootPath', 'getBranch', 'getRepoName', 'listDir', 'getFileStats', 'getTags',
 ]);
@@ -95,7 +97,16 @@ interface RpcHostResult {
 	readonly code?: RpcErrorCode;
 }
 
-type RpcMessage = RpcRequest | RpcCancel | RpcCredit | RpcEvent | RpcResult | RpcError | RpcHello | RpcHostResult;
+interface RpcHostRequest {
+	readonly protocolVersion: 1;
+	readonly kind: 'hostRequest';
+	readonly requestId: string;
+	readonly callId: string;
+	readonly method: string;
+	readonly payload: unknown;
+}
+
+type RpcMessage = RpcRequest | RpcCancel | RpcCredit | RpcEvent | RpcResult | RpcError | RpcHello | RpcHostRequest | RpcHostResult;
 
 interface PendingRequest {
 	resolve(value: unknown): void;
@@ -210,6 +221,8 @@ function isRpcMessage(value: unknown): value is RpcMessage {
 		return true;
 	case 'hostResult':
 		return isRequestId(message.callId) && ((Object.hasOwn(message, 'payload') && message.code === undefined) || (message.payload === undefined && typeof message.code === 'string'));
+	case 'hostRequest':
+		return isRequestId(message.callId) && typeof message.method === 'string' && message.method.length > 0 && message.method.length <= 128 && 'payload' in message;
 		case 'request':
 			return typeof message.method === 'string' && message.method.length > 0 && message.method.length <= 256 && 'payload' in message;
 		case 'credit':
@@ -287,6 +300,8 @@ export function startOpenCircuitBackend(options: OpenCircuitBackendProcessOption
 export class StdioRpcClient {
 	private readonly _decoder = new RpcFrameDecoder();
 	private readonly _pending = new Map<string, PendingRequest>();
+	private _inFlightHostRequests = 0;
+	private readonly _hostRequestController = new AbortController();
 	private readonly _eventListeners = new Set<(event: RpcEventData) => void>();
 	private readonly _child: ChildProcess;
 	private _closed = false;
@@ -393,7 +408,30 @@ export class StdioRpcClient {
 					this._readyResolve();
 					continue;
 				}
-				if (message.kind === 'event') {
+				if (message.kind === 'hostRequest') {
+					this._inFlightHostRequests++;
+					void (async () => {
+						let code: RpcErrorCode | undefined;
+						let payload: unknown;
+						try {
+							if (this._inFlightHostRequests > MAX_IN_FLIGHT_HOST_REQUESTS || !CORE_HOST_CAPABILITIES.has(message.method) || !this._onHostRequest) {
+								throw new RpcTransportError('Unsupported host capability');
+							}
+							payload = await this._onHostRequest(message.method, message.payload, this._hostRequestController.signal);
+						} catch (error) {
+							code = isSafeError(error) ? safeErrorCode(error.code) : 'INTERNAL';
+						}
+						if (this._closed) {
+							return;
+						}
+						await writeFrame(this._child.stdin!, code
+							? { protocolVersion: PROTOCOL_VERSION, kind: 'hostResult', requestId: message.requestId, callId: message.callId, code }
+							: { protocolVersion: PROTOCOL_VERSION, kind: 'hostResult', requestId: message.requestId, callId: message.callId, payload: payload === undefined ? null : payload });
+					})().catch(error => {
+						this._failAll(error instanceof RpcTransportError ? error : new RpcTransportError('IPC host request failed'));
+						this._child.kill();
+					}).finally(() => this._inFlightHostRequests--);
+				} else if (message.kind === 'event') {
 					const pending = this._pending.get(message.requestId);
 					if (!pending || pending.terminal) {
 						throw new RpcTransportError('Unexpected IPC event');
@@ -468,6 +506,7 @@ export class StdioRpcClient {
 			return;
 		}
 		this._closed = true;
+		this._hostRequestController.abort();
 		clearTimeout(this._startupTimer);
 		this._readyReject(error);
 		for (const pending of this._pending.values()) {
@@ -491,13 +530,19 @@ interface ActiveRequest {
 	readonly waiters: Array<() => void>;
 	credits: number;
 	sequence: number;
-	readonly hostCalls: Map<string, { resolve(payload: unknown): void; reject(error: Error): void }>;
+}
+
+interface ActiveHostCall {
+	readonly requestId: string;
+	resolve(payload: unknown): void;
+	reject(error: Error): void;
 }
 
 /** Serves protocol-v1 requests from stdin and writes framed responses/events to stdout. */
 export async function runStdioRpcServer(handlers: Readonly<Record<string, RpcHandler>>, input: Readable = process.stdin, output: Writable = process.stdout): Promise<void> {
 	const decoder = new RpcFrameDecoder();
 	const active = new Map<string, ActiveRequest>();
+	const hostCalls = new Map<string, ActiveHostCall>();
 	const write = (message: RpcMessage) => writeFrame(output, message);
 	await write({ protocolVersion: PROTOCOL_VERSION, kind: 'hello', requestId: randomUUID() });
 	input.on('data', (chunk: Buffer) => {
@@ -515,8 +560,6 @@ export async function runStdioRpcServer(handlers: Readonly<Record<string, RpcHan
 				active.delete(message.requestId);
 				request?.controller.abort();
 				request?.waiters.splice(0).forEach(resolve => resolve());
-				request?.hostCalls.forEach(call => call.reject(new RpcCancelledError()));
-				request?.hostCalls.clear();
 			} else if (message.kind === 'credit') {
 				const request = active.get(message.requestId);
 				if (request) {
@@ -529,14 +572,13 @@ export async function runStdioRpcServer(handlers: Readonly<Record<string, RpcHan
 					request.waiters.splice(0).forEach(resolve => resolve());
 				}
 			} else if (message.kind === 'hostResult') {
-				const request = active.get(message.requestId);
-				const call = request?.hostCalls.get(message.callId);
-				if (!request || !call) {
+				const call = hostCalls.get(message.callId);
+				if (!call || call.requestId !== message.requestId) {
 					input.destroy();
 					output.end();
 					return;
 				}
-				request.hostCalls.delete(message.callId);
+				hostCalls.delete(message.callId);
 				if (message.code) {
 					call.reject(new RpcRemoteError(message.code));
 				} else {
@@ -548,7 +590,7 @@ export async function runStdioRpcServer(handlers: Readonly<Record<string, RpcHan
 					output.end();
 					return;
 				}
-				const request: ActiveRequest = { controller: new AbortController(), waiters: [], credits: 0, sequence: 0, hostCalls: new Map() };
+				const request: ActiveRequest = { controller: new AbortController(), waiters: [], credits: 0, sequence: 0 };
 				active.set(message.requestId, request);
 				const handler = Object.hasOwn(handlers, message.method) ? handlers[message.method] : undefined;
 				void (async () => {
@@ -573,24 +615,20 @@ export async function runStdioRpcServer(handlers: Readonly<Record<string, RpcHan
 								if (!/^[a-z][A-Za-z0-9.]{0,127}$/.test(method)) {
 									throw new RpcTransportError('Invalid host capability');
 								}
+								if (hostCalls.size >= MAX_IN_FLIGHT_HOST_REQUESTS) {
+									throw new RpcTransportError('IPC host request limit reached');
+								}
 								const callId = randomUUID();
+								const hostRequestId = randomUUID();
 								let resolve!: (payload: unknown) => void;
 								let reject!: (error: Error) => void;
 								const response = new Promise<unknown>((res, rej) => { resolve = res; reject = rej; });
-								request.hostCalls.set(callId, { resolve, reject });
+								hostCalls.set(callId, { requestId: hostRequestId, resolve, reject });
 								try {
-									while (request.credits === 0 && !request.controller.signal.aborted) {
-										await new Promise<void>(wake => request.waiters.push(wake));
-									}
-									if (request.controller.signal.aborted) {
-										throw new RpcCancelledError();
-									}
-									request.credits--;
-									request.sequence++;
-									await write({ protocolVersion: PROTOCOL_VERSION, kind: 'event', requestId: message.requestId, sequence: request.sequence, payload: { type: 'hostRequest', callId, method, payload: hostPayload } });
+									await write({ protocolVersion: PROTOCOL_VERSION, kind: 'hostRequest', requestId: hostRequestId, callId, method, payload: hostPayload === undefined ? null : hostPayload });
 									return await response;
 								} finally {
-									request.hostCalls.delete(callId);
+									hostCalls.delete(callId);
 								}
 							},
 						});
