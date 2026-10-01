@@ -5,10 +5,12 @@
 
 import assert from 'assert';
 import { spawn, type ChildProcess } from 'child_process';
+import { EventEmitter } from 'events';
 import { mkdtempSync, rmSync, writeFileSync } from 'fs';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
 import { randomUUID } from 'crypto';
+import { PassThrough } from 'stream';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { RpcBackendExitError, RpcCancelledError, RpcEventData, RpcFrameDecoder, RpcRemoteError, RpcTransportError, StdioRpcClient, encodeRpcFrame, resolveOpenCircuitDataDirectory, startOpenCircuitBackend } from '../../node/stdioRpc.js';
 
@@ -79,6 +81,29 @@ suite('StdioRpcClient', () => {
 			{ protocolVersion: 1, kind: 'event', requestId: (JSON.parse(first.subarray(4).toString('utf8')) as { requestId: string }).requestId, sequence: 1, payload: { name: 'a' } },
 			{ protocolVersion: 1, kind: 'event', requestId: (JSON.parse(second.subarray(4).toString('utf8')) as { requestId: string }).requestId, sequence: 1, payload: { name: 'b' } },
 		]);
+	});
+
+	test('writes the request and initial credit together before an immediate response can race them', async () => {
+		const child = new EventEmitter() as ChildProcess & { stdin: PassThrough; stdout: PassThrough; exitCode: number | null; signalCode: NodeJS.Signals | null; kill(): boolean };
+		const stdin = new PassThrough();
+		const stdout = new PassThrough();
+		Object.assign(child, { stdin, stdout, exitCode: null, signalCode: null, kill: () => { child.emit('close', 0, null); return true; } });
+		const writes: Buffer[] = [];
+		stdin.on('data', chunk => writes.push(Buffer.from(chunk)));
+		const client = new StdioRpcClient(child);
+		try {
+			stdout.write(encodeRpcFrame({ protocolVersion: 1, kind: 'hello', requestId: randomUUID() }));
+			const pending = client.request('instant', null);
+			await new Promise(resolve => setImmediate(resolve));
+			assert.strictEqual(writes.length, 1);
+			const frames = new RpcFrameDecoder().push(writes[0]);
+			assert.deepStrictEqual(frames.map(frame => frame.kind), ['request', 'credit']);
+			const request = frames[0] as { requestId: string };
+			stdout.write(encodeRpcFrame({ protocolVersion: 1, kind: 'result', requestId: request.requestId, payload: 'done' }));
+			assert.strictEqual(await pending, 'done');
+		} finally {
+			await client.stop();
+		}
 	});
 
 	test('round trips real process requests, sequenced events, and sanitized errors', async () => {

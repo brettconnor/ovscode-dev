@@ -262,7 +262,12 @@ function isSafeError(value: unknown): value is { code: unknown } {
 }
 
 function writeFrame(stream: Writable, message: RpcMessage): Promise<void> {
-	const frame = encodeRpcFrame(message);
+	return writeFrames(stream, [message]);
+}
+
+/** Writes related frames in one stream chunk so a terminal reply cannot race an initial credit frame. */
+function writeFrames(stream: Writable, messages: readonly RpcMessage[]): Promise<void> {
+	const frame = Buffer.concat(messages.map(encodeRpcFrame));
 	return new Promise((resolve, reject) => {
 		stream.write(frame, error => error ? reject(new RpcTransportError('IPC write failed')) : resolve());
 	});
@@ -356,8 +361,10 @@ export class StdioRpcClient {
 				if (!this._pending.has(requestId)) {
 					return;
 				}
-				await writeFrame(this._child.stdin!, { protocolVersion: PROTOCOL_VERSION, kind: 'request', requestId, method, payload });
-				await writeFrame(this._child.stdin!, { protocolVersion: PROTOCOL_VERSION, kind: 'credit', requestId, credits: EVENT_CREDIT_WINDOW });
+				await writeFrames(this._child.stdin!, [
+					{ protocolVersion: PROTOCOL_VERSION, kind: 'request', requestId, method, payload },
+					{ protocolVersion: PROTOCOL_VERSION, kind: 'credit', requestId, credits: EVENT_CREDIT_WINDOW },
+				]);
 			}).catch(() => {
 				if (this._pending.delete(requestId)) {
 					this._removeAbortListener(pending);
