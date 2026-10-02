@@ -1103,6 +1103,8 @@ export class ChatWidget extends Disposable implements IChatWidget {
 			...this.viewOptions.rendererOptions,
 			renderStyle
 		});
+		this.listWidget.setVisible(this.visible);
+		this.input.setVisible(this.visible);
 
 		if (this.viewOptions.enableFind) {
 			const host: IChatFindHost = {
@@ -2061,8 +2063,8 @@ export class ChatWidget extends Disposable implements IChatWidget {
 		const wasVisible = this._visible.get();
 		this._visible.set(visible, undefined);
 		this.visibleChangeCount++;
-		this.listWidget.setVisible(visible);
-		this.input.setVisible(visible);
+		this.listWidget?.setVisible(visible);
+		this.input?.setVisible(visible);
 
 		if (visible) {
 			if (!wasVisible) {
