@@ -2845,19 +2845,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 
 	}
 
-	private hasWorkspaceScmRepository(): boolean {
-		const folders = this.workspaceContextService.getWorkspace().folders;
-		if (folders.length === 0) {
-			return false;
-		}
-		for (const repo of this.scmService.repositories) {
-			if (repo.provider.rootUri && this.workspaceContextService.getWorkspaceFolder(repo.provider.rootUri)) {
-				return true;
-			}
-		}
-		return false;
-	}
-
 	private getEffectiveSessionType(sessionResource: URI | undefined): string | undefined {
 		return this.options.sessionTypePickerDelegate?.getActiveSessionProvider?.() ?? (sessionResource ? getChatSessionType(sessionResource) : undefined);
 	}
@@ -3516,7 +3503,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 
 		const hoverDelegate = this._register(createInstantHoverDelegate());
 
-		const { location } = this.getWidgetLocationInfo(widget);
 		const focusedWidget = observableFromEvent(this, this.chatWidgetService.onDidChangeFocusedSession, () => this.chatWidgetService.lastFocusedWidget);
 		const voiceSessionResource = observableFromEvent(this, widget.onDidChangeViewModel, () => widget.viewModel?.sessionResource);
 		const isVoiceInputActive = derived(this, reader => focusedWidget.read(reader) === widget);

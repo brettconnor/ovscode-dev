@@ -18,7 +18,6 @@ import { ITelemetryService } from '../../../../../../platform/telemetry/common/t
 import { NullTelemetryService } from '../../../../../../platform/telemetry/common/telemetryUtils.js';
 import { ILogService, NullLogService } from '../../../../../../platform/log/common/log.js';
 import { IsSessionsWindowContext } from '../../../../../common/contextkeys.js';
-import { AGENT_HOST_EXISTING_SESSION_HARNESS_PICKER_ENABLED_CONTEXT_KEY } from '../../../../../../platform/agentHost/common/agentHostEnablementService.js';
 import { type IChatAcceptInputOptions, IChatWidget, IChatWidgetService } from '../../../browser/chat.js';
 import { CancelAction, ChatEditingSessionSubmitAction, ChatSubmitAction, ExecuteHandoffActionId, GetHandoffsActionId, OpenModelPickerAction, registerChatExecuteActions } from '../../../browser/actions/chatExecuteActions.js';
 import { ChatQueueMessageAction, ChatSteerWithMessageAction } from '../../../browser/actions/chatQueueActions.js';
