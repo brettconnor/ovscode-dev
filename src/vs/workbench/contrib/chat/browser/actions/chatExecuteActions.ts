@@ -23,9 +23,8 @@ import { KeybindingWeight } from '../../../../../platform/keybinding/common/keyb
 import { ILogService } from '../../../../../platform/log/common/log.js';
 import { ITelemetryService } from '../../../../../platform/telemetry/common/telemetry.js';
 import { AgentHostAllowSignedOutWhenUsableSettingId } from '../../../../../platform/agentHost/common/agentService.js';
-import { AGENT_HOST_EXISTING_SESSION_HARNESS_PICKER_ENABLED_CONTEXT_KEY } from '../../../../../platform/agentHost/common/agentHostEnablementService.js';
 import { IsSessionsWindowContext } from '../../../../common/contextkeys.js';
-import { ChatContextKeyExprs, ChatContextKeys } from '../../common/actions/chatContextKeys.js';
+import { ChatContextKeys } from '../../common/actions/chatContextKeys.js';
 import { buildCustomAgentHandoffsInfo, getHandoffId, IChatMode, IChatModeService, IChatModes } from '../../common/chatModes.js';
 import { reportChatModeChange } from '../../common/chatModeTelemetry.js';
 import { chatVariableLeader } from '../../common/requestParser/chatParserTypes.js';
@@ -513,107 +512,6 @@ export class OpenModePickerAction extends Action2 {
 		const widget = widgetService.lastFocusedWidget;
 		if (widget) {
 			widget.input.openModePicker();
-		}
-	}
-}
-
-export class OpenSessionTargetPickerAction extends Action2 {
-	static readonly ID = 'workbench.action.chat.openSessionTargetPicker';
-
-	constructor() {
-		super({
-			id: OpenSessionTargetPickerAction.ID,
-			title: localize2('interactive.openSessionTargetPicker.label', "Open Session Target Picker"),
-			tooltip: localize('setSessionTarget', "Set Session Target"),
-			category: CHAT_CATEGORY,
-			f1: false,
-			precondition: ContextKeyExpr.and(ChatContextKeys.enabled, ContextKeyExpr.or(ChatContextKeys.chatSessionIsEmpty, ChatContextKeys.inAgentSessionsWelcome), ChatContextKeys.currentlyEditingInput.negate(), ChatContextKeys.currentlyEditing.negate()),
-			menu: [
-				{
-					id: MenuId.ChatInput,
-					order: 0,
-					when: ContextKeyExpr.and(
-						ChatContextKeys.enabled,
-						ChatContextKeys.location.isEqualTo(ChatAgentLocation.Chat),
-						ChatContextKeys.inQuickChat.negate(),
-						ChatContextKeys.chatSessionIsEmpty,
-						IsSessionsWindowContext),
-					group: 'navigation',
-				},
-				{
-					id: MenuId.ChatInputSecondary,
-					order: 0,
-					when: ContextKeyExpr.and(
-						ChatContextKeys.enabled,
-						ChatContextKeys.location.isEqualTo(ChatAgentLocation.Chat),
-						ChatContextKeys.inQuickChat.negate(),
-						IsSessionsWindowContext.negate(),
-						ChatContextKeys.chatSessionIsEmpty),
-					group: 'navigation',
-				},
-			]
-		});
-	}
-
-	override async run(accessor: ServicesAccessor, ...args: unknown[]): Promise<void> {
-		const widgetService = accessor.get(IChatWidgetService);
-		const widget = widgetService.lastFocusedWidget;
-		if (widget) {
-			widget.input.openSessionTargetPicker();
-		}
-	}
-}
-
-export class OpenDelegationPickerAction extends Action2 {
-	static readonly ID = 'workbench.action.chat.openDelegationPicker';
-
-	constructor() {
-		super({
-			id: OpenDelegationPickerAction.ID,
-			title: localize2('interactive.openDelegationPicker.label', "Open Delegation Picker"),
-			tooltip: localize('delegateSession', "Delegate Session"),
-			category: CHAT_CATEGORY,
-			f1: false,
-			precondition: ContextKeyExpr.and(
-				ChatContextKeys.enabled,
-				ChatContextKeys.chatSessionIsEmpty.negate(),
-				ChatContextKeys.currentlyEditingInput.negate(),
-				ChatContextKeys.currentlyEditing.negate(),
-				ChatContextKeys.chatSessionSupportsDelegation,
-				ChatContextKeyExprs.isAgentHostSessionItem?.negate(),
-			),
-			menu: [
-				{
-					id: MenuId.ChatInputSecondary,
-					order: 0.5,
-					when: ContextKeyExpr.and(
-						ChatContextKeys.enabled,
-						ChatContextKeys.location.isEqualTo(ChatAgentLocation.Chat),
-						ChatContextKeys.inQuickChat.negate(),
-						ChatContextKeys.chatSessionIsEmpty.negate(),
-						IsSessionsWindowContext.negate(),
-						ContextKeyExpr.or(
-							ContextKeyExpr.and(
-								ChatContextKeyExprs.isAgentHostSessionItem,
-								AGENT_HOST_EXISTING_SESSION_HARNESS_PICKER_ENABLED_CONTEXT_KEY,
-							),
-							ContextKeyExpr.and(
-								ChatContextKeys.chatSessionSupportsDelegation,
-								ChatContextKeyExprs.isAgentHostSessionItem?.negate(),
-							),
-						),
-					),
-					group: 'navigation',
-				},
-			]
-		});
-	}
-
-	override async run(accessor: ServicesAccessor, ...args: unknown[]): Promise<void> {
-		const widgetService = accessor.get(IChatWidgetService);
-		const widget = widgetService.lastFocusedWidget;
-		if (widget) {
-			widget.input.openDelegationPicker();
 		}
 	}
 }
@@ -1207,8 +1105,6 @@ export function registerChatExecuteActions(): DisposableStore {
 	store.add(registerAction2(OpenModelPickerAction));
 	store.add(registerAction2(OpenPermissionPickerAction));
 	store.add(registerAction2(OpenModePickerAction));
-	store.add(registerAction2(OpenSessionTargetPickerAction));
-	store.add(registerAction2(OpenDelegationPickerAction));
 	store.add(registerAction2(OpenWorkspacePickerAction));
 	store.add(registerAction2(ChatSessionPrimaryPickerAction));
 	store.add(registerAction2(ChangeChatModelAction));

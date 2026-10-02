@@ -113,7 +113,7 @@ import { IChatResponseViewModel, isResponseVM } from '../../../common/model/chat
 import { IChatAgentService } from '../../../common/participants/chatAgents.js';
 import { ILanguageModelToolsService } from '../../../common/tools/languageModelToolsService.js';
 import { ChatHistoryNavigator } from '../../../common/widget/chatWidgetHistoryService.js';
-import { ChatEditingSessionSubmitAction, ChatSessionPrimaryPickerAction, ChatSubmitAction, IChatExecuteActionContext, OpenDelegationPickerAction, OpenModelPickerAction, OpenModePickerAction, OpenPermissionPickerAction, OpenSessionTargetPickerAction, OpenWorkspacePickerAction } from '../../actions/chatExecuteActions.js';
+import { ChatEditingSessionSubmitAction, ChatSessionPrimaryPickerAction, ChatSubmitAction, IChatExecuteActionContext, OpenModelPickerAction, OpenModePickerAction, OpenPermissionPickerAction, OpenWorkspacePickerAction } from '../../actions/chatExecuteActions.js';
 import { ChatVoiceInputModeAction, VoiceInputModeActionViewItem } from '../../voiceInputMode/voiceInputModeActionViewItem.js';
 import { ChatSpeechToTextConnectingAction, ChatSpeechToTextPreparingAction, ToggleChatSpeechToTextAction } from '../../actions/chatSpeechToTextActions.js';
 import { DictationActionViewItem } from '../../speechToText/dictationActionViewItem.js';
@@ -164,11 +164,9 @@ import { ChatSessionArchiveNudge, IChatSessionArchiveNudgeOptions } from './chat
 import { ChatSelectedTools } from './chatSelectedTools.js';
 import { ChatPetAchievementIds, didExplicitlySwitchChatPetModel } from '../../chatPetAchievements.js';
 import { IChatPetService } from '../../chatPetService.js';
-import { DelegationSessionPickerActionItem } from './delegationSessionPickerActionItem.js';
 import { ModelPickerActionItem, IModelPickerDelegate, IModelPickerPresentationOptions } from './modelPicker/modelPickerActionItem.js';
 import { IModePickerDelegate, ModePickerActionItem } from './modePickerActionItem.js';
 import { IPermissionPickerDelegate, PermissionPickerActionItem } from './permissionPickerActionItem.js';
-import { SessionTypePickerActionItem } from './sessionTargetPickerActionItem.js';
 import { WorkspacePickerActionItem } from './workspacePickerActionItem.js';
 import { ChatContextUsageWidget } from '../../widgetHosts/viewPane/chatContextUsageWidget.js';
 import { Target } from '../../../common/promptSyntax/promptTypes.js';
@@ -753,8 +751,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 	private permissionWidget: PermissionPickerActionItem | undefined;
 	private readonly permissionWidgetDisposeListener = this._register(new MutableDisposable<IDisposable>());
 	private readonly overflowPickerWidget = this._register(new MutableDisposable<IDisposable>());
-	private sessionTargetWidget: SessionTypePickerActionItem | undefined;
-	private delegationWidget: DelegationSessionPickerActionItem | undefined;
 	private readonly chatSessionPickerWidgets = this._register(new DisposableMap<string, ChatSessionPickerActionItem>());
 	private chatSessionPickerContainer: HTMLElement | undefined;
 	private _lastSessionPickerAction: MenuItemAction | undefined;
@@ -1566,14 +1562,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 			return ChatPermissionLevel.Default;
 		}
 		return level;
-	}
-
-	public openSessionTargetPicker(): void {
-		this.sessionTargetWidget?.show();
-	}
-
-	public openDelegationPicker(): void {
-		this.delegationWidget?.show();
 	}
 
 	public openChatSessionPicker(): void {
@@ -3681,31 +3669,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 					const createPicker = () => this.instantiationService.createInstance(ModePickerActionItem, action, delegate, getInputPickerOptions(action.id));
 					inputOverflowPickerHandlers.set(action.id, anchor => showOverflowPicker(createPicker, anchor));
 					return this.modeWidget = createPicker();
-				} else if ((action.id === OpenSessionTargetPickerAction.ID || action.id === OpenDelegationPickerAction.ID) && action instanceof MenuItemAction) {
-					// Use provided delegate if available, otherwise create default delegate
-					const delegate: ISessionTypePickerDelegate = this.options.sessionTypePickerDelegate ?? {
-						getActiveSessionProvider: () => {
-							return this.getActiveSessionTypeForDelegation();
-						},
-						getPendingDelegationTarget: () => {
-							return this._pendingDelegationTarget;
-						},
-						setPendingDelegationTarget: (provider: AgentSessionTarget) => {
-							this.setPendingDelegationTarget(provider);
-						},
-						hasGitRepository: () => this.hasWorkspaceScmRepository(),
-					};
-					const isWelcomeViewMode = !!this.options.sessionTypePickerDelegate?.setActiveSessionProvider;
-					const Picker = (action.id === OpenSessionTargetPickerAction.ID || isWelcomeViewMode) ? SessionTypePickerActionItem : DelegationSessionPickerActionItem;
-					const createPicker = () => this.instantiationService.createInstance(Picker, action, location === ChatWidgetLocation.Editor ? 'editor' : 'sidebar', delegate, getInputPickerOptions(action.id));
-					inputOverflowPickerHandlers.set(action.id, anchor => showOverflowPicker(createPicker, anchor));
-					const picker = createPicker();
-					if (picker instanceof DelegationSessionPickerActionItem) {
-						this.delegationWidget = picker;
-					} else {
-						this.sessionTargetWidget = picker;
-					}
-					return picker;
 				} else if (action.id === ChatSessionPrimaryPickerAction.ID && action instanceof MenuItemAction) {
 					const createPicker = () => {
 						// Cloud sessions render their option-group pickers (e.g. branch) on the primary toolbar
@@ -3832,8 +3795,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 		// floor so icon-only items do not retain empty space from the labeled form.
 		// The tunnel-sharing toggle has no chevron and can collapse further.
 		const secondaryPickerMinWidths = new Map<string, number>([
-			[OpenSessionTargetPickerAction.ID, CHAT_INPUT_COMPACT_PICKER_WIDTH],
-			[OpenDelegationPickerAction.ID, CHAT_INPUT_COMPACT_PICKER_WIDTH],
 			[OpenWorkspacePickerAction.ID, CHAT_INPUT_COMPACT_PICKER_WIDTH],
 			[OpenPermissionPickerAction.ID, CHAT_INPUT_COMPACT_PICKER_WIDTH],
 			[ChatSessionPrimaryPickerAction.ID, CHAT_INPUT_COMPACT_PICKER_WIDTH],
@@ -3864,31 +3825,7 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 					getCompactState(secondaryPickerCompactStates, action.id);
 					return customSecondaryItem;
 				}
-				if ((action.id === OpenSessionTargetPickerAction.ID || action.id === OpenDelegationPickerAction.ID) && action instanceof MenuItemAction) {
-					const delegate: ISessionTypePickerDelegate = this.options.sessionTypePickerDelegate ?? {
-						getActiveSessionProvider: () => {
-							return this.getActiveSessionTypeForDelegation();
-						},
-						getPendingDelegationTarget: () => {
-							return this._pendingDelegationTarget;
-						},
-						setPendingDelegationTarget: (provider: AgentSessionTarget) => {
-							this.setPendingDelegationTarget(provider);
-						},
-						hasGitRepository: () => this.hasWorkspaceScmRepository(),
-					};
-					const isWelcomeViewMode = !!this.options.sessionTypePickerDelegate?.setActiveSessionProvider;
-					const Picker = (action.id === OpenSessionTargetPickerAction.ID || isWelcomeViewMode) ? SessionTypePickerActionItem : DelegationSessionPickerActionItem;
-					const createPicker = () => this.instantiationService.createInstance(Picker, action, location === ChatWidgetLocation.Editor ? 'editor' : 'sidebar', delegate, getSecondaryPickerOptions(action.id));
-					secondaryOverflowPickerHandlers.set(action.id, anchor => showOverflowPicker(createPicker, anchor));
-					const picker = createPicker();
-					if (picker instanceof DelegationSessionPickerActionItem) {
-						this.delegationWidget = picker;
-					} else {
-						this.sessionTargetWidget = picker;
-					}
-					return picker;
-				} else if (action.id === OpenWorkspacePickerAction.ID && action instanceof MenuItemAction) {
+				if (action.id === OpenWorkspacePickerAction.ID && action instanceof MenuItemAction) {
 					const workspacePickerDelegate = this.options.workspacePickerDelegate;
 					if (this.workspaceContextService.getWorkbenchState() === WorkbenchState.EMPTY && workspacePickerDelegate) {
 						const createPicker = () => this.instantiationService.createInstance(WorkspacePickerActionItem, action, workspacePickerDelegate, getSecondaryPickerOptions(action.id));
