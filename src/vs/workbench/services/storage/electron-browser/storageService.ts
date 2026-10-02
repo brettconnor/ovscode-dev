@@ -20,7 +20,7 @@ export class NativeWorkbenchStorageService extends RemoteStorageService {
 		private readonly userDataProfileService: IUserDataProfileService,
 		userDataProfilesService: IUserDataProfilesService,
 		mainProcessService: IMainProcessService,
-		private readonly workbenchEnvironmentService: IWorkbenchEnvironmentService,
+		workbenchEnvironmentService: IWorkbenchEnvironmentService,
 	) {
 		super(workspace, { currentProfile: userDataProfileService.currentProfile, defaultProfile: userDataProfilesService.defaultProfile }, mainProcessService, workbenchEnvironmentService);
 

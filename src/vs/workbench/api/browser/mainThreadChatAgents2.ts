@@ -49,7 +49,6 @@ import { getChatSessionType, isUntitledChatSession } from '../../contrib/chat/co
 import { ICustomizationHarnessService, ICustomizationItem, ICustomizationItemProvider, IHarnessDescriptor } from '../../contrib/chat/common/customizationHarnessService.js';
 import { AICustomizationManagementSection } from '../../contrib/chat/common/aiCustomizationWorkspaceService.js';
 import { IAgentPlugin, IAgentPluginService } from '../../contrib/chat/common/plugins/agentPluginService.js';
-import { IWorkbenchEnvironmentService } from '../../services/environment/common/environmentService.js';
 
 interface AgentData {
 	dispose: () => void;
@@ -139,7 +138,6 @@ export class MainThreadChatAgents2 extends Disposable implements MainThreadChatA
 		@ICustomizationHarnessService private readonly _customizationHarnessService: ICustomizationHarnessService,
 		@ITelemetryService private readonly _telemetryService: ITelemetryService,
 		@IAgentPluginService private readonly _agentPluginService: IAgentPluginService,
-		@IWorkbenchEnvironmentService private readonly _environmentService: IWorkbenchEnvironmentService,
 	) {
 		super();
 		this._proxy = extHostContext.getProxy(ExtHostContext.ExtHostChatAgents2);

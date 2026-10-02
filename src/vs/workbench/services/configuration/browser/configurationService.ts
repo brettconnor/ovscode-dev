@@ -26,7 +26,6 @@ import { IJSONSchema, IJSONSchemaMap } from '../../../../base/common/jsonSchema.
 import { mark } from '../../../../base/common/performance.js';
 import { IRemoteAgentService } from '../../remote/common/remoteAgentService.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
-import { IWorkbenchEnvironmentService } from '../../environment/common/environmentService.js';
 import { IWorkbenchContribution, IWorkbenchContributionsRegistry, WorkbenchPhase, Extensions as WorkbenchExtensions, registerWorkbenchContribution2 } from '../../../common/contributions.js';
 import { ILifecycleService, LifecyclePhase } from '../../lifecycle/common/lifecycle.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
@@ -1162,7 +1161,6 @@ export class WorkspaceService extends Disposable implements IWorkbenchConfigurat
 class RegisterConfigurationSchemasContribution extends Disposable implements IWorkbenchContribution {
 	constructor(
 		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
-		@IWorkbenchEnvironmentService private readonly environmentService: IWorkbenchEnvironmentService,
 		@IWorkspaceTrustManagementService private readonly workspaceTrustManagementService: IWorkspaceTrustManagementService,
 		@IExtensionService extensionService: IExtensionService,
 		@ILifecycleService lifecycleService: ILifecycleService,
@@ -1364,7 +1362,6 @@ export class ConfigurationDefaultOverridesContribution extends Disposable implem
 		@IWorkbenchAssignmentService private readonly workbenchAssignmentService: IWorkbenchAssignmentService,
 		@IExtensionService private readonly extensionService: IExtensionService,
 		@IConfigurationService private readonly configurationService: WorkspaceService,
-		@IWorkbenchEnvironmentService private readonly environmentService: IWorkbenchEnvironmentService,
 		@ILogService private readonly logService: ILogService,
 		@IExperimentalSettingsService private readonly experimentalSettingsService: IExperimentalSettingsService
 	) {

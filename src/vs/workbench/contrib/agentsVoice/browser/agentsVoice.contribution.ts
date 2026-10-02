@@ -54,7 +54,6 @@ import { ICommandService } from '../../../../platform/commands/common/commands.j
 import { CONFIGURE_VOICE_INSTRUCTIONS_ACTION_ID } from '../../chat/browser/actions/configureVoiceInstructionsAction.js';
 import { IVoiceModeOnboardingService } from './voiceModeOnboarding.js';
 import { SHOW_VOICE_MODE_ONBOARDING_COMMAND } from '../../chat/browser/speechToText/micButtonMenuActions.js';
-import { IsSessionsWindowContext } from '../../../common/contextkeys.js';
 
 // --- Context Keys ---
 

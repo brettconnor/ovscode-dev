@@ -12,8 +12,6 @@ export const IPlaywrightService = createDecorator<IPlaywrightService>('playwrigh
  */
 export interface IPlaywrightServiceInitializeOptions {
 	readonly windowId: number;
-	/** Whether Playwright groups isolate Agent storage by their session ID. */
-	readonly useSessionStorageAffinity: boolean;
 }
 
 export interface IInvokeFunctionResult {
