@@ -15,7 +15,7 @@ A user adds `"systemWide": true` to a keybinding entry in **`keybindings.json`**
 ```jsonc
 {
   "key": "ctrl+cmd+a",
-  "command": "workbench.action.openAgentsWindow",
+  "command": "workbench.action.quickOpen",
   "systemWide": true
 }
 ```
@@ -46,7 +46,6 @@ existing native-host IPC channel.
 sequenceDiagram
     participant KB as IKeybindingService (renderer)
     participant C as SystemWideKeybindingsContribution (renderer)
-    participant A as OpenAgentsWindowSystemWideKeybindingContribution (Agents renderer)
     participant NH as NativeHostMainService (main)
     participant G as GlobalKeybindingsMainService (main)
     participant OS as Electron globalShortcut / OS
@@ -55,9 +54,6 @@ sequenceDiagram
     KB->>C: onDidUpdateKeybindings (also fires on layout change)
     C->>C: selectSystemWideKeybindings() (debounced 200ms)
     C->>NH: syncSystemWideKeybindings(payload)  [per window]
-    KB->>A: initial sync after restore / onDidUpdateKeybindings
-    A->>A: select all, then keep direct Open Agents Window bindings
-    A->>NH: syncSystemWideKeybindings(payload)  [Agents window]
     NH->>G: updateKeybindings(windowId, payload)
     G->>OS: register / unregister accelerators (union across windows)
     G-->>C: { failed: string[] }  (surfaced as a warning notification)
@@ -95,17 +91,6 @@ owns the standard desktop workbench synchronization. Registered as a workbench c
   1. collects candidates (logging unsupported/duplicate entries),
   2. warns once per label about ignored `when` clauses (`warnedWhenLabels` guard),
   3. delegates payload synchronization and deduplicated failure reporting to the shared client.
-
-**`src/vs/sessions/contrib/openAgentsWindow/electron-browser/openAgentsWindow.contribution.ts`**
-is the narrow Agents Window owner. It runs the shared selection over the complete resolved
-keybinding list before retaining only direct `workbench.action.openAgentsWindow` candidates. This
-preserves global first-binding-wins semantics when another command claims the same accelerator.
-It synchronizes immediately after `WorkbenchPhase.AfterRestored`, debounces later keybinding
-updates, and skips unchanged payloads. The Agents owner suppresses duplicate ignored-`when`
-warnings but reports OS registration failures because it may be the only open feedback surface.
-
-The Agents-specific ownership and profile contract is specified in
-[`src/vs/sessions/SYSTEM_WIDE_KEYBINDING.md`](../../../../sessions/SYSTEM_WIDE_KEYBINDING.md).
 
 **`src/vs/workbench/electron-browser/window.ts`** — handles the `vscode:runAction` IPC in the
 renderer. For `request.from === 'systemWideKeybinding'` it runs the command with **exactly** the
@@ -158,7 +143,7 @@ registrations. Wired up in `src/vs/code/electron-main/app.ts` with the real Elec
   `vscode:runAction` via `target.sendWhenReady(...)`. It deliberately does **not** force-focus the
   routing window — a system-wide keybinding fires while VS Code is typically unfocused, and pulling
   the routing window forward would flicker when the command opens/reveals a *different* window
-  (e.g. `workbench.action.openAgentsWindow`). This matches every other `vscode:runAction` sender.
+  (e.g. a command that opens another editor window). This matches every other `vscode:runAction` sender.
 - Lifecycle: on `IWindowsMainService.onDidDestroyWindow` it drops the window's entry and reconciles;
   on `ILifecycleMainService.onWillShutdown` and on dispose it unregisters everything.
 
@@ -191,10 +176,7 @@ The boolean travels from `keybindings.json` to `ResolvedKeybindingItem`:
    a persistent conflict is reported once, not on every re-sync.
 6. **Stable trigger callback reading live state** — registering once per accelerator (rather than
    re-registering on every payload change) avoids races and stale command/args capture.
-7. **Narrow Agents Window ownership** — the Agents renderer reports only a globally selected direct
-   Open Agents Window binding. This keeps the shortcut registered after editor windows close without
-   making the Agents Window a dispatcher for unrelated commands.
-8. **Per-owner failure feedback** — registration failures are returned to each renderer that owns
+7. **Per-owner failure feedback** — registration failures are returned to each renderer that owns
    the accelerator. Each owner may surface the same warning, which ensures the error remains visible
    when only one renderer survives.
 
@@ -208,9 +190,6 @@ The boolean travels from `keybindings.json` to `ResolvedKeybindingItem`:
 - `src/vs/workbench/contrib/keybindings/test/electron-browser/systemWideKeybindings.test.ts` — the
   pure `selectSystemWideKeybindings`: eligibility filtering, unsupported (chords/modifiers),
   duplicates.
-- `src/vs/sessions/contrib/openAgentsWindow/test/electron-browser/openAgentsWindow.contribution.test.ts`
-  — post-selection Open Agents Window filtering, argument preservation, payload deduplication and
-  clearing, registration-failure reporting, and the command-only Agents registration.
 - `keybindingIO.test.ts` / `keybindingEditing.test.ts` — round-trip of the `systemWide` flag through
   parse/serialize.
 

@@ -11,10 +11,9 @@ import { Disposable, DisposableStore, toDisposable } from '../../../../base/comm
 import { localize } from '../../../../nls.js';
 import { IContextKeyService } from '../../../../platform/contextkey/common/contextkey.js';
 import { IChatEntitlementService, chatRequiresSetup } from '../../../services/chat/common/chatEntitlementService.js';
-import { IWorkbenchEnvironmentService } from '../../../services/environment/common/environmentService.js';
 import { onboardingScenarioRegistry } from '../common/onboardingRegistry.js';
 import { IOnboardingScenario } from '../common/onboardingScenario.js';
-import { AGENTS_WINDOW_TRYOUT_PRESENTATION_KIND, IOnboardingTryoutScenario, IOnboardingTryoutService, IOnboardingTryoutUnavailable, onboardingTryoutPresentationRegistry, OnboardingTryoutAvailability, OnboardingTryoutResult, parseOnboardingTryoutArguments, RUN_ONBOARDING_TRYOUT_COMMAND_ID } from '../common/onboardingTryout.js';
+import { IOnboardingTryoutScenario, IOnboardingTryoutService, IOnboardingTryoutUnavailable, onboardingTryoutPresentationRegistry, OnboardingTryoutAvailability, OnboardingTryoutResult, parseOnboardingTryoutArguments, RUN_ONBOARDING_TRYOUT_COMMAND_ID } from '../common/onboardingTryout.js';
 
 function isTryout(scenario: IOnboardingScenario): scenario is IOnboardingTryoutScenario {
 	return !!scenario.tryout && scenario.trigger.kind === 'command' && scenario.trigger.commandId === RUN_ONBOARDING_TRYOUT_COMMAND_ID;
@@ -41,7 +40,6 @@ export class OnboardingTryoutService extends Disposable implements IOnboardingTr
 	constructor(
 		@IContextKeyService private readonly contextKeyService: IContextKeyService,
 		@IChatEntitlementService private readonly chatEntitlementService: IChatEntitlementService,
-		@IWorkbenchEnvironmentService private readonly environmentService: IWorkbenchEnvironmentService,
 	) {
 		super();
 
@@ -97,13 +95,6 @@ export class OnboardingTryoutService extends Disposable implements IOnboardingTr
 			return { kind: 'hidden' };
 		}
 
-		if (scenario.tryout.targetWindow === 'agents' && !this.environmentService.isSessionsWindow) {
-			const presentation = onboardingTryoutPresentationRegistry.get(AGENTS_WINDOW_TRYOUT_PRESENTATION_KIND);
-			return presentation
-				? presentation.getAvailability(scenario)
-				: { kind: 'unavailable', message: localize('onboarding.tryout.agentsUnavailable', "This example requires the desktop Agents window.") };
-		}
-
 		if (scenario.tryout.isAI) {
 			const sentiment = this.chatEntitlementService.sentiment;
 			if (sentiment.disabledInWorkspace) {
@@ -147,9 +138,7 @@ export class OnboardingTryoutService extends Disposable implements IOnboardingTr
 	}
 
 	private getPresentationKind(scenario: IOnboardingTryoutScenario): string {
-		return scenario.tryout.targetWindow === 'agents' && !this.environmentService.isSessionsWindow
-			? AGENTS_WINDOW_TRYOUT_PRESENTATION_KIND
-			: scenario.presentation.kind;
+		return scenario.presentation.kind;
 	}
 
 	run(id: string, token = CancellationToken.None): Promise<OnboardingTryoutResult> {

@@ -16,17 +16,16 @@ import { TestConfigurationService } from '../../../../../platform/configuration/
 import { ContextKeyService } from '../../../../../platform/contextkey/browser/contextKeyService.js';
 import { ContextKeyExpr } from '../../../../../platform/contextkey/common/contextkey.js';
 import { ChatEntitlement, IChatEntitlementService, IChatSentiment } from '../../../../services/chat/common/chatEntitlementService.js';
-import { IWorkbenchEnvironmentService } from '../../../../services/environment/common/environmentService.js';
 import { OnboardingTryoutService } from '../../browser/onboardingTryoutService.js';
 import { IOnboardingPresentation, onboardingPresentationRegistry } from '../../common/onboardingPresentation.js';
 import { onboardingScenarioRegistry } from '../../common/onboardingRegistry.js';
 import { OnboardingDismissReason, OnboardingOutcome } from '../../common/onboardingScenario.js';
-import { AGENTS_WINDOW_TRYOUT_PRESENTATION_KIND, createOnboardingTryoutUri, IOnboardingTryout, IOnboardingTryoutRunContext, onboardingTryoutPresentationRegistry, OnboardingTryoutAvailability, OnboardingTryoutPreparation, parseOnboardingTryoutArguments, parseOnboardingTryoutUri, registerOnboardingTryout, registerOnboardingTryoutPresentation, RUN_ONBOARDING_TRYOUT_COMMAND_ID } from '../../common/onboardingTryout.js';
+import { createOnboardingTryoutUri, IOnboardingTryout, IOnboardingTryoutRunContext, OnboardingTryoutAvailability, OnboardingTryoutPreparation, parseOnboardingTryoutArguments, parseOnboardingTryoutUri, registerOnboardingTryout, registerOnboardingTryoutPresentation, RUN_ONBOARDING_TRYOUT_COMMAND_ID } from '../../common/onboardingTryout.js';
 
 suite('OnboardingTryoutService', () => {
 	const store = ensureNoDisposablesAreLeakedInTestSuite();
 
-	function createService(agents = true) {
+	function createService() {
 		const config = new TestConfigurationService();
 		const context = store.add(new ContextKeyService(upcastPartial<IConfigurationService>(config)));
 		const sentiment: IChatSentiment = { completed: true, installed: true };
@@ -40,7 +39,7 @@ suite('OnboardingTryoutService', () => {
 			onDidChangeEntitlement: Event.None,
 			onDidChangeAnonymous: Event.None,
 		});
-		const service = store.add(new OnboardingTryoutService(context, chat, upcastPartial<IWorkbenchEnvironmentService>({ isSessionsWindow: agents })));
+		const service = store.add(new OnboardingTryoutService(context, chat));
 		return { service, context, sentiment, changed };
 	}
 
@@ -66,19 +65,6 @@ suite('OnboardingTryoutService', () => {
 		}));
 	}
 
-	function registerWindowOpener(open: (id: string) => Promise<void>) {
-		return store.add(onboardingTryoutPresentationRegistry.register({
-			kind: AGENTS_WINDOW_TRYOUT_PRESENTATION_KIND,
-			getAvailability: () => ({ kind: 'ready' }),
-			prepare: async scenario => ({
-				kind: 'ready',
-				run: async () => {
-					await open(scenario.id);
-					return { kind: 'routed' };
-				},
-			}),
-		}));
-	}
 
 	test('registering and reading an example do not prepare or run it', () => {
 		const { service } = createService();
@@ -323,35 +309,23 @@ suite('OnboardingTryoutService', () => {
 		assert.deepStrictEqual(result, { kind: 'cancelled' });
 	});
 
-	test('hidden AI cannot prepare or route and changes are announced', async () => {
-		const { service, sentiment, changed } = createService(false);
+	test('hidden AI cannot prepare and changes are announced', async () => {
+		const { service, sentiment, changed } = createService();
 		let notifications = 0;
-		let routed = false;
-		registerTryout({ isAI: true, targetWindow: 'agents' });
-		registerWindowOpener(async () => { routed = true; });
+		registerTryout({ isAI: true });
 		store.add(service.onDidChange(() => notifications++));
 		sentiment.hidden = true;
 		changed.fire();
 
 		const availability = service.getAvailability('test.tryout');
 		const result = await service.run('test.tryout');
-		assert.deepStrictEqual({ availability, kind: result.kind, routed, notifications }, {
+		assert.deepStrictEqual({ availability, kind: result.kind, notifications }, {
 			availability: { kind: 'hidden' },
 			kind: 'unavailable',
-			routed: false,
 			notifications: 1,
 		});
 	});
 
-	test('routes a known Agents example before evaluating destination-only requirements', async () => {
-		const { service } = createService(false);
-		const routed: string[] = [];
-		registerTryout({ targetWindow: 'agents', when: ContextKeyExpr.has('onlyDefinedInAgents') });
-		registerWindowOpener(async id => { routed.push(id); });
-
-		const result = await service.run('test.tryout');
-		assert.deepStrictEqual({ result, routed }, { result: { kind: 'routed' }, routed: ['test.tryout'] });
-	});
 
 	test('offers setup without executing it during availability checks', async () => {
 		const { service } = createService();

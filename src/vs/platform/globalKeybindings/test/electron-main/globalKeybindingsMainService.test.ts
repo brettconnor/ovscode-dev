@@ -170,7 +170,7 @@ suite('GlobalKeybindingsMainService', () => {
 	test('trigger dispatches the run-action payload without force-focusing the routing window', () => {
 		const { service, windows, shortcut } = createService();
 		const window = windows.addWindow(1);
-		service.updateKeybindings(1, [binding('Control+Cmd+A', 'workbench.action.openAgentsWindow', { foo: 'bar' })]);
+		service.updateKeybindings(1, [binding('Control+Cmd+A', 'test.openOtherWindow', { foo: 'bar' })]);
 
 		shortcut.trigger('Control+Cmd+A');
 
@@ -179,7 +179,7 @@ suite('GlobalKeybindingsMainService', () => {
 		assert.strictEqual(window.focusCalls, 0);
 		assert.deepStrictEqual(window.sent, [{
 			channel: 'vscode:runAction',
-			args: [{ id: 'workbench.action.openAgentsWindow', from: 'systemWideKeybinding', args: [{ foo: 'bar' }] }]
+			args: [{ id: 'test.openOtherWindow', from: 'systemWideKeybinding', args: [{ foo: 'bar' }] }]
 		}]);
 	});
 

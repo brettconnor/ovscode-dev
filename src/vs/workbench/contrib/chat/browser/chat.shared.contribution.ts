@@ -67,7 +67,6 @@ import { IAgentSessionsService, AgentSessionsService } from './agentSessions/age
 import { LocalAgentsSessionsController } from './agentSessions/localAgentSessionsController.js';
 import { ChatSideChatService, IChatSideChatService } from '../common/chatSideChatService.js';
 import { BYOKUtilityModelDefault, ChatAIDisabledSettingId, ChatAgentLocation, ChatConfiguration, ChatClosedPromoNotification, ChatDefaultPermissionLevel, CustomizationMigrationHintMode, ChatNotificationMode, ChatPermissionLevel } from '../common/constants.js';
-import { agentsWindowHandoffConfigurationProperties } from './agentSessionsConfiguration.js';
 import { chatProgressConfigurationProperties } from './chatProgressConfiguration.js';
 import { customizationMarketplaceConfigurationProperties } from './aiCustomization/customizationMarketplaceConfiguration.js';
 import { CodeMapperService, ICodeMapperService } from '../common/editing/chatCodeMapperService.js';
@@ -1021,19 +1020,6 @@ configurationRegistry.registerConfiguration({
 			tags: ['experimental'],
 			experiment: { mode: 'startup' },
 			description: nls.localize('chat.experimental.sessionArchiveActionWording', "Controls the wording and icons used by actions that archive and unarchive chat sessions, as well as the label of the archived sessions section."),
-		},
-		[ChatConfiguration.AgentsHandoffTipMode]: {
-			type: 'string',
-			enum: ['hidden', 'default', 'custom'],
-			enumDescriptions: [
-				nls.localize('chat.agentsHandoffTip.mode.hidden', "Never show the handoff tip."),
-				nls.localize('chat.agentsHandoffTip.mode.default', "Show the handoff tip with the default description."),
-				nls.localize('chat.agentsHandoffTip.mode.custom', "Show the handoff tip with an alternate description."),
-			],
-			default: 'hidden',
-			tags: ['experimental'],
-			experiment: { mode: 'startup' },
-			description: nls.localize('chat.agentsHandoffTip.mode', "Controls the tip shown above the chat input offering to continue eligible agent sessions in the Agents Window."),
 		},
 		[ChatConfiguration.BtwTipEnabled]: {
 			type: 'boolean',
@@ -2393,26 +2379,6 @@ configurationRegistry.registerConfiguration({
 			description: nls.localize('chat.titleBar.signIn.enabled', "Controls whether the Copilot Sign In button is shown in the title bar when signed out. When disabled, the Sign In affordance falls back to the status bar."),
 			default: true,
 		},
-		[ChatConfiguration.WelcomePageSignInEnabled]: {
-			type: 'boolean',
-			description: nls.localize('chat.welcomePage.signIn.enabled', "Controls whether the Welcome page shows a GitHub sign-in button instead of the Agents window button when signed out."),
-			default: false,
-			tags: ['experimental'],
-			experiment: { mode: 'auto' },
-		},
-		[ChatConfiguration.TitleBarOpenInAgentsWindowEnabled]: {
-			type: 'boolean',
-			description: nls.localize('chat.titleBar.openInAgentsWindow.enabled', "Controls whether the Open in Agents Window button is shown in the title bar."),
-			default: true,
-		},
-		[ChatConfiguration.OpenInAgentsWindowRevealCurrentSession]: {
-			type: 'boolean',
-			description: nls.localize('chat.experimental.openInAgentsWindow.revealCurrentSession', "Controls whether Open in Agents Window reveals the current local Agent Host session instead of opening a new session."),
-			default: false,
-			tags: ['experimental'],
-			experiment: { mode: 'auto' },
-		},
-		...agentsWindowHandoffConfigurationProperties,
 		'chat.approvedAccountOrganizations': {
 			type: 'array',
 			items: { type: 'string' },

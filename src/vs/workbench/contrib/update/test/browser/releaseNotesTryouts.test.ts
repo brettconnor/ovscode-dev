@@ -142,7 +142,7 @@ suite('Release notes Try This', () => {
 	}
 
 	test('renders ready links with only the registered ID and local contextual metadata', async () => {
-		register('sample', { isAI: true, targetWindow: 'agents' });
+		register('sample', { isAI: true });
 		const container = await render();
 		const link = container.querySelector('a')!;
 		assert.deepStrictEqual({
@@ -154,7 +154,7 @@ suite('Release notes Try This', () => {
 		}, {
 			label: 'Try This: Local Example',
 			href: sampleUri.toString(),
-			ariaLabel: 'Try This: Local Example A local description. Opens in the Agents window. Chat examples are prepared for review and are not sent automatically.',
+			ariaLabel: 'Try This: Local Example A local description. Chat examples are prepared for review and are not sent automatically.',
 			disabled: 'false',
 			runs: [], commands: [],
 		});

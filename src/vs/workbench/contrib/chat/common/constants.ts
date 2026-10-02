@@ -10,9 +10,7 @@ import { IStorageService } from '../../../../platform/storage/common/storage.js'
 import { IWorkspace, IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { isVirtualWorkspace } from '../../../../platform/workspace/common/virtualWorkspace.js';
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
-import { ContextKeyExpr, RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
-import { ChatEntitlementContextKeys } from '../../../services/chat/common/chatEntitlementService.js';
-import { IsAuxiliaryWindowContext, IsSessionsWindowContext } from '../../../common/contextkeys.js';
+import { RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
 import { URI } from '../../../../base/common/uri.js';
 import { getNewChatSessionResource } from './model/chatUri.js';
 import { clearUserSelectedSessionType, getRememberedSessionType, storeUserSelectedSessionType } from './chatSessionTypePreference.js';
@@ -107,11 +105,6 @@ export enum ChatConfiguration {
 	GrowthNotificationEnabled = 'chat.growthNotification.enabled',
 	ChatClosedPromoNotification = 'chat.closedPromoNotification',
 	TitleBarSignInEnabled = 'chat.titleBar.signIn.enabled',
-	WelcomePageSignInEnabled = 'chat.welcomePage.signIn.enabled',
-	TitleBarOpenInAgentsWindowEnabled = 'chat.titleBar.openInAgentsWindow.enabled',
-	OpenInAgentsWindowRevealCurrentSession = 'chat.experimental.openInAgentsWindow.revealCurrentSession',
-	OpenInAgentsWindowTransferDraft = 'chat.experimental.openInAgentsWindow.transferDraft',
-	AgentsParallelWorkBannerEnabled = 'chat.agentsParallelWorkBanner.enabled',
 
 	ChatCustomizationsStructuredPreviewEnabled = 'chat.customizations.structuredPreview.enabled',
 	ChatCustomizationsListLayout = 'chat.experimental.customizations.listLayout',
@@ -140,8 +133,6 @@ export enum ChatConfiguration {
 	EditorPreferCopilotHarness = 'chat.editor.preferCopilotHarness',
 	DefaultToCopilotHarness = 'chat.defaultToCopilotHarness',
 	EditorLocalAgentEnabled = 'chat.editor.localAgent.enabled',
-	AgentsHandoffTipMode = 'chat.agentsHandoffTip.mode',
-	AgentsHandoffTipDelaySeconds = 'chat.agentsHandoffTip.delaySeconds',
 	BtwTipEnabled = 'chat.btwTip.enabled',
 
 	IncrementalRendering = 'chat.experimental.incrementalRendering.enabled',
@@ -160,7 +151,6 @@ export const enum ChatClosedPromoNotification {
 }
 
 export const AGENT_SESSION_CLEANUP_SETTINGS_TAG = 'agentSessionCleanup';
-export const DEFAULT_AGENTS_HANDOFF_TIP_DELAY_SECONDS = 5;
 
 /**
  * The "kind" of agents for custom agents.
@@ -605,16 +595,6 @@ function getVisibleNonLocalEditorChatSessionTypes(
 export const MANAGE_CHAT_COMMAND_ID = 'workbench.action.chat.manage';
 export const CHAT_OPEN_AGENT_HOST_CHAT_COMMAND_ID = 'workbench.action.chat.openAgentHostChat';
 export const CHAT_SUBAGENT_RESOURCE_QUERY_PARAM = 'subagentChatResource';
-
-export const OPEN_WORKSPACE_IN_AGENTS_WINDOW_COMMAND_ID = 'workbench.action.openWorkspaceInAgentsWindow';
-export const OPEN_AGENTS_WINDOW_COMMAND_ID = 'workbench.action.openAgentsWindow';
-export const OPEN_AGENTS_WINDOW_PRECONDITION = ContextKeyExpr.and(
-	ChatEntitlementContextKeys.Setup.hidden.negate(),
-	ChatEntitlementContextKeys.Setup.disabledInWorkspace.negate(),
-	IsSessionsWindowContext.negate(),
-	ContextKeyExpr.has(`config.${ChatConfiguration.AgentEnabled}`),
-	IsAuxiliaryWindowContext.negate()
-);
 
 export const ChatEditorTitleMaxLength = 30;
 

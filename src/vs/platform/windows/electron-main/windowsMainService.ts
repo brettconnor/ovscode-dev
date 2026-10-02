@@ -37,7 +37,7 @@ import product from '../../product/common/product.js';
 import { IProtocolMainService } from '../../protocol/electron-main/protocol.js';
 import { getRemoteAuthority } from '../../remote/common/remoteHosts.js';
 import { IStateService } from '../../state/node/state.js';
-import { AgentsWindowOpenSource, IAgentsWindowDraft, IAddRemoveFoldersRequest, INativeOpenFileRequest, INativeWindowConfiguration, IOpenEmptyWindowOptions, IPath, IPathsToWaitFor, isFileToOpen, isFolderToOpen, isWorkspaceToOpen, IWindowOpenable, IWindowSettings } from '../../window/common/window.js';
+import { IAddRemoveFoldersRequest, INativeOpenFileRequest, INativeWindowConfiguration, IOpenEmptyWindowOptions, IPath, IPathsToWaitFor, isFileToOpen, isFolderToOpen, isWorkspaceToOpen, IWindowOpenable, IWindowSettings } from '../../window/common/window.js';
 import { CodeWindow } from './windowImpl.js';
 import { IOpenConfiguration, IOpenEmptyConfiguration, IWindowsCountChangedEvent, IWindowsMainService, OpenContext, getLastFocused } from './windows.js';
 import { findWindowOnExtensionDevelopmentPath, findWindowOnFile, findWindowOnWorkspaceOrFolder } from './windowsFinder.js';
@@ -290,46 +290,6 @@ export class WindowsMainService extends Disposable implements IWindowsMainServic
 
 		// Handle `<app> chat`
 		this.handleChatRequest(openConfig, [window]);
-	}
-
-	async openAgentsWindow(openConfig: IOpenConfiguration, folderUri?: URI, sessionResource?: URI, source?: AgentsWindowOpenSource, folderUriIsDefault = false, draft?: IAgentsWindowDraft): Promise<ICodeWindow[]> {
-		this.logService.trace('windowsManager#openAgentsWindow');
-
-		// Open in a new browser window with the agent sessions workspace
-		const windows = await this.open(await this.ensureAgentsWindow(openConfig));
-
-		// Existing-session intent takes precedence over explicit or inferred workspace selection.
-		if (windows.length > 0) {
-			const openSource = source ?? AgentsWindowOpenSource.Unknown;
-			windows[0].sendWhenReady('vscode:selectAgentsFolder', CancellationToken.None, folderUri?.toJSON(), sessionResource?.toJSON(), openSource, folderUriIsDefault, draft);
-		}
-
-		return windows;
-	}
-
-	private async ensureAgentsWindow(openConfig: IOpenConfiguration): Promise<IOpenConfiguration> {
-		const agentSessionsWorkspaceUri = this.environmentMainService.agentSessionsWorkspace;
-		if (!agentSessionsWorkspaceUri) {
-			throw new Error('Agents workspace is not configured');
-		}
-
-		// Ensure the workspace file exists
-		const workspaceExists = await this.fileService.exists(agentSessionsWorkspaceUri);
-		if (!workspaceExists) {
-			const emptyWorkspaceContent = JSON.stringify({ folders: [] }, null, '\t');
-			await this.fileService.writeFile(agentSessionsWorkspaceUri, VSBuffer.fromString(emptyWorkspaceContent));
-		}
-
-		return {
-			urisToOpen: [{ workspaceUri: agentSessionsWorkspaceUri }],
-			userEnv: openConfig.userEnv,
-			cli: openConfig.cli,
-			noRecentEntry: true,
-			context: openConfig.context,
-			contextWindowId: openConfig.contextWindowId,
-			initialStartup: openConfig.initialStartup,
-			forceNewWindow: true,
-		};
 	}
 
 	async open(openConfig: IOpenConfiguration): Promise<ICodeWindow[]> {
