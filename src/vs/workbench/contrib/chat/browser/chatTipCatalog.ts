@@ -275,7 +275,7 @@ export const TIP_CATALOG: readonly ITipDefinition[] = [
 				localize('tip.codeActions', "Select a code block in the editor and right-click to access more AI actions.")
 			);
 		},
-		when: excludeWhenCommandsExecuted: ['inlineChat.start'],
+		excludeWhenCommandsExecuted: ['inlineChat.start'],
 	},
 	{
 		id: 'tip.undoChanges',

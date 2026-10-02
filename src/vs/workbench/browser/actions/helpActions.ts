@@ -17,7 +17,6 @@ import { KeybindingWeight } from '../../../platform/keybinding/common/keybinding
 import { Categories } from '../../../platform/action/common/actionCommonCategories.js';
 import { ICommandService } from '../../../platform/commands/common/commands.js';
 import { ContextKeyExpr } from '../../../platform/contextkey/common/contextkey.js';
-import { IsSessionsWindowContext } from '../../common/contextkeys.js';
 
 class KeybindingsReferenceAction extends Action2 {
 
@@ -320,7 +319,7 @@ class GetStartedWithAccessibilityFeatures extends Action2 {
 			title: localize2('getStartedWithAccessibilityFeatures', 'Get Started with Accessibility Features'),
 			category: Categories.Help,
 			f1: true,
-			precondition: menu: {
+			menu: {
 				id: MenuId.MenubarHelpMenu,
 				group: '1_welcome',
 				order: 6,
