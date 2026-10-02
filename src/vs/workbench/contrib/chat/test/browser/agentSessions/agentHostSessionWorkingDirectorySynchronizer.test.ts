@@ -22,7 +22,6 @@ import { NullLogService } from '../../../../../../platform/log/common/log.js';
 import { IUriIdentityService } from '../../../../../../platform/uriIdentity/common/uriIdentity.js';
 import { IWorkspace, IWorkspaceContextService, IWorkspaceFolder, IWorkspaceFoldersChangeEvent } from '../../../../../../platform/workspace/common/workspace.js';
 import { IWorkspaceTrustManagementService } from '../../../../../../platform/workspace/common/workspaceTrust.js';
-import { IWorkbenchEnvironmentService } from '../../../../../services/environment/common/environmentService.js';
 import { AgentHostSessionWorkingDirectorySynchronizer } from '../../../browser/agentSessions/agentHost/agentHostSessionWorkingDirectorySynchronizer.js';
 
 class MutableSessionSubscription extends Disposable implements IAgentSubscription<SessionState> {

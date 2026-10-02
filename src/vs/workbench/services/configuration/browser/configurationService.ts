@@ -36,6 +36,7 @@ import { delta, distinct, equals as arrayEquals } from '../../../../base/common/
 import { IStringDictionary } from '../../../../base/common/collections.js';
 import { IExtensionService } from '../../extensions/common/extensions.js';
 import { IWorkbenchAssignmentService } from '../../assignment/common/assignmentService.js';
+import { IWorkbenchEnvironmentService } from '../../environment/common/environmentService.js';
 import { isUndefined } from '../../../../base/common/types.js';
 import { localize } from '../../../../nls.js';
 import { DidChangeUserDataProfileEvent, IUserDataProfileService } from '../../userDataProfile/common/userDataProfile.js';
