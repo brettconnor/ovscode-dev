@@ -8,7 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Application, Chat, Logger } from '../../../../automation';
 import { dumpFailureDiagnostics, getCopilotSmokeTestEnv, getMockLlmServerPath, installAllHandlers, MockLlmServer, preseedChatExtensionEnablement } from '../../utils';
-import { runInTerminalScenario, shellEchoResponseMatcher, shellEchoScenario } from './shellScenarios';
+import { runInTerminalScenario, shellEchoResponseMatcher } from './shellScenarios';
 
 /**
  * The local Chat panel uses unique scenario ids so a previous response cannot
