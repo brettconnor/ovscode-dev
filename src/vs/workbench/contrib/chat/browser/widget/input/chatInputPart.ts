@@ -135,10 +135,6 @@ import { IChatWidget, IChatWidgetService, IChatWidgetViewModelChangeEvent, ISess
 import { ChatEditingShowChangesAction, ViewPreviousEditsAction } from '../../chatEditing/chatEditingActions.js';
 import { resizeImage } from '../../chatImageUtils.js';
 import { ChatSessionPickerActionItem, IChatSessionPickerDelegate } from '../../chatSessions/chatSessionPickerActionItem.js';
-import { AgentHostChatInputPicker, AgentHostChatInputPickerActionViewItem } from '../../agentSessions/agentHost/agentHostChatInputPicker.js';
-import { getAgentHostPickerProperty, OpenAgentHostAutoApprovePickerAction, OpenAgentHostCodexApprovalsPickerAction, OpenAgentHostModePickerAction, OpenAgentHostPermissionModePickerAction, OpenAgentHostFolderPickerAction } from '../../agentSessions/agentHost/agentHostChatInputPicker.contribution.js';
-import { AgentHostGenericConfigChips } from '../../agentSessions/agentHost/agentHostGenericConfigChips.js';
-import { AgentHostFolderPickerActionItem } from '../../agentSessions/agentHost/agentHostFolderPickerActionItem.js';
 import { IChatPhoneInputPresenter, MobileChatInputCombinedPickerActionItem } from './chatPhoneInputPresenter.js';
 import { IChatContextService } from '../../contextContrib/chatContextService.js';
 import { IDisposableReference } from '../chatContentParts/chatCollections.js';
@@ -3841,34 +3837,10 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 			[OpenWorkspacePickerAction.ID, CHAT_INPUT_COMPACT_PICKER_WIDTH],
 			[OpenPermissionPickerAction.ID, CHAT_INPUT_COMPACT_PICKER_WIDTH],
 			[ChatSessionPrimaryPickerAction.ID, CHAT_INPUT_COMPACT_PICKER_WIDTH],
-			[OpenAgentHostModePickerAction.ID, CHAT_INPUT_COMPACT_PICKER_WIDTH],
-			['sessions.agentHost.runningSessionModePicker', CHAT_INPUT_COMPACT_PICKER_WIDTH],
-			['sessions.agentHost.runningSessionConfigPicker', CHAT_INPUT_COMPACT_PICKER_WIDTH],
-			['sessions.agentHost.runningSessionPermissionModePicker', CHAT_INPUT_COMPACT_PICKER_WIDTH],
-			['sessions.agentHost.runningSessionCodexApprovalsPicker', CHAT_INPUT_COMPACT_PICKER_WIDTH],
-			[OpenAgentHostAutoApprovePickerAction.ID, CHAT_INPUT_COMPACT_PICKER_WIDTH],
-			[OpenAgentHostPermissionModePickerAction.ID, CHAT_INPUT_COMPACT_PICKER_WIDTH],
-			[OpenAgentHostCodexApprovalsPickerAction.ID, CHAT_INPUT_COMPACT_PICKER_WIDTH],
-			[OpenAgentHostFolderPickerAction.ID, CHAT_INPUT_COMPACT_PICKER_WIDTH],
 			['sessions.tunnelHost.toggleSharing', 16],
 		]);
-		// Direct-rendered chip lane for agent-host config properties that
-		// are advertised by the agent's schema but not handled by a
-		// dedicated `MenuId.ChatInputSecondary` action. Sits as a sibling
-		// of the content-sized secondary toolbar.
-		const genericChipsContainer = dom.$('.chat-secondary-generic-chips');
-		const genericChipsLane = this._register(this.instantiationService.createInstance(
-			AgentHostGenericConfigChips,
-			widget,
-		));
-		genericChipsLane.render(genericChipsContainer);
 		const getSecondaryToolbarAvailableWidth = (): number => {
-			const laneWidth = responsivePickerContainer.getBoundingClientRect().width;
-			if (genericChipsContainer.parentElement !== responsivePickerContainer || genericChipsContainer.getClientRects().length === 0) {
-				return laneWidth;
-			}
-			const gap = Number.parseFloat(dom.getWindow(responsivePickerContainer).getComputedStyle(responsivePickerContainer).columnGap) || 0;
-			return Math.max(0, laneWidth - genericChipsContainer.getBoundingClientRect().width - gap);
+			return responsivePickerContainer.getBoundingClientRect().width;
 		};
 		this.secondaryToolbar = this._register(this.instantiationService.createInstance(MenuWorkbenchToolBar, responsivePickerContainer, MenuId.ChatInputSecondary, {
 			telemetrySource: this.options.menus.telemetrySource,
@@ -3887,7 +3859,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 				getOverflowAction: (action, getAnchor) => getOverflowAction(action, MenuId.ChatInputSecondary, secondaryOverflowPickerHandlers, getAnchor, responsivePickerContainer, this.options.secondaryToolbarOverflowActionHandler),
 			},
 			actionViewItemProvider: (action, options) => {
-				const agentHostPickerProperty = getAgentHostPickerProperty(action.id);
 				const customSecondaryItem = this.options.secondaryToolbarActionViewItemProvider?.(action, options);
 				if (customSecondaryItem) {
 					getCompactState(secondaryPickerCompactStates, action.id);
@@ -3973,25 +3944,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 						this.permissionWidgetDisposeListener.clear();
 					});
 					return widget;
-				} else if (agentHostPickerProperty && action instanceof MenuItemAction) {
-					if (this.options.isSessionsWindow) {
-						return new HiddenActionViewItem(action);
-					}
-					getCompactState(secondaryPickerCompactStates, action.id);
-					const createPicker = () => this.instantiationService.createInstance(AgentHostChatInputPicker, widget, agentHostPickerProperty);
-					secondaryOverflowPickerHandlers.set(action.id, anchor => {
-						const picker = createPicker();
-						this.overflowPickerWidget.value = picker;
-						picker.show(anchor);
-					});
-					return new AgentHostChatInputPickerActionViewItem(action, createPicker());
-				} else if (action.id === OpenAgentHostFolderPickerAction.ID && action instanceof MenuItemAction) {
-					if (this.options.isSessionsWindow) {
-						return new HiddenActionViewItem(action);
-					}
-					const createPicker = () => this.instantiationService.createInstance(AgentHostFolderPickerActionItem, action, widget, getSecondaryPickerOptions(action.id));
-					secondaryOverflowPickerHandlers.set(action.id, anchor => showOverflowPicker(createPicker, anchor));
-					return createPicker();
 				} else if (action.id === ChatSessionPrimaryPickerAction.ID && action instanceof MenuItemAction) {
 					const createPicker = () => {
 						const widgets = this.createChatSessionPickerWidgets(action, getSecondaryPickerOptions(action.id));
@@ -4005,7 +3957,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 		}));
 		this.secondaryToolbar.getElement().classList.add('chat-secondary-input-toolbar');
 		this.secondaryToolbar.context = { widget } satisfies IChatExecuteActionContext;
-		dom.append(responsivePickerContainer, genericChipsContainer);
 		this._register(this.secondaryToolbar.onDidChangeMenuItems(() => {
 			// Update container reference for the pickers when the secondary toolbar hosts one.
 			// Only assign when found so we don't overwrite a valid primary container reference
@@ -4036,15 +3987,7 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 		}));
 
 		this._secondaryPickerResponsiveLayout = this._register(new ChatInputPickerResponsiveLayout('ChatInputPart.secondaryPicker', responsivePickerContainer, {
-			getItems: () => [
-				...getToolbarPickerResponsiveItems(this.secondaryToolbar, secondaryPickerCompactStates),
-				...genericChipsLane.getCompactableElements()
-					.map(element => ({
-						element,
-						isCompact: () => element.classList.contains('compact-picker'),
-						setCompact: (compact: boolean) => element.classList.toggle('compact-picker', compact),
-					})),
-			],
+			getItems: () => getToolbarPickerResponsiveItems(this.secondaryToolbar, secondaryPickerCompactStates),
 			hasOverflow: () => this.secondaryToolbar.hasOverflow(),
 			relayout: () => this.secondaryToolbar.relayout(),
 		}));
