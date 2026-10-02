@@ -728,9 +728,6 @@ export class WindowsMainService extends Disposable implements IWindowsMainServic
 	private resolveContextWindow(openConfig: IOpenConfiguration, forceNewWindow: boolean): { windowToUse: ICodeWindow | undefined; forceNewWindow: boolean } {
 		if (!forceNewWindow && typeof openConfig.contextWindowId === 'number') {
 			const contextWindow = this.getWindowById(openConfig.contextWindowId);
-			if (contextWindow?.config?.isSessionsWindow) {
-				return { windowToUse: undefined, forceNewWindow: true }; // do not replace the agents window
-			}
 			return { windowToUse: contextWindow, forceNewWindow };
 		}
 		return { windowToUse: undefined, forceNewWindow };
@@ -1476,7 +1473,7 @@ export class WindowsMainService extends Disposable implements IWindowsMainServic
 
 		let window: ICodeWindow | undefined;
 		if (!options.forceNewWindow && !options.forceNewTabbedWindow) {
-			window = options.windowToUse || (lastActiveWindow?.config?.isSessionsWindow ? undefined : lastActiveWindow);
+			window = options.windowToUse || lastActiveWindow;
 			if (window) {
 				window.focus();
 			}
@@ -1563,8 +1560,7 @@ export class WindowsMainService extends Disposable implements IWindowsMainServic
 			const createdWindow = window = this.instantiationService.createInstance(CodeWindow, {
 				state,
 				extensionDevelopmentPath: configuration.extensionDevelopmentPath,
-				isExtensionTestHost: !!configuration.extensionTestsPath,
-				isSessionsWindow: configuration.isSessionsWindow
+				isExtensionTestHost: !!configuration.extensionTestsPath
 			});
 			mark('code/didCreateCodeWindow');
 
@@ -1678,19 +1674,15 @@ export class WindowsMainService extends Disposable implements IWindowsMainServic
 
 		const workspace = configuration.workspace ?? toWorkspaceIdentifier(configuration.backupPath, false);
 
-		if (configuration.isSessionsWindow) {
-			configuration.profiles.profile = this.userDataProfilesMainService.profiles.find(p => p.isAgentsWindowProfile) ?? await this.userDataProfilesMainService.createAgentsWindowProfile();
-		} else {
-			const profilePromise = this.resolveProfileForBrowserWindow(options, workspace, defaultProfile);
-			const profile = profilePromise instanceof Promise ? await profilePromise : profilePromise;
-			configuration.profiles.profile = profile;
+		const profilePromise = this.resolveProfileForBrowserWindow(options, workspace, defaultProfile);
+		const profile = profilePromise instanceof Promise ? await profilePromise : profilePromise;
+		configuration.profiles.profile = profile;
 
-			if (!configuration.extensionDevelopmentPath) {
-				// Associate the configured profile to the workspace
-				// unless the window is for extension development,
-				// where we do not persist the associations
-				await this.userDataProfilesMainService.setProfileForWorkspace(workspace, profile);
-			}
+		if (!configuration.extensionDevelopmentPath) {
+			// Associate the configured profile to the workspace
+			// unless the window is for extension development,
+			// where we do not persist the associations
+			await this.userDataProfilesMainService.setProfileForWorkspace(workspace, profile);
 		}
 
 		// Load it
