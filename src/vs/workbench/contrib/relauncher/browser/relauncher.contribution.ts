@@ -46,7 +46,6 @@ interface IConfiguration extends IWindowsConfiguration {
 				dbSpanExporter?: { enabled?: boolean };
 			};
 		};
-		editor?: { codex?: { preferAgentHost?: boolean } };
 	};
 	_extensionsGallery?: { enablePPE?: boolean };
 	accessibility?: { verbosity?: { debug?: boolean } };
@@ -71,7 +70,6 @@ export class SettingsChangeRelauncher extends Disposable implements IWorkbenchCo
 		'chat.extensionUnification.enabled',
 		'chat.agentSessions.migrateLegacyCopilotCli',
 		'chat.agentHost.claudeAgent.enabled',
-		'chat.editor.codex.preferAgentHost',
 		'chat.agentHost.otel.enabled',
 		'chat.agentHost.otel.exporterType',
 		'chat.agentHost.otel.otlpEndpoint',
@@ -96,7 +94,6 @@ export class SettingsChangeRelauncher extends Disposable implements IWorkbenchCo
 	private readonly extensionUnificationEnabled = new ChangeObserver('boolean');
 	private readonly agentSessionsMigrateLegacyCopilotCli = new ChangeObserver('boolean');
 	private readonly agentHostClaudeAgentEnabled = new ChangeObserver('boolean');
-	private readonly editorCodexPreferAgentHost = new ChangeObserver('boolean');
 	private readonly agentHostOTelEnabled = new ChangeObserver('boolean');
 	private readonly agentHostOTelExporterType = new ChangeObserver('string');
 	private readonly agentHostOTelOtlpEndpoint = new ChangeObserver('string');
@@ -197,7 +194,6 @@ export class SettingsChangeRelauncher extends Disposable implements IWorkbenchCo
 
 		// Agent provider registration and implementation preferences are read at spawn.
 		processChanged(this.agentHostClaudeAgentEnabled.handleChange(config.chat?.agentHost?.claudeAgent?.enabled));
-		processChanged(this.editorCodexPreferAgentHost.handleChange(config.chat?.editor?.codex?.preferAgentHost));
 
 		// The legacy Copilot CLI migration gate is snapshotted at startup by both the
 		// renderer and the shared agent-host process, so a change only applies after a restart.
@@ -284,10 +280,6 @@ export class WorkspaceChangeExtHostRelauncher extends Disposable implements IWor
 		this.extensionHostRestarter = this._register(new RunOnceScheduler(async () => {
 			if (!!environmentService.extensionTestsLocationURI) {
 				return; // no restart when in tests: see https://github.com/microsoft/vscode/issues/66936
-			}
-
-			if (environmentService.isSessionsWindow) {
-				return; // no restart for sessions window
 			}
 
 			if (environmentService.remoteAuthority) {

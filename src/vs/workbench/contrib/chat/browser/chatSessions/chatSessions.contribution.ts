@@ -57,7 +57,7 @@ import { IChatModel } from '../../common/model/chatModel.js';
 import { ICustomizationHarnessService } from '../../common/customizationHarnessService.js';
 import { generateUuid } from '../../../../../base/common/uuid.js';
 import { AGENT_HOST_ENABLED_CONTEXT_KEY } from '../../../../../platform/agentHost/common/agentHostEnablementService.js';
-import { AgentHostCodexAgentEnabledSettingId, CodexPreferAgentHostEditorSettingId } from '../../../../../platform/agentHost/common/agentService.js';
+import { AgentHostCodexAgentEnabledSettingId } from '../../../../../platform/agentHost/common/agentService.js';
 
 const extensionPoint = ExtensionsRegistry.registerExtensionPoint<IChatSessionsExtensionPoint[]>({
 	extensionPoint: 'chatSessions',
@@ -259,11 +259,10 @@ const codexExtensionHostAvailableWhen = ContextKeyExpr.and(
 	ContextKeyExpr.or(
 		AGENT_HOST_ENABLED_CONTEXT_KEY.negate(),
 		ContextKeyExpr.not(`config.${AgentHostCodexAgentEnabledSettingId}`),
-		ContextKeyExpr.not(`config.${CodexPreferAgentHostEditorSettingId}`),
 	),
 )!;
 
-export function applyCodexAgentHostPreference(contribution: IChatSessionsExtensionPoint): IChatSessionsExtensionPoint {
+export function applyCodexAgentHostAvailability(contribution: IChatSessionsExtensionPoint): IChatSessionsExtensionPoint {
 	if (contribution.type !== SessionType.Codex) {
 		return contribution;
 	}
@@ -503,7 +502,7 @@ export class ChatSessionsService extends Disposable implements IChatSessionsServ
 	}
 
 	private registerContribution(contribution: IChatSessionsExtensionPoint, ext: IRelaxedExtensionDescription): IDisposable {
-		contribution = applyCodexAgentHostPreference(contribution);
+		contribution = applyCodexAgentHostAvailability(contribution);
 		this._logService.trace(`[ChatSessionsService] registerContribution called for type='${contribution.type}', canDelegate=${contribution.canDelegate}, when='${contribution.when}', extension='${ext.identifier.value}'`);
 		if (this._contributions.has(contribution.type)) {
 			this._logService.trace(`[ChatSessionsService] registerContribution: type='${contribution.type}' already registered, skipping`);

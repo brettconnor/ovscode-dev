@@ -89,7 +89,6 @@ function createSettingElement(deprecationMessageSeverity: 'warning' | 'info'): S
 		{ extensionRecommendations: undefined } as never,
 		{ currentProfile: { isDefault: true } } as never,
 		new TestConfigurationService() as unknown as never,
-		false,
 		new class extends mock<IExperimentalSettingsService>() { override hasAssignment() { return false; } }(),
 	);
 	element.inspectSelf = () => { };

@@ -11,7 +11,7 @@ import { URI } from '../../../../../base/common/uri.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import { NullAgentHostService } from '../../../../../platform/agentHost/browser/nullAgentHostService.js';
 import { CODEX_ACCOUNT_META_KEY } from '../../../../../platform/agentHost/common/codexAccount.js';
-import { AgentHostCodexAgentEnabledSettingId, CodexPreferAgentHostEditorSettingId } from '../../../../../platform/agentHost/common/agentService.js';
+import { AgentHostCodexAgentEnabledSettingId } from '../../../../../platform/agentHost/common/agentService.js';
 import { CODEX_AGENT_PROVIDER_ID } from '../../../../../platform/agentHost/common/agent.js';
 import type { IAgentSubscription } from '../../../../../platform/agentHost/common/state/agentSubscription.js';
 import type { RootState } from '../../../../../platform/agentHost/common/state/protocol/state.js';
@@ -94,12 +94,11 @@ suite('CodexAccountService', () => {
 	});
 
 	test('only shows ChatGPT accounts where the Codex agent host is available', () => {
-		function configuration(codexEnabled: boolean, preferAgentHost: boolean, aiDisabled = false) {
+		function configuration(codexEnabled: boolean, aiDisabled = false) {
 			return {
 				getValue<T>(key: string): T | undefined {
 					return ({
 						[AgentHostCodexAgentEnabledSettingId]: codexEnabled,
-						[CodexPreferAgentHostEditorSettingId]: preferAgentHost,
 						[ChatAIDisabledSettingId]: aiDisabled,
 					} as Record<string, boolean>)[key] as T;
 				}
@@ -107,13 +106,11 @@ suite('CodexAccountService', () => {
 		}
 
 		assert.deepStrictEqual({
-			codexDisabled: shouldShowCodexAccount(configuration(false, true)),
-			preferenceDisabled: shouldShowCodexAccount(configuration(true, false)),
-			enabled: shouldShowCodexAccount(configuration(true, true)),
-			aiHidden: shouldShowCodexAccount(configuration(true, true, true)),
+			codexDisabled: shouldShowCodexAccount(configuration(false)),
+			enabled: shouldShowCodexAccount(configuration(true)),
+			aiHidden: shouldShowCodexAccount(configuration(true, true)),
 		}, {
 			codexDisabled: false,
-			preferenceDisabled: false,
 			enabled: true,
 			aiHidden: false,
 		});

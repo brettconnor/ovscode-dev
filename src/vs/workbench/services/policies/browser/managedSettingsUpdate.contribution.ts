@@ -15,11 +15,10 @@ import { observableConfigValue } from '../../../../platform/observable/common/pl
 import { ContextKeyExpr, IContextKeyService } from '../../../../platform/contextkey/common/contextkey.js';
 import { AccessibleContentProvider, AccessibleViewProviderId, AccessibleViewType } from '../../../../platform/accessibility/browser/accessibleView.js';
 import { AccessibleViewRegistry } from '../../../../platform/accessibility/browser/accessibleViewRegistry.js';
-import { FocusedViewContext, IsSessionsWindowContext } from '../../../common/contextkeys.js';
+import { FocusedViewContext } from '../../../common/contextkeys.js';
 import { localize } from '../../../../nls.js';
 import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase } from '../../../common/contributions.js';
 import { IBannerService } from '../../banner/browser/bannerService.js';
-import { IWorkbenchEnvironmentService } from '../../environment/common/environmentService.js';
 import { IManagedSettingsUpdateService, MANAGED_SETTINGS_UPDATE_VIEW_ID, ManagedSettingsUpdateRequiredContext } from '../common/managedSettingsUpdate.js';
 
 export class ManagedSettingsUpdateContribution extends Disposable implements IWorkbenchContribution {
@@ -30,7 +29,6 @@ export class ManagedSettingsUpdateContribution extends Disposable implements IWo
 		@IConfigurationService configurationService: IConfigurationService,
 		@IContextKeyService contextKeyService: IContextKeyService,
 		@IBannerService bannerService: IBannerService,
-		@IWorkbenchEnvironmentService environmentService: IWorkbenchEnvironmentService,
 	) {
 		super();
 		const context = ManagedSettingsUpdateRequiredContext.bindTo(contextKeyService);
@@ -39,17 +37,12 @@ export class ManagedSettingsUpdateContribution extends Disposable implements IWo
 		let lastMessage: string | undefined;
 		this._register(toDisposable(() => {
 			context.reset();
-			if (!environmentService.isSessionsWindow) {
-				bannerService.hide(ManagedSettingsUpdateContribution.ID);
-			}
+			bannerService.hide(ManagedSettingsUpdateContribution.ID);
 		}));
 		this._register(autorun(reader => {
 			const info = updateService.updateInfo.read(reader);
 			const visible = !!info && !hidden.read(reader);
 			context.set(visible);
-			if (environmentService.isSessionsWindow) {
-				return;
-			}
 			if (!visible) {
 				dismissed = false;
 				lastMessage = undefined;
@@ -82,26 +75,22 @@ AccessibleViewRegistry.register({
 	priority: 125,
 	name: 'managedSettingsUpdate',
 	type: AccessibleViewType.Help,
-	when: ContextKeyExpr.and(ManagedSettingsUpdateRequiredContext, ContextKeyExpr.or(FocusedViewContext.isEqualTo(MANAGED_SETTINGS_UPDATE_VIEW_ID), IsSessionsWindowContext)),
+	when: ContextKeyExpr.and(ManagedSettingsUpdateRequiredContext, FocusedViewContext.isEqualTo(MANAGED_SETTINGS_UPDATE_VIEW_ID)),
 	getProvider: accessor => {
 		const info = accessor.get(IManagedSettingsUpdateService).updateInfo.get();
 		if (!info) {
 			return undefined;
 		}
 		const previousFocus = getActiveElement();
-		const isSessionsWindow = accessor.get(IWorkbenchEnvironmentService).isSessionsWindow;
 		return new AccessibleContentProvider(
 			AccessibleViewProviderId.PanelChat,
 			{ type: AccessibleViewType.Help },
 			() => [
 				info.title, info.message, info.detail, info.updateStatus,
-				isSessionsWindow
-					? localize('managedSettingsUpdate.agentsHelp', "The Agents window is blocked by your organization's minimum-version requirement. The overlay explains the required update.")
-					: localize('managedSettingsUpdate.help', "Chat is read-only while this requirement is active."),
+				localize('managedSettingsUpdate.help', "Chat is read-only while this requirement is active."),
 				localize('managedSettingsUpdate.availableActionsHelp', "Use Tab or Shift+Tab to move between available actions, then press Enter or Space to activate one."),
 				info.action ? localize('managedSettingsUpdate.actionHelp', "The available update action is {0}.", info.action.label) : undefined,
-				isSessionsWindow ? localize('managedSettingsUpdate.editorWindowHelp', "Use Tab or Shift+Tab to reach Open Editor Window, then press Enter or Space. This opens a new editor window.") : undefined,
-				!isSessionsWindow ? localize('managedSettingsUpdate.bannerHelp', "The window banner is also available with the Focus Banner command. In the banner, use the arrow keys to reach its actions. Closing the banner does not dismiss the explanation in Chat or change your organization's requirement.") : undefined,
+				localize('managedSettingsUpdate.bannerHelp', "The window banner is also available with the Focus Banner command. In the banner, use the arrow keys to reach its actions. Closing the banner does not dismiss the explanation in Chat or change your organization's requirement."),
 			].filter(Boolean).join('\n'),
 			() => { if (isHTMLElement(previousFocus) && previousFocus.isConnected) { previousFocus.focus(); } },
 			'accessibility.verbosity.chat',

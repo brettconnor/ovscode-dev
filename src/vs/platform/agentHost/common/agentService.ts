@@ -262,12 +262,8 @@ export function isAgentEnabled(envValue: string | undefined, defaultEnabled: boo
  * Selects whether the regular workbench surfaces Codex from the agent host
  * instead of the OpenAI extension.
  */
-export const CodexPreferAgentHostEditorSettingId = 'chat.editor.codex.preferAgentHost';
-
-
 export function affectsAgentHostProviderPreference(event: IConfigurationChangeEvent): boolean {
-	return event.affectsConfiguration(AgentHostClaudeAgentEnabledSettingId)
-		|| event.affectsConfiguration(CodexPreferAgentHostEditorSettingId);
+	return event.affectsConfiguration(AgentHostClaudeAgentEnabledSettingId);
 }
 
 export function shouldSurfaceLocalAgentHostProvider(provider: AgentProvider, configurationService: IConfigurationService): boolean {
@@ -275,7 +271,7 @@ export function shouldSurfaceLocalAgentHostProvider(provider: AgentProvider, con
 		case CLAUDE_AGENT_PROVIDER_ID:
 			return configurationService.getValue<boolean>(AgentHostClaudeAgentEnabledSettingId) !== false;
 		case CODEX_AGENT_PROVIDER_ID:
-			return configurationService.getValue<boolean>(CodexPreferAgentHostEditorSettingId) === true;
+			return true;
 		default:
 			return true;
 	}

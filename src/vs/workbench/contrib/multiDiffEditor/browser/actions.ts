@@ -23,7 +23,7 @@ import { MultiDiffEditor } from './multiDiffEditor.js';
 import { MultiDiffEditorInput } from './multiDiffEditorInput.js';
 import { IEditorGroupsService } from '../../../services/editor/common/editorGroupsService.js';
 import { AUX_WINDOW_GROUP, IEditorService, SIDE_GROUP } from '../../../services/editor/common/editorService.js';
-import { ActiveEditorContext, IsSessionsWindowContext } from '../../../common/contextkeys.js';
+import { ActiveEditorContext } from '../../../common/contextkeys.js';
 import { createMultiDiffEditorLayoutDebugModel, isMultiDiffEditorLayoutDebugStateProvider } from './multiDiffEditorLayoutDebug.js';
 import { IWorkbenchEnvironmentService } from '../../../services/environment/common/environmentService.js';
 
@@ -215,12 +215,6 @@ export class CollapseAllAction extends Action2 {
 					group: 'navigation',
 					order: 100
 				},
-				{
-					id: MenuId.EditorTitle,
-					when: ContextKeyExpr.and(ContextKeyExpr.equals('activeEditor', MultiDiffEditor.ID), ContextKeyExpr.not('multiDiffEditorAllCollapsed'), IsSessionsWindowContext),
-					group: '4_collapse',
-					order: 10
-				}
 			],
 			f1: true,
 		});
@@ -264,12 +258,6 @@ export class ExpandAllAction extends Action2 {
 					group: 'navigation',
 					order: 100
 				},
-				{
-					id: MenuId.EditorTitle,
-					when: ContextKeyExpr.and(ContextKeyExpr.equals('activeEditor', MultiDiffEditor.ID), ContextKeyExpr.has('multiDiffEditorAllCollapsed'), IsSessionsWindowContext),
-					group: '4_collapse',
-					order: 10
-				}
 			],
 			f1: true,
 		});

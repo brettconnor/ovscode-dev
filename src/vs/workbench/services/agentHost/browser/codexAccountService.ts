@@ -11,7 +11,7 @@ import { URI } from '../../../../base/common/uri.js';
 import { localize } from '../../../../nls.js';
 import { CODEX_ACCOUNT_SIGN_IN_REQUEST_KEY, CODEX_ACCOUNT_SIGN_OUT_REQUEST_KEY, MAX_CODEX_PROFILE_IMAGE_BYTES, readCodexAccountInfo, type ICodexAccountInfo, type ICodexProfileImageReference } from '../../../../platform/agentHost/common/codexAccount.js';
 import { CODEX_AGENT_PROVIDER_ID } from '../../../../platform/agentHost/common/agent.js';
-import { AgentHostCodexAgentEnabledSettingId, CodexPreferAgentHostEditorSettingId, IAgentHostService } from '../../../../platform/agentHost/common/agentService.js';
+import { AgentHostCodexAgentEnabledSettingId, IAgentHostService } from '../../../../platform/agentHost/common/agentService.js';
 import { ChatAIDisabledSettingId } from '../../../../platform/chat/common/chatSettings.js';
 import { ActionType } from '../../../../platform/agentHost/common/state/sessionActions.js';
 import { ContentEncoding } from '../../../../platform/agentHost/common/state/sessionProtocol.js';
@@ -50,8 +50,7 @@ export function hasSignedInCodexChatGPTAccount(account: ICodexAccountInfo, visib
 
 export function shouldShowCodexAccount(configurationService: ICodexAccountVisibilityConfiguration): boolean {
 	return configurationService.getValue<boolean>(ChatAIDisabledSettingId) !== true
-		&& configurationService.getValue<boolean>(AgentHostCodexAgentEnabledSettingId) === true
-		&& configurationService.getValue<boolean>(CodexPreferAgentHostEditorSettingId) === true;
+		&& configurationService.getValue<boolean>(AgentHostCodexAgentEnabledSettingId) === true;
 }
 
 export function createCodexAccountMenuActions(service: ICodexAccountService, visible = true): IAction[] {

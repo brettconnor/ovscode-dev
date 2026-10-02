@@ -8,7 +8,7 @@ import { URI } from '../../../../base/common/uri.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../base/test/common/utils.js';
 import { IConfigurationService } from '../../../configuration/common/configuration.js';
 import { AgentSession, GITHUB_COPILOT_PROTECTED_RESOURCE, GITHUB_REPO_PROTECTED_RESOURCE, protectedResourcesRequireGitHubCopilotSignIn } from '../../common/agent.js';
-import { AgentHostClaudeAgentEnabledSettingId, AgentHostCodexAgentEnabledSettingId, AgentHostOTelEnvVars, buildAgentHostOTelEnv, CodexPreferAgentHostEditorSettingId, isAgentEnabled, readAgentHostOTelPolicySettings, sanitizeAgentHostOTelPolicySettings, shouldSurfaceLocalAgentHostProvider } from '../../common/agentService.js';
+import { AgentHostClaudeAgentEnabledSettingId, AgentHostCodexAgentEnabledSettingId, AgentHostOTelEnvVars, buildAgentHostOTelEnv, isAgentEnabled, readAgentHostOTelPolicySettings, sanitizeAgentHostOTelPolicySettings, shouldSurfaceLocalAgentHostProvider } from '../../common/agentService.js';
 import type { ProtectedResourceMetadata } from '../../common/state/protocol/state.js';
 import { buildChatUri, buildDefaultChatUri, resolveChatUri } from '../../common/state/sessionState.js';
 import { TestConfigurationService } from '../../../configuration/test/common/testConfigurationService.js';
@@ -80,7 +80,6 @@ suite('shouldSurfaceLocalAgentHostProvider', () => {
 		const configurationService = new TestConfigurationService({
 			[AgentHostClaudeAgentEnabledSettingId]: true,
 			[AgentHostCodexAgentEnabledSettingId]: true,
-			[CodexPreferAgentHostEditorSettingId]: true,
 		});
 
 		assert.deepStrictEqual({
@@ -108,7 +107,6 @@ suite('shouldSurfaceLocalAgentHostProvider', () => {
 		const configurationService = new TestConfigurationService({
 			[AgentHostClaudeAgentEnabledSettingId]: false,
 			[AgentHostCodexAgentEnabledSettingId]: false,
-			[CodexPreferAgentHostEditorSettingId]: true,
 		});
 
 		assert.deepStrictEqual({

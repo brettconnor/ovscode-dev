@@ -307,7 +307,7 @@ export class OpenBrowserTool implements IToolImpl {
 
 	private async _openNewPage(sessionId: string, url: string): Promise<IToolResult> {
 		const input = await this.browserViewService.createBrowserView({
-			...getAgentBrowserViewCreationDefaults(sessionId, this.environmentService.isSessionsWindow ? sessionId : undefined),
+			...getAgentBrowserViewCreationDefaults(sessionId),
 			initialUrl: url,
 			openSource: 'cdpCreated'
 		}, { preserveFocus: true });
