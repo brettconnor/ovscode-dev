@@ -8,9 +8,8 @@ import { Schemas } from '../../../../../../base/common/network.js';
 import { isEqual } from '../../../../../../base/common/resources.js';
 import { URI } from '../../../../../../base/common/uri.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../../base/test/common/utils.js';
-import { IChatDraft, reviveChatDraft, serializeChatDraft, UnsupportedChatDraftAttachmentError } from '../../../common/attachments/chatDraft.js';
+import { IChatDraft, isSerializedChatDraft, ISerializedChatDraft, reviveChatDraft, serializeChatDraft, UnsupportedChatDraftAttachmentError } from '../../../common/attachments/chatDraft.js';
 import { IChatRequestVariableEntry, isExplicitFileOrImageVariableEntry, toFileVariableEntry, toPasteVariableEntry } from '../../../common/attachments/chatVariableEntries.js';
-import { IAgentsWindowDraft, isAgentsWindowDraft } from '../../../../../../platform/window/common/window.js';
 import { createTextModel } from '../../../../../../editor/test/common/testTextModel.js';
 import { Range } from '../../../../../../editor/common/core/range.js';
 import { SymbolKind } from '../../../../../../editor/common/languages.js';
@@ -28,12 +27,12 @@ suite('Chat draft handoff serialization', () => {
 		];
 		const original: IChatDraft = { inputText: 'Fix this\nwith "context".', attachments };
 		const serialized = serializeChatDraft(original);
-		const transferred: IAgentsWindowDraft = JSON.parse(JSON.stringify(serialized));
+		const transferred: ISerializedChatDraft = JSON.parse(JSON.stringify(serialized));
 		const revived = reviveChatDraft(transferred);
 		const image = revived.attachments[3].value;
 		const element = revived.attachments[4];
 		assert.deepStrictEqual({
-			valid: isAgentsWindowDraft(transferred),
+			valid: isSerializedChatDraft(transferred),
 			roundTrip: serializeChatDraft(revived),
 			file: isEqual(IChatRequestVariableEntry.toUri(revived.attachments[0]), URI.file('/workspace/file.ts')),
 			symbol: isEqual(IChatRequestVariableEntry.toUri(revived.attachments[1]), URI.file('/workspace/symbol.ts')),

@@ -226,20 +226,6 @@ jobs:
         env:
           VSCODE_SMOKE_TEST_POLICY: '1'
 
-      - name: Install Squid for network-isolated smoke tests
-        if: ${{ inputs.electron_tests && inputs.smoke_tests }}
-        run: brew list squid >/dev/null 2>&1 || brew install squid
-
-      - name: 🧪 Run Agents Window smoke tests through macOS PAC proxy
-        if: ${{ inputs.electron_tests && inputs.smoke_tests }}
-        timeout-minutes: 40
-        run: bash test/smoke/scripts/run-agents-window-network-proxy.sh
-
-      - name: 🧪 Run Agents Window smoke tests through Kerberos-authenticated macOS PAC proxy
-        if: ${{ inputs.electron_tests && inputs.smoke_tests }}
-        timeout-minutes: 40
-        run: bash test/smoke/scripts/run-agents-window-network-proxy.sh --kerberos
-
       - name: 🧪 Run smoke tests (Browser, Chromium)
         if: ${{ inputs.browser_tests && inputs.smoke_tests }}
         timeout-minutes: 20

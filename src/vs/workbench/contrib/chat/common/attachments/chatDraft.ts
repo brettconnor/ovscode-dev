@@ -8,12 +8,22 @@ import { Schemas } from '../../../../../base/common/network.js';
 import { URI } from '../../../../../base/common/uri.js';
 import { isLocation } from '../../../../../editor/common/languages.js';
 import { ITextModel } from '../../../../../editor/common/model.js';
-import { IAgentsWindowDraft } from '../../../../../platform/window/common/window.js';
 import { ChatPasteAttachmentMetadata, IChatRequestVariableEntry, isChatRequestVariableEntry, isImplicitVariableEntry, isStringImplicitContextValue, isStringVariableEntry, toPasteVariableEntry } from './chatVariableEntries.js';
 
 export interface IChatDraft {
 	readonly inputText: string;
 	readonly attachments: readonly IChatRequestVariableEntry[];
+}
+
+export interface ISerializedChatDraft {
+	readonly inputText: string;
+	/** URI-aware serialized chat attachments, including exported image data. */
+	readonly attachments: string;
+}
+
+export function isSerializedChatDraft(value: unknown): value is ISerializedChatDraft {
+	const draft = value as Partial<ISerializedChatDraft> | undefined;
+	return !!draft && typeof draft.inputText === 'string' && typeof draft.attachments === 'string';
 }
 
 export class UnsupportedChatDraftAttachmentError extends Error {
@@ -22,7 +32,7 @@ export class UnsupportedChatDraftAttachmentError extends Error {
 	}
 }
 
-export function serializeChatDraft(draft: IChatDraft, getTextModel?: (resource: URI) => ITextModel | null): IAgentsWindowDraft {
+export function serializeChatDraft(draft: IChatDraft, getTextModel?: (resource: URI) => ITextModel | null): ISerializedChatDraft {
 	const attachments = draft.attachments.map(attachment => {
 		const context = isStringVariableEntry(attachment)
 			? attachment
@@ -63,7 +73,7 @@ export function serializeChatDraft(draft: IChatDraft, getTextModel?: (resource: 
 	return { inputText: draft.inputText, attachments: stringify(attachments) };
 }
 
-export function reviveChatDraft(draft: IAgentsWindowDraft): IChatDraft {
+export function reviveChatDraft(draft: ISerializedChatDraft): IChatDraft {
 	const attachments: unknown = parse(draft.attachments);
 	if (!Array.isArray(attachments) || !attachments.every(isChatRequestVariableEntry)) {
 		throw new Error('Invalid chat draft attachments.');

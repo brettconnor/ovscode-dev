@@ -56,9 +56,6 @@ src/vs/workbench/contrib/terminalContrib/** @anthonykim1
 src/vs/workbench/contrib/update/browser/releaseNotesEditor.ts @alexr00
 src/vs/workbench/contrib/preferences/** @rzhao271
 
-# Sessions Contributions
-src/vs/sessions/contrib/browserView/** @kycutler @jruales
-
 # Build
 build/azure-pipelines/** @lszomoru
 build/azure-pipelines/common/sanity-tests.yml @dmitrivMS
@@ -116,15 +113,6 @@ test/mcp/** @TylerLeonhardt
 test/scenario/** @bryanchen-d
 test/sanity/** @dmitrivMS
 
-# Agents Workbench
-# Ensure the Agents workbench team is aware of changes to the sessions model and services
-src/vs/sessions/services/sessions/** @sandy081 @lszomoru
-
-# Ensure the Agents workbench team is aware of changes to the core workbench layout
-src/vs/sessions/contrib/layout/** @benibenj
-src/vs/sessions/browser/parts/** @benibenj
-src/vs/sessions/browser/workbench.ts @benibenj
-
 # Agents Window architecture specifications and their routing policy.
 /src/vs/sessions/*.md @sandy081
 /src/vs/sessions/contrib/layout/browser/*.md @sandy081
@@ -132,4 +120,3 @@ src/vs/sessions/browser/workbench.ts @benibenj
 /.github/instructions/sessions.instructions.md @sandy081
 /.github/skills/sessions/SKILL.md @sandy081
 /.github/skills/chat-customizations-editor/SKILL.md @sandy081
-

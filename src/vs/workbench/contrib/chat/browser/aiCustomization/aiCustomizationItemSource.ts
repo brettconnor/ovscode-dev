@@ -337,8 +337,8 @@ export class ItemProviderItemSource extends Disposable implements IAICustomizati
 	}
 
 	/**
-	 * Merges built-in skills (bundled with the app under `vs/sessions/skills/`)
-	 * into the provider's items. The provider may re-discover the bundled
+ * Merges prompt-service-provided built-in skills into the provider's items.
+ * The provider may re-discover the bundled
 	 * copies when scanning disk — those duplicates are dropped (deduped by
 	 * URI) and replaced with the authoritative built-in entry tagged
 	 * `groupKey: BUILTIN_STORAGE` so the UI renders them in the "Built-in"

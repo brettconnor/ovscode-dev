@@ -400,9 +400,6 @@ export async function retry<T>(task: ITask<Promise<T>>, delay: number, retries: 
  *  - Paths of every `playwright-trace-*.zip` / `playwright-screenshot-*.png`
  *    that has been persisted to the suite's logs directory so the artifact
  *    can be located in a CI logs bundle without searching.
- *  - The class list / attributes of the element matched by
- *    `sendButtonSelector` (if provided) so we can tell whether the button
- *    was `.disabled`, missing, or covered by an overlay when the test gave up.
  *  - The tail (last 80 lines) of the `GitHub Copilot Chat.log` extension
  *    host log for every `window*` directory under the suite logs that has
  *    an `exthost/GitHub.copilot-chat/` subfolder. This surfaces extension-side
@@ -422,8 +419,7 @@ export async function retry<T>(task: ITask<Promise<T>>, delay: number, retries: 
 export async function dumpFailureDiagnostics(
 	app: Application,
 	logger: Logger,
-	label: string,
-	options?: { sendButtonSelector?: string }
+	label: string
 ): Promise<void> {
 	const logsPath = app.logsPath;
 	logger.log(`[${label}] dumping failure diagnostics; logsPath=${logsPath}`);
@@ -442,23 +438,6 @@ export async function dumpFailureDiagnostics(
 		}
 	} catch (err) {
 		logger.log(`[${label}] failed to list playwright artifacts in ${logsPath}: ${err instanceof Error ? err.message : String(err)}`);
-	}
-
-	// 2. Capture send-button state (Agents Window flow only).
-	const sendButtonSelector = options?.sendButtonSelector;
-	if (sendButtonSelector) {
-		try {
-			const elements = await app.code.driver.getElements(sendButtonSelector, true);
-			if (!elements || elements.length === 0) {
-				logger.log(`[${label}] send-button selector matched 0 elements: ${sendButtonSelector}`);
-			} else {
-				for (const el of elements) {
-					logger.log(`[${label}] send button: tag=${el.tagName} class='${el.className}' attrs=${JSON.stringify(el.attributes)} text='${(el.textContent ?? '').slice(0, 80)}'`);
-				}
-			}
-		} catch (err) {
-			logger.log(`[${label}] failed to query send-button selector '${sendButtonSelector}': ${err instanceof Error ? err.message : String(err)}`);
-		}
 	}
 
 	// 3. Tail the Copilot Chat extension log for every window in this suite.

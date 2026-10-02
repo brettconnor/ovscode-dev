@@ -3953,7 +3953,7 @@ export class ChatListItemRenderer extends Disposable implements ITreeRenderer<Ch
 
 	private getLastThinkingPartForGroupedItem(context: IChatContentPartRenderContext, templateData: IChatListItemTemplate): { part: ChatThinkingContentPart | undefined; separatedFromReasoning: boolean } {
 		const lastThinking = this.getLastThinkingPart(templateData.renderedParts?.slice(0, context.contentIndex));
-		const displayMode = getEffectiveThinkingDisplayMode(this.configService, this.contextKeyService, context.readOnly);
+		const displayMode = getEffectiveThinkingDisplayMode(this.configService, context.readOnly);
 		if (lastThinking && (this.isPersistentProgressEnabled() ? !lastThinking.isToolChain : lastThinking.hasReasoningContent() && shouldStartNewCollapsedThinkingGroup(displayMode, 'reasoning', 'items'))) {
 			this.finalizeCurrentThinkingPart(context, templateData);
 			return { part: undefined, separatedFromReasoning: true };
@@ -4210,7 +4210,7 @@ export class ChatListItemRenderer extends Disposable implements ITreeRenderer<Ch
 			// A persistent preview collapses on its own as content streams in, so wait for a keyboard
 			// user to leave it rather than making the content they are on inert.
 			thinking.collapseContentWhenUnfocused();
-		} else if (getEffectiveThinkingDisplayMode(this.configService, this.contextKeyService, context.readOnly) === ThinkingDisplayMode.CollapsedPreview) {
+		} else if (getEffectiveThinkingDisplayMode(this.configService, context.readOnly) === ThinkingDisplayMode.CollapsedPreview) {
 			thinking.collapseContent();
 		}
 		thinking.finalizeTitleIfDefault();
@@ -5445,7 +5445,7 @@ export class ChatListItemRenderer extends Disposable implements ITreeRenderer<Ch
 		const renderedPrefix = templateData.renderedParts?.slice(0, context.contentIndex);
 		const lastThinkingPart = this.getLastThinkingPart(renderedPrefix);
 		if (lastThinkingPart && (context.suppressProgressShimmer ? lastThinkingPart.isToolChain !== toolChain
-			: lastThinkingPart.hasGroupedItems() && shouldStartNewCollapsedThinkingGroup(getEffectiveThinkingDisplayMode(this.configService, this.contextKeyService, context.readOnly), 'items', 'reasoning'))) {
+			: lastThinkingPart.hasGroupedItems() && shouldStartNewCollapsedThinkingGroup(getEffectiveThinkingDisplayMode(this.configService, context.readOnly), 'items', 'reasoning'))) {
 			this.finalizeCurrentThinkingPart(context, templateData);
 		}
 
