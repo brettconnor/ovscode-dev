@@ -33,7 +33,6 @@ function createRemoteExplorerService(localUri: string): IRemoteExplorerService {
 		}),
 	});
 }
-import { IWorkbenchEnvironmentService } from '../../../../../services/environment/common/environmentService.js';
 
 suite('OpenBrowserTool', () => {
 	const disposables = ensureNoDisposablesAreLeakedInTestSuite();
@@ -53,7 +52,6 @@ suite('OpenBrowserTool', () => {
 			upcastPartial<IChatService>({}),
 			configService,
 			upcastPartial<ILogService>({}),
-			upcastPartial<IWorkbenchEnvironmentService>({ isSessionsWindow: false }),
 		);
 
 		const urls = [
@@ -109,7 +107,6 @@ suite('OpenBrowserTool', () => {
 			upcastPartial<IChatService>({}),
 			new TestConfigurationService(),
 			upcastPartial<ILogService>({}),
-			upcastPartial<IWorkbenchEnvironmentService>({ isSessionsWindow: true }),
 		);
 
 		await tool.invoke(
@@ -162,7 +159,6 @@ suite('OpenBrowserTool', () => {
 			upcastPartial<IChatService>({}),
 			configService,
 			upcastPartial<ILogService>({}),
-			upcastPartial<IWorkbenchEnvironmentService>({ isSessionsWindow: true }),
 		);
 		const parameters = { url: 'http://localhost:3000/private', forceNew: true };
 
@@ -213,7 +209,6 @@ suite('OpenBrowserTool', () => {
 			upcastPartial<IChatService>({}),
 			new TestConfigurationService(),
 			upcastPartial<ILogService>({}),
-			upcastPartial<IWorkbenchEnvironmentService>({ isSessionsWindow: true }),
 		);
 		const parameters = { url: 'https://example.com/private' };
 
