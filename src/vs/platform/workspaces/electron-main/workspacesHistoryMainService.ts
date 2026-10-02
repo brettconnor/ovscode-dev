@@ -15,7 +15,6 @@ import { basename, dirname, extUriBiasedIgnorePathCase, isEqual, originalFSPath 
 import { URI } from '../../../base/common/uri.js';
 import { Promises } from '../../../base/node/pfs.js';
 import { localize } from '../../../nls.js';
-import { IConfigurationService } from '../../configuration/common/configuration.js';
 import { createDecorator } from '../../instantiation/common/instantiation.js';
 import { ILifecycleMainService, LifecycleMainPhase } from '../../lifecycle/electron-main/lifecycleMainService.js';
 import { ILogService } from '../../log/common/log.js';
@@ -60,8 +59,7 @@ export class WorkspacesHistoryMainService extends Disposable implements IWorkspa
 		@ILifecycleMainService private readonly lifecycleMainService: ILifecycleMainService,
 		@IApplicationStorageMainService private readonly applicationStorageMainService: IApplicationStorageMainService,
 		@IDialogMainService private readonly dialogMainService: IDialogMainService,
-		@IEnvironmentMainService private readonly environmentMainService: IEnvironmentMainService,
-		@IConfigurationService private readonly configurationService: IConfigurationService
+		@IEnvironmentMainService private readonly environmentMainService: IEnvironmentMainService
 	) {
 		super();
 
