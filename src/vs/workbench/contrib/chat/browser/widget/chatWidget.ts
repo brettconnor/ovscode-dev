@@ -379,6 +379,8 @@ export class ChatWidget extends Disposable implements IChatWidget {
 
 	private listContainer!: HTMLElement;
 	private container!: HTMLElement;
+	private _hasPendingModelForRender = false;
+	private _pendingModelForRender: IChatModel | undefined;
 	private _persistentContentHeight: number;
 	private _chatPetListPadding = 0;
 	private transcriptProgress: {
@@ -1105,6 +1107,12 @@ export class ChatWidget extends Disposable implements IChatWidget {
 		});
 		this.listWidget.setVisible(this.visible);
 		this.input.setVisible(this.visible);
+		if (this._hasPendingModelForRender) {
+			const pendingModel = this._pendingModelForRender;
+			this._hasPendingModelForRender = false;
+			this._pendingModelForRender = undefined;
+			this.setModel(pendingModel);
+		}
 
 		if (this.viewOptions.enableFind) {
 			const host: IChatFindHost = {
@@ -2723,9 +2731,11 @@ export class ChatWidget extends Disposable implements IChatWidget {
 	}
 
 	setModel(model: IChatModel | undefined): void {
-		if (!this.container || !this.inputPart) {
-			// Widget hasn't finished rendering yet; skip rather than crash and
-			// break the session view. Caller will re-invoke once rendered.
+		if (!this.container || !this.inputPart || !this.listWidget) {
+			// Rendering the input can re-enter session binding before the list is
+			// created. Keep the latest model and apply it after the widget is ready.
+			this._hasPendingModelForRender = true;
+			this._pendingModelForRender = model;
 			this.logService.warn('ChatWidget#setModel called before render() completed');
 			return;
 		}
