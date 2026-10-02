@@ -582,7 +582,6 @@ export class SettingsTreeModel implements IDisposable {
 		@ILanguageService private readonly _languageService: ILanguageService,
 		@IUserDataProfileService private readonly _userDataProfileService: IUserDataProfileService,
 		@IProductService private readonly _productService: IProductService,
-		@IWorkbenchEnvironmentService private readonly _environmentService: IWorkbenchEnvironmentService,
 		@IExperimentalSettingsService private readonly _experimentalSettingsService: IExperimentalSettingsService,
 	) {
 	}
@@ -1001,7 +1000,7 @@ export class SearchResultModel extends SettingsTreeModel {
 		@IProductService productService: IProductService,
 		@IExperimentalSettingsService experimentalSettingsService: IExperimentalSettingsService
 	) {
-		super(viewState, isWorkspaceTrusted, configurationService, languageService, userDataProfileService, productService, environmentService, experimentalSettingsService);
+		super(viewState, isWorkspaceTrusted, configurationService, languageService, userDataProfileService, productService, experimentalSettingsService);
 		this.settingsOrderByTocIndex = settingsOrderByTocIndex;
 		this.cachedUniqueSearchResults = new Map();
 		this.update({ id: 'searchResultModel', label: '' });

@@ -20,16 +20,12 @@ import { TestInstantiationService } from '../../../../../platform/instantiation/
 import { IProductService } from '../../../../../platform/product/common/productService.js';
 import { DisablementReason, IUpdateService, State, UpdateType } from '../../../../../platform/update/common/update.js';
 import { IBannerItem, IBannerService } from '../../../banner/browser/bannerService.js';
-import { IWorkbenchEnvironmentService } from '../../../environment/common/environmentService.js';
 import { ManagedSettingsUpdateContribution } from '../../browser/managedSettingsUpdate.contribution.js';
 import { ManagedSettingsUpdateService } from '../../browser/managedSettingsUpdateService.js';
 import { getManagedSettingsUpdateInfo, IManagedSettingsUpdateInfo, IManagedSettingsUpdateService, ManagedSettingsUpdateRequiredContext } from '../../common/managedSettingsUpdate.js';
 
 suite('Managed settings update presentation', () => {
 	const store = ensureNoDisposablesAreLeakedInTestSuite();
-	const editorEnvironment = new class extends mock<IWorkbenchEnvironmentService>() {
-		override readonly isSessionsWindow = false;
-	}();
 	const product = new class extends mock<IProductService>() {
 		override readonly nameShort = 'Code - Insiders';
 		override readonly version = '1.140.0';
@@ -161,7 +157,7 @@ suite('Managed settings update presentation', () => {
 			override show(item: IBannerItem): void { shown.push(item); active = item; }
 			override hide(id: string): void { if (active?.id === id) { active = undefined; } }
 		}();
-		const contribution = store.add(new ManagedSettingsUpdateContribution(service, configuration, contexts, banners, editorEnvironment));
+		const contribution = store.add(new ManagedSettingsUpdateContribution(service, configuration, contexts, banners));
 		const states: { visible: boolean | undefined; banner: boolean }[] = [];
 		const capture = () => states.push({ visible: ManagedSettingsUpdateRequiredContext.getValue(contexts), banner: !!active });
 		capture();
@@ -210,7 +206,7 @@ suite('Managed settings update presentation', () => {
 		store.add(new ManagedSettingsUpdateContribution(service, configuration, context, new class extends mock<IBannerService>() {
 			override show(item: IBannerItem) { shown.push(item); }
 			override hide() { }
-		}(), editorEnvironment));
+		}()));
 		assert.deepStrictEqual({ count: shown.length, visible: ManagedSettingsUpdateRequiredContext.getValue(context) }, { count: 1, visible: true });
 	});
 
@@ -222,7 +218,7 @@ suite('Managed settings update presentation', () => {
 		store.add(new ManagedSettingsUpdateContribution(service, configuration, new MockContextKeyService(), new class extends mock<IBannerService>() {
 			override show(item: IBannerItem) { shown.push(String(item.message)); }
 			override hide() { }
-		}(), editorEnvironment));
+		}()));
 		setUpdate(State.Disabled(DisablementReason.Policy));
 		setUpdate(State.Disabled(DisablementReason.NotBuilt));
 		assert.deepStrictEqual(shown, [
@@ -240,7 +236,7 @@ suite('Managed settings update presentation', () => {
 		store.add(new ManagedSettingsUpdateContribution(service, configuration, new MockContextKeyService(), new class extends mock<IBannerService>() {
 			override show(item: IBannerItem) { active = item; }
 			override hide() { active = undefined; }
-		}(), editorEnvironment));
+		}()));
 		const states = disabledReasons.map(reason => {
 			setUpdate(State.Disabled(reason));
 			return { shown: !!active, actions: active?.actions, instructions: String(active?.message).includes('Update Instructions') };
@@ -248,36 +244,10 @@ suite('Managed settings update presentation', () => {
 		assert.deepStrictEqual(states, disabledReasons.map(() => ({ shown: true, actions: [], instructions: false })));
 	});
 
-	test('Agents keeps its update context without touching banners on startup, late changes or recovery', () => {
-		const { service, setError, setUpdate } = createService(error);
-		const configuration = new TestConfigurationService();
-		store.add(configuration.onDidChangeConfigurationEmitter);
-		const contexts = new MockContextKeyService();
-		const bannerCalls: string[] = [];
-		const contribution = store.add(new ManagedSettingsUpdateContribution(service, configuration, contexts, new class extends mock<IBannerService>() {
-			override show() { bannerCalls.push('show'); }
-			override hide() { bannerCalls.push('hide'); }
-		}(), new class extends mock<IWorkbenchEnvironmentService>() {
-			override readonly isSessionsWindow = true;
-		}()));
-		const visible = () => ManagedSettingsUpdateRequiredContext.getValue(contexts);
-		const states = [visible()];
-		setUpdate(State.Disabled(DisablementReason.Policy));
-		states.push(visible());
-		setError(null);
-		states.push(visible());
-		setError(error);
-		states.push(visible());
-		contribution.dispose();
-		states.push(visible());
-		assert.deepStrictEqual({ bannerCalls, states }, { bannerCalls: [], states: [true, true, false, true, false] });
-	});
-
 	test('accessibility help uses the concise requirement and restores focus without claiming a usable composer', () => {
 		const { service, setError } = createService(error);
 		const services = store.add(new TestInstantiationService());
 		services.stub(IManagedSettingsUpdateService, service);
-		services.stub(IWorkbenchEnvironmentService, editorEnvironment);
 		const target = append(mainWindow.document.body, $('button', undefined, 'Update'));
 		store.add(toDisposable(() => target.remove()));
 		target.focus();
@@ -299,75 +269,5 @@ suite('Managed settings update presentation', () => {
 		}, { title: true, requirement: true, installed: true, keyboard: true, readOnly: true, bannerHelp: true, focused: true, cleared: undefined });
 	});
 
-	test('Agents accessibility help describes recovery without suggesting a nonexistent banner', () => {
-		const { service } = createService(error);
-		const services = store.add(new TestInstantiationService());
-		services.stub(IManagedSettingsUpdateService, service);
-		services.stub(IWorkbenchEnvironmentService, new class extends mock<IWorkbenchEnvironmentService>() {
-			override readonly isSessionsWindow = true;
-		}());
-		const help = AccessibleViewRegistry.getImplementations().find(implementation => implementation.name === 'managedSettingsUpdate')!;
-		const provider = store.add(services.invokeFunction(accessor => help.getProvider(accessor))!);
-		const text = provider.provideContent();
-		assert.deepStrictEqual({
-			requirement: text.includes('Your organization requires Code - Insiders 1.141.0 or later to use AI features.'),
-			keyboard: text.includes('Use Tab or Shift+Tab'),
-			bannerHelp: text.includes('banner'),
-			blockedOverlay: text.includes('The Agents window is blocked') && text.includes('The overlay explains'),
-			readOnlyChat: text.includes('Chat is read-only'),
-		}, { requirement: true, keyboard: true, bannerHelp: false, blockedOverlay: true, readOnlyChat: false });
-	});
 
-	for (const isSessionsWindow of [false, true]) {
-		test(`accessibility help omits nonexistent update actions in ${isSessionsWindow ? 'Agents' : 'editor'} when updates are disabled`, () => {
-			const { service, setUpdate } = createService(error);
-			setUpdate(State.Disabled(DisablementReason.Policy));
-			const services = store.add(new TestInstantiationService());
-			services.stub(IManagedSettingsUpdateService, service);
-			services.stub(IWorkbenchEnvironmentService, new class extends mock<IWorkbenchEnvironmentService>() {
-				override readonly isSessionsWindow = isSessionsWindow;
-			}());
-			const help = AccessibleViewRegistry.getImplementations().find(implementation => implementation.name === 'managedSettingsUpdate')!;
-			const provider = store.add(services.invokeFunction(accessor => help.getProvider(accessor))!);
-			const text = provider.provideContent();
-			assert.deepStrictEqual({
-				updateAction: text.includes('The available update action is'),
-				editorWindowAction: text.includes('reach Open Editor Window'),
-				administrator: text.includes('Contact your administrator for an approved update.'),
-			}, { updateAction: false, editorWindowAction: isSessionsWindow, administrator: true });
-		});
-	}
-
-	for (const isSessionsWindow of [false, true]) {
-		test(`help describes the ${isSessionsWindow ? 'Agents overlay' : 'Chat notice'} and only currently available actions`, () => {
-			const { service, setUpdate } = createService(error);
-			const services = store.add(new TestInstantiationService());
-			services.stub(IManagedSettingsUpdateService, service);
-			services.stub(IWorkbenchEnvironmentService, new class extends mock<IWorkbenchEnvironmentService>() {
-				override readonly isSessionsWindow = isSessionsWindow;
-			}());
-			const help = AccessibleViewRegistry.getImplementations().find(implementation => implementation.name === 'managedSettingsUpdate')!;
-			const states = [idle, State.Downloading(update, true, false), State.Uninitialized, State.Disabled(DisablementReason.Policy)];
-			assert.deepStrictEqual(states.map(state => {
-				setUpdate(state);
-				const provider = store.add(services.invokeFunction(accessor => help.getProvider(accessor))!);
-				const text = provider.provideContent();
-				return {
-					overlay: text.includes('The Agents window is blocked'),
-					readOnlyChat: text.includes('Chat is read-only'),
-					availableActions: text.includes('move between available actions'),
-					updateAction: text.includes('The available update action is Check for Updates.'),
-					editorWindow: text.includes('reach Open Editor Window'),
-					banner: text.includes('Focus Banner'),
-				};
-			}), states.map((_, index) => ({
-				overlay: isSessionsWindow,
-				readOnlyChat: !isSessionsWindow,
-				availableActions: true,
-				updateAction: index === 0,
-				editorWindow: isSessionsWindow,
-				banner: !isSessionsWindow,
-			})));
-		});
-	}
 });

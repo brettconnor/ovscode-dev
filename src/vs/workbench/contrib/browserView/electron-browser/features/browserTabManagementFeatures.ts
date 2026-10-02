@@ -638,8 +638,7 @@ class LinkOpenedHintPill extends BrowserEditorContribution {
 		editor: BrowserEditor,
 		@IHoverService private readonly hoverService: IHoverService,
 		@IStorageService private readonly storageService: IStorageService,
-		@IPreferencesService private readonly preferencesService: IPreferencesService,
-		@IContextKeyService private readonly contextKeyService: IContextKeyService
+		@IPreferencesService private readonly preferencesService: IPreferencesService
 	) {
 		super(editor);
 
