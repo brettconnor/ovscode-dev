@@ -16,7 +16,6 @@ import { IsAuxiliaryWindowContext, IsSessionsWindowContext } from '../../../comm
 import { URI } from '../../../../base/common/uri.js';
 import { getNewChatSessionResource } from './model/chatUri.js';
 import { clearUserSelectedSessionType, getRememberedSessionType, storeUserSelectedSessionType } from './chatSessionTypePreference.js';
-import { IAgentHostEnablementService } from '../../../../platform/agentHost/common/agentHostEnablementService.js';
 
 export { ChatAIDisabledSettingId } from '../../../../platform/chat/common/chatSettings.js';
 
@@ -461,7 +460,7 @@ export function getDefaultNewChatSessionTypeAndReasonFromServices(
 	options?: IDefaultNewChatSessionTypeOptions,
 	_managedSandboxEnforced = false
 ): IResolvedNewChatSessionType {
-	if (options?.explicitOverride) {
+	if (options?.explicitOverride && (agentHostEnabled || !isAgentHostTarget(options.explicitOverride))) {
 		return { sessionType: options.explicitOverride, selectionReason: 'explicitOverride' };
 	}
 
@@ -500,9 +499,8 @@ export function getDefaultNewChatSessionTypeAndReason(
 	const chatSessionsService = accessor.get(IChatSessionsService);
 	const storageService = accessor.get(IStorageService);
 	const workspace = accessor.get(IWorkspaceContextService).getWorkspace();
-	const agentHostEnablementService = accessor.get(IAgentHostEnablementService);
-	const agentHostEnabled = agentHostEnablementService.enabled.get();
-	return getDefaultNewChatSessionTypeAndReasonFromServices(configurationService, chatSessionsService, storageService, workspace, agentHostEnabled, options);
+	// Native Chat no longer resolves new sessions through Agent Host.
+	return getDefaultNewChatSessionTypeAndReasonFromServices(configurationService, chatSessionsService, storageService, workspace, false, options);
 }
 
 function getUsableRememberedSessionType(

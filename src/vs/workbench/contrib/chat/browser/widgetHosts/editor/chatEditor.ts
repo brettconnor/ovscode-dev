@@ -255,7 +255,7 @@ export class ChatEditor extends AbstractEditorWithViewState<IChatEditorViewState
 				const contributions = this.chatSessionsService.getAllChatSessionContributions();
 				const contribution = contributions.find(c => c.type === chatSessionType);
 				if (contribution) {
-					this.widget.lockToCodingAgent(contribution.name, contribution.displayName, contribution.type, contribution.agentHostProviderId);
+					this.widget.lockToCodingAgent(contribution.name, contribution.displayName, contribution.type);
 					isContributedChatSession = true;
 				} else {
 					this.widget.unlockFromCodingAgent();

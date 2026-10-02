@@ -550,7 +550,7 @@ export interface IChatWidget {
 	getInputState(): IChatModelInputState | undefined;
 	getViewState(): IChatWidgetViewState;
 	restoreViewState(state: IChatWidgetViewState): void;
-	lockToCodingAgent(name: string, displayName: string, agentId?: string, agentHostProviderId?: string): void;
+	lockToCodingAgent(name: string, displayName: string, agentId?: string): void;
 	unlockFromCodingAgent(): void;
 	handleDelegationExitIfNeeded(sourceAgent: Pick<IChatAgentData, 'id' | 'name'> | undefined, targetAgent: IChatAgentData | undefined): Promise<void>;
 	executeHandoff(handoff: IHandOff, agentId?: string): Promise<void>;

@@ -11,14 +11,8 @@ import { dumpFailureDiagnostics, getCopilotSmokeTestEnv, getMockLlmServerPath, i
 import { runInTerminalScenario, shellEchoResponseMatcher, shellEchoScenario } from './shellScenarios';
 
 /**
- * Per-session scenarios. Each session uses a pair of unique scenario ids so
- * that the mock reply is distinct — this catches stale-content bugs where a
- * previous response is mistakenly accepted as the current one. We send two
- * prompts per session to also exercise the follow-up message path.
- *
- * `kind` selects between the two chat surfaces in the VS Code window:
- *  - 'editor': the chat opens as an editor tab (Copilot CLI).
- *  - 'view':   the default chat panel in the sidebar / aux bar (Local).
+ * The local Chat panel uses unique scenario ids so a previous response cannot
+ * satisfy the current assertion. Two prompts exercise the follow-up path.
  */
 interface SessionConfig {
 	readonly name: string;
@@ -33,16 +27,12 @@ interface SessionConfig {
 }
 
 const SESSIONS: readonly SessionConfig[] = [
-	{ name: 'Copilot CLI', command: 'smoketest.openCopilotCliChat', kind: 'editor', scenarioId: 'smoke-chat-sessions-copilot-cli', reply: 'MOCKED_CHAT_SESSIONS_COPILOT_CLI_RESPONSE', scenarioId2: 'smoke-chat-sessions-copilot-cli-2', reply2: 'MOCKED_CHAT_SESSIONS_COPILOT_CLI_RESPONSE_2' },
 	{ name: 'Local', command: 'smoketest.openLocalChat', kind: 'view', scenarioId: 'smoke-chat-sessions-local', reply: 'MOCKED_CHAT_SESSIONS_LOCAL_RESPONSE', scenarioId2: 'smoke-chat-sessions-local-2', reply2: 'MOCKED_CHAT_SESSIONS_LOCAL_RESPONSE_2' },
 ];
 
 /**
- * Per-session shell-tool scenarios. Each session triggers a shell tool call
- * on the first prompt and verifies the echoed marker appears in the chat
- * (which proves both that the command ran and that the reply was rendered).
- * Copilot CLI advertises `bash`/`pwsh`/`powershell`; the Local chat agent
- * advertises `run_in_terminal`.
+ * The local Chat tool scenario verifies that the shell command ran and that
+ * its reply was rendered.
  */
 interface ShellSessionConfig {
 	readonly name: string;
@@ -54,7 +44,6 @@ interface ShellSessionConfig {
 }
 
 const SHELL_SESSIONS: readonly ShellSessionConfig[] = [
-	{ name: 'Copilot CLI', command: 'smoketest.openCopilotCliChat', kind: 'editor', scenarioId: 'smoke-chat-sessions-copilot-cli-shell', reply: 'MOCKED_CHAT_SESSIONS_COPILOT_CLI_SHELL_RESPONSE', scenarioFactory: shellEchoScenario },
 	{ name: 'Local', command: 'smoketest.openLocalChat', kind: 'view', scenarioId: 'smoke-chat-sessions-local-terminal', reply: 'MOCKED_CHAT_SESSIONS_LOCAL_TERMINAL_RESPONSE', scenarioFactory: runInTerminalScenario },
 ];
 
@@ -79,8 +68,6 @@ async function preseedChatSessionProfile(userDataDir: string | undefined, mockSe
 		'chat.mcp.discovery.enabled': false,
 		'chat.mcp.enabled': false,
 		'chat.disableAIFeatures': false,
-		'chat.agentHost.claudeAgent.enabled': true,
-		'github.copilot.chat.backgroundAgent.enabled': true,
 		'chat.tools.riskAssessment.enabled': false,
 	}, undefined, '\t'));
 
@@ -136,10 +123,8 @@ export function setup(logger: Logger) {
 				registerScenario(session.scenarioId2, new ScenarioBuilder().emit(session.reply2).build());
 			}
 
-			// Shell-tool scenarios. `echo` is in the default
-			// `chat.tools.terminal.autoApprove` list, so no extra settings
-			// are required to auto-approve the command — these tests
-			// deliberately exercise the non-sandbox shell-tool path.
+			// `echo` is in the default `chat.tools.terminal.autoApprove` list,
+			// so this exercises the non-sandbox shell-tool path directly.
 			for (const shellSession of SHELL_SESSIONS) {
 				registerScenario(shellSession.scenarioId, shellSession.scenarioFactory(shellSession.reply));
 			}

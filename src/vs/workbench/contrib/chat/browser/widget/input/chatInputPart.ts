@@ -2910,7 +2910,7 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 
 		const contribution = this.chatSessionsService.getChatSessionContribution(sessionType);
 		if (contribution) {
-			this._widget?.lockToCodingAgent(contribution.name, contribution.displayName, contribution.type, contribution.agentHostProviderId);
+			this._widget?.lockToCodingAgent(contribution.name, contribution.displayName, contribution.type);
 		} else {
 			this._widget?.unlockFromCodingAgent();
 		}

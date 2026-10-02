@@ -367,7 +367,7 @@ export class TerminalChatWidget extends Disposable {
 			// must be locked for requests to carry `agentIdSilent` and reach the Agent Host agent.
 			const lockToAgent = resolution.lockToAgent;
 			if (lockToAgent) {
-				this._inlineChatWidget.chatWidget.lockToCodingAgent(lockToAgent.name, lockToAgent.displayName, lockToAgent.type, lockToAgent.agentHostProviderId);
+				this._inlineChatWidget.chatWidget.lockToCodingAgent(lockToAgent.name, lockToAgent.displayName, lockToAgent.type);
 				this._agentHostSessionResource = model.sessionResource;
 				this._usesAgentHostContextKey.set(true);
 				this._refreshAgentHostSessionMetadata();

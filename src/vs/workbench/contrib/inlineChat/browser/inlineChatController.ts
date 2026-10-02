@@ -424,7 +424,7 @@ export class InlineChatController implements IEditorContribution {
 				this.#zone.value.widget.chatWidget.setModel(session.chatModel);
 				const lockToAgent = session.lockToAgent;
 				if (lockToAgent) {
-					this.#zone.value.widget.chatWidget.lockToCodingAgent(lockToAgent.name, lockToAgent.displayName, lockToAgent.type, lockToAgent.agentHostProviderId);
+					this.#zone.value.widget.chatWidget.lockToCodingAgent(lockToAgent.name, lockToAgent.displayName, lockToAgent.type);
 				} else {
 					this.#zone.value.widget.chatWidget.unlockFromCodingAgent();
 				}
