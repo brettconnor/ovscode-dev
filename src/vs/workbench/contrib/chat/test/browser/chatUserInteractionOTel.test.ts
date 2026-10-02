@@ -4,11 +4,8 @@
  *--------------------------------------------------------------------------------------------*/
 
 import assert from 'assert';
-import { URI } from '../../../../../base/common/uri.js';
 import { upcastPartial } from '../../../../../base/test/common/mock.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
-import { IAgentHostConnectionsService } from '../../../../../platform/agentHost/common/agentHostConnectionsService.js';
-import { IAgentConnection } from '../../../../../platform/agentHost/common/agentService.js';
 import { CommandsRegistry, ICommandService } from '../../../../../platform/commands/common/commands.js';
 import { NullLogService } from '../../../../../platform/log/common/log.js';
 import { chatUserInteractionAttributes, IChatUserInteractionTiming, ReportChatUserInteractionCommand } from '../../../../../platform/otel/common/chatUserInteraction.js';
@@ -36,64 +33,31 @@ suite('ChatUserInteractionOTel', () => {
 		}
 	});
 
-	test('routes to the owning host or extension and flushes asynchronous deliveries', async () => {
+	test('routes generic chat observations to the extension command and flushes asynchronous deliveries', async () => {
 		const calls: string[] = [];
 		let release: () => void = () => { };
 		const wait = new Promise<void>(resolve => { release = resolve; });
-		const connection = upcastPartial<IAgentConnection>({
-			reportUserInteraction: async () => { await wait; calls.push('host'); },
-		});
-		const resource = URI.parse('agent-host-copilotcli:/session');
 		const service = new ChatUserInteractionOTelService(
-			upcastPartial<IAgentHostConnectionsService>({
-				ambientConnection: connection,
-				resolveSessionResource: candidate => {
-					assert.strictEqual(candidate, resource);
-					return { connection, backendSession: URI.parse('copilotcli:/session'), connectionAuthority: 'local' };
-				},
-			}),
 			upcastPartial<ICommandService>({
-				executeCommand: async command => { calls.push(command); return undefined; },
+				executeCommand: async command => { await wait; calls.push(command); return undefined; },
 			}),
 			new NullLogService(),
 		);
 		disposables.add(CommandsRegistry.registerCommand(ReportChatUserInteractionCommand, () => { }));
-		service.report({ ...timing, ...service.begin() }, resource, undefined);
 		service.report({ ...timing, ...service.begin() }, undefined, 'local');
 		const flushed = service.flush();
-		assert.deepStrictEqual(calls, [ReportChatUserInteractionCommand]);
+		assert.deepStrictEqual(calls, []);
 		release();
-		assert.deepStrictEqual(await flushed, { schemaVersion: 1, started: 2, completed: 2, failed: 0 });
-		assert.deepStrictEqual(calls, [ReportChatUserInteractionCommand, 'host']);
+		assert.deepStrictEqual(await flushed, { schemaVersion: 1, started: 1, completed: 1, failed: 0 });
+		assert.deepStrictEqual(calls, [ReportChatUserInteractionCommand]);
 	});
 
-	test('export failures are logged and surfaced by flush without rejecting the UI timer', async () => {
-		const warnings: unknown[] = [];
-		const service = new ChatUserInteractionOTelService(
-			upcastPartial<IAgentHostConnectionsService>({
-				ambientConnection: upcastPartial<IAgentConnection>({
-					reportUserInteraction: async () => { throw new Error('transport disconnected'); },
-				}),
-			}),
-			upcastPartial<ICommandService>({}),
-			new class extends NullLogService {
-				override warn(message: string, ...args: unknown[]) { warnings.push(message, ...args); }
-			}(),
-		);
-		service.report({ ...timing, ...service.begin() }, undefined, 'agent-host-copilotcli');
-		assert.strictEqual((await service.flush()).failed, 1);
-		assert.strictEqual(warnings[0], '[ChatTTFP] OTel export failed');
-	});
-
-	test('does not treat missing routing identity as local chat even with an active extension', async () => {
+	test('fails observations without a session type', async () => {
 		const calls: string[] = [];
 		const warnings: string[] = [];
 		disposables.add(CommandsRegistry.registerCommand(ReportChatUserInteractionCommand, () => { }));
 		const service = new ChatUserInteractionOTelService(
-			upcastPartial<IAgentHostConnectionsService>({}),
-			upcastPartial<ICommandService>({
-				executeCommand: async command => { calls.push(command); return undefined; },
-			}),
+			upcastPartial<ICommandService>({ executeCommand: async command => { calls.push(command); } }),
 			new class extends NullLogService {
 				override warn(message: string) { warnings.push(message); }
 			}(),
@@ -108,34 +72,17 @@ suite('ChatUserInteractionOTel', () => {
 		});
 	});
 
-	test('routes early remote observations only to their host and fails unroutable observations', async () => {
-		const calls: string[] = [];
-		const warnings: string[] = [];
-		const resource = URI.parse('remote-example-copilot:/session');
-		const connection = upcastPartial<IAgentConnection>({
-			reportUserInteraction: async () => { calls.push('remote'); },
-		});
+	test('logs extension export failures and surfaces them through flush', async () => {
+		const warnings: unknown[] = [];
 		const service = new ChatUserInteractionOTelService(
-			upcastPartial<IAgentHostConnectionsService>({
-				resolveSessionResource: candidate => {
-					assert.strictEqual(candidate, resource);
-					return { connection, backendSession: URI.parse('copilot:/session'), connectionAuthority: 'example' };
-				},
-			}),
-			upcastPartial<ICommandService>({
-				executeCommand: async command => { calls.push(command); return undefined; },
-			}),
+			upcastPartial<ICommandService>({ executeCommand: async () => { throw new Error('transport disconnected'); } }),
 			new class extends NullLogService {
-				override warn(message: string) { warnings.push(message); }
+				override warn(message: string, ...args: unknown[]) { warnings.push(message, ...args); }
 			}(),
 		);
 		disposables.add(CommandsRegistry.registerCommand(ReportChatUserInteractionCommand, () => { }));
-		service.report({ ...timing, ...service.begin() }, resource, 'remote-agent-host');
-		service.report({ ...timing, ...service.begin() }, undefined, 'remote-agent-host');
-		assert.deepStrictEqual({ result: await service.flush(), calls, warnings }, {
-			result: { schemaVersion: 1, started: 2, completed: 2, failed: 1 },
-			calls: ['remote'],
-			warnings: ['[ChatTTFP] OTel export failed'],
-		});
+		service.report({ ...timing, ...service.begin() }, undefined, 'local');
+		assert.strictEqual((await service.flush()).failed, 1);
+		assert.strictEqual(warnings[0], '[ChatTTFP] OTel export failed');
 	});
 });
