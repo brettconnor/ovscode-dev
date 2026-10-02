@@ -8,17 +8,13 @@ import { Event } from '../../../../../../base/common/event.js';
 import { IReference, MutableDisposable, ReferenceCollection } from '../../../../../../base/common/lifecycle.js';
 import { mockObject, upcastPartial } from '../../../../../../base/test/common/mock.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../../base/test/common/utils.js';
-import { IAgentHostConnectionsService } from '../../../../../../platform/agentHost/common/agentHostConnectionsService.js';
-import { IAgentHostEnablementService } from '../../../../../../platform/agentHost/common/agentHostEnablementService.js';
 import { CommandsRegistry } from '../../../../../../platform/commands/common/commands.js';
 import { IConfigurationService } from '../../../../../../platform/configuration/common/configuration.js';
 import { IDialogService } from '../../../../../../platform/dialogs/common/dialogs.js';
 import { TestInstantiationService } from '../../../../../../platform/instantiation/test/common/instantiationServiceMock.js';
 import { ILayoutService } from '../../../../../../platform/layout/browser/layoutService.js';
 import { NullLogService } from '../../../../../../platform/log/common/log.js';
-import { IProgressService } from '../../../../../../platform/progress/common/progress.js';
 import { IStorageService } from '../../../../../../platform/storage/common/storage.js';
-import { NullTelemetryService } from '../../../../../../platform/telemetry/common/telemetryUtils.js';
 import { IWorkspaceContextService } from '../../../../../../platform/workspace/common/workspace.js';
 import { IEditorGroup, IEditorGroupsService } from '../../../../../services/editor/common/editorGroupsService.js';
 import { ACTIVE_GROUP, AUX_WINDOW_GROUP, IEditorService } from '../../../../../services/editor/common/editorService.js';
@@ -105,10 +101,6 @@ suite('Chat move actions', () => {
 				upcastPartial<IStorageService>({}),
 				new NullLogService(),
 				upcastPartial<IWorkspaceContextService>({}),
-				upcastPartial<IAgentHostEnablementService>({}),
-				upcastPartial<IAgentHostConnectionsService>({}),
-				NullTelemetryService,
-				upcastPartial<IProgressService>({}),
 			));
 			sourceEditor.updateModel(model);
 			sourceRef.dispose();
