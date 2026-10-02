@@ -20,11 +20,8 @@ import { TerminalContribCommandId } from '../../../terminal/terminalContribExpor
 import { ChatContextKeyExprs, ChatContextKeys } from '../../common/actions/chatContextKeys.js';
 import { ChatAgentLocation, ChatConfiguration, ChatModeKind } from '../../common/constants.js';
 import { isStickyPromptHeaderShown } from '../promptTimeline/promptTimelineWidgetContrib.js';
-import { FocusAgentSessionsAction } from '../agentSessions/agentSessionsActions.js';
-import { AGENT_SESSION_RENAME_ACTION_ID } from '../agentSessions/agentSessions.js';
 import { IChatWidgetService, isIChatResourceViewContext } from '../chat.js';
 import { ChatEditingShowChangesAction, ViewPreviousEditsAction } from '../chatEditing/chatEditingActions.js';
-import { getModePickerAccessibilityHelp } from '../agentSessions/agentHost/agentHostModePickerPresentation.js';
 
 export class PanelChatAccessibilityHelp implements IAccessibleViewImplementation {
 	readonly priority = 107;
@@ -72,9 +69,6 @@ export function getAccessibilityHelpText(type: 'panelChat' | 'inlineChat' | 'qui
 		content.push(localize('chat.sessionPreparation', "While a session is being prepared, a progress message appears in the transcript. Use Tab or Shift+Tab to reach Show Log, when available, and press Enter or Space to open the output log. Use Stop to cancel preparation. The chat input and attachment controls are disabled until preparation finishes."));
 		content.push(localize('chat.testApp.help', "After app UI changes, Test App appears to the right of the status pills above the chat input. After a testing request starts in this chat, the button is named Retest App whenever it reappears, including after restarting VS Code in the same profile. This remembers that testing was requested, not that tests passed. Press Shift+Tab from the input to focus it, then Enter or Space to ask the agent to review the diffs, test the app UI, fix issues found, and retest. Existing tool permissions still apply."));
 	}
-	if (!isSessionsWindow && type !== 'inlineChat' && type !== 'quickChat') {
-		content.push(localize('chat.agentsParallelWork', "When another Agent Host session is running, a new Agent Host chat may show an invitation to run agents side by side. Only one chat input shows the invitation at a time. Use Tab to reach Open Agents Window, Ignore, or Dismiss notification. Open Agents Window copies the current prompt and attachments from that input without sending them or clearing it. An existing draft in the Agents Window is kept. Ignore turns off future invitations; Dismiss notification only hides the invitation for this chat until the window reloads."));
-	}
 	if (sessionArchiveNudgeShown) {
 		content.push(sessionArchiveActionWording === ChatSessionArchiveActionWording.MarkAsDone
 			? localize('chat.sessionDoneNudge', "A mark as done suggestion appears above the chat input when the session's pull requests are merged. Use Tab or Shift+Tab to reach Mark as Done, Configure Automatic Cleanup, or Dismiss Mark as Done Suggestion, then press Enter or Space. Configure Automatic Cleanup opens the settings for automatically archiving inactive merged sessions and permanently deleting automatically archived merged sessions. The explanation under What Does \"Mark as Done\" Do? is collapsed by default. Use Tab to reach it and Enter or Space to expand or collapse it. Dismissing the suggestion, including with Escape while it is focused, returns to the chat input. Marking the session as done hides it from the sessions list so you can focus on your remaining tasks. The session is not deleted. Ask your agent to find it, or look in the \"Done\" section of the sessions list. You can restore it anytime. The worktree created for the session, if any, will be deleted. You can recreate it by restoring the session.")
@@ -96,13 +90,6 @@ export function getAccessibilityHelpText(type: 'panelChat' | 'inlineChat' | 'qui
 		} else {
 			content.push(localize('chat.differencePanel', 'The chat view is a persistent interface that also supports navigating suggested follow-up questions, while the quick chat view is a transient interface for making and viewing requests.'));
 			content.push(localize('workbench.action.chat.newChat', 'To create a new chat session, invoke the New Chat command{0}.', '<keybinding:workbench.action.chat.newChat>'));
-			content.push(localize('workbench.action.chat.focusAgentSessionsViewer', 'You can focus the agent sessions list by invoking the Focus Agent Sessions command{0}.', `<keybinding:${FocusAgentSessionsAction.id}>`));
-			content.push(localize('chat.externalSessionFilter', 'The agent sessions filter includes an External submenu. Use it to choose whether external sessions from another application are shown for the last 24 hours, the last 7 days, always, or not at all.'));
-			content.push(localize('workbench.action.openAgentsWindow', 'To open the Agents Window, invoke the Open Agents Window command{0}. In screen reader mode, this keybinding includes Alt to avoid conflicts with screen reader shortcuts.', '<keybinding:workbench.action.openAgentsWindow>'));
-			content.push(localize('workbench.action.chat.openAgentHostFolderPicker', 'When starting an agent session in a multi-root workspace, you can choose which root folder it runs in by invoking the Folder command{0}, then selecting a folder from the list.', '<keybinding:workbench.action.chat.openAgentHostFolderPicker>'));
-			content.push(localize('chat.agentHostApprovalsPicker', 'When an agent session exposes approval presets, use Tab to reach the Approvals picker and choose how it handles workspace access, commands, and the internet.'));
-			content.push(localize('chat.agentHostSandboxPolicy', "In Copilot agent-host sessions, use /sandbox-policy to view the effective sandbox policy. In the response, use Tab to focus Open Sandbox Policy and Enter to open the formatted report."));
-			content.push(getModePickerAccessibilityHelp());
 		}
 		if (sessionStatusPillsSupported) {
 			content.push(localize('chat.sessionStatusPills', "When session status pills appear above the input, use Tab to focus the toolbar, then use the left and right arrow keys to move between pills. Press Enter or Space to activate a pill. Open the context menu{0} to choose which optional pills are visible. Pull Requests Options lets you show all pull requests or only open and draft ones, remembered across sessions. If every pull request is filtered out, these options are also available in any other pill's context menu or the toolbar context menu.", '<keybinding:editor.action.showContextMenu>'));
@@ -212,9 +199,6 @@ export function getAccessibilityHelpText(type: 'panelChat' | 'inlineChat' | 'qui
 	// chat, inline chat or the input window (see `enableFind` in each host's view options).
 	if (type === 'panelChat' || type === 'editsView' || type === 'agentView') {
 		content.push(localize('chat.find', 'To search the chat transcript, invoke Find in Chat{0}. Find Next{1} and Find Previous{2} move between results, scrolling each one into view.', '<keybinding:workbench.action.chat.find>', '<keybinding:workbench.action.chat.findNext>', '<keybinding:workbench.action.chat.findPrevious>'));
-	}
-	if (!isSessionsWindow && (type === 'panelChat' || type === 'editsView' || type === 'agentView')) {
-		content.push(localize('chat.renameSession', 'To rename the current chat session when supported, invoke the Rename command{0}. Agent Host sessions can be renamed after sending the first request.', `<keybinding:${AGENT_SESSION_RENAME_ACTION_ID}>`));
 	}
 	if (type !== 'inlineChat') {
 		content.push(localize('chat.linkContextMenu', "Focus a link in the chat transcript and press Shift+F10 to open its context menu. Use Copy Link to copy its target. File links with additional editor choices also provide Open With."));
