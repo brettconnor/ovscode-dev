@@ -44,7 +44,6 @@ import { McpAddContextContribution } from './mcpAddContextContribution.js';
 import { AddConfigurationAction, EditStoredInput, InstallFromManifestAction, ListMcpServerCommand, McpAgentHostServerOptionsCommand, McpBrowseCommand, McpBrowseResourcesCommand, McpConfigureSamplingModels, McpConfirmationServerOptionsCommand, MCPServerActionRendering, McpServerOptionsCommand, McpSkipCurrentAutostartCommand, McpStartPromptingServerCommand, OpenRemoteUserMcpResourceCommand, OpenUserMcpResourceCommand, OpenWorkspaceFolderMcpResourceCommand, OpenWorkspaceMcpResourceCommand, RemoveStoredInput, ResetMcpCachedTools, ResetMcpTrustCommand, RestartServer, SetOAuthClientSecret, ShowConfiguration, ShowInstalledMcpServersCommand, ShowOutput, StartServer, StopServer } from './mcpCommands.js';
 import { McpDiscovery } from './mcpDiscovery.js';
 import { McpElicitationService } from './mcpElicitationService.js';
-import { McpLanguageFeatures } from './mcpLanguageFeatures.js';
 import { McpConfigMigrationContribution } from './mcpMigration.js';
 import { McpResourceQuickAccess } from './mcpResourceQuickAccess.js';
 import { McpServerEditor } from './mcpServerEditor.js';
@@ -70,7 +69,6 @@ mcpDiscoveryRegistry.register(new SyncDescriptor(PluginMcpDiscovery));
 
 registerWorkbenchContribution2('mcpDiscovery', McpDiscovery, WorkbenchPhase.AfterRestored);
 registerWorkbenchContribution2('mcpContextKeys', McpContextKeysController, WorkbenchPhase.BlockRestore);
-registerWorkbenchContribution2('mcpLanguageFeatures', McpLanguageFeatures, WorkbenchPhase.Eventually);
 registerWorkbenchContribution2('mcpResourceFilesystem', McpResourceFilesystem, WorkbenchPhase.BlockRestore);
 registerWorkbenchContribution2(McpLanguageModelToolContribution.ID, McpLanguageModelToolContribution, WorkbenchPhase.AfterRestored);
 registerWorkbenchContribution2('mcpGatewayToolBrokerRemote', McpGatewayToolBrokerContribution, WorkbenchPhase.AfterRestored);

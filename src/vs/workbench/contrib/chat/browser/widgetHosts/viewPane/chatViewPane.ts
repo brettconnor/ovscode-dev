@@ -84,7 +84,6 @@ import { isGlowingVoiceState, readVoiceGlowIntensity, resolveVoiceGlowColors, Vo
 import { createVoiceGlowController } from '../../voiceClient/voiceGlowController.js';
 import { combineVoiceInput } from '../../voiceClient/voiceInputUtils.js';
 import { IVoiceModelSelectionResult, resolveVoiceModel } from '../../voiceClient/voiceToolDispatchService.js';
-import { IAgentTitleBarStatusService } from '../../agentSessions/experiments/agentTitleBarStatusService.js';
 import { IVoicePlaybackService } from '../../../common/voicePlaybackService.js';
 import { VOICE_AGENT_PROGRESS_SETTING } from '../../../common/voiceClient/voiceClientService.js';
 import { IWorkbenchEnvironmentService } from '../../../../../services/environment/common/environmentService.js';
@@ -171,7 +170,6 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 		@IVoiceSessionController private readonly voiceSessionController: IVoiceSessionController,
 		@IVoiceInputModeService private readonly voiceInputModeService: IVoiceInputModeService,
 		@IChatWidgetService private readonly chatWidgetService: IChatWidgetService,
-		@IAgentTitleBarStatusService _agentTitleBarStatusService: IAgentTitleBarStatusService,
 		@IVoicePlaybackService _voicePlaybackService: IVoicePlaybackService,
 		@IWorkbenchEnvironmentService _workbenchEnvironmentService: IWorkbenchEnvironmentService,
 		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
