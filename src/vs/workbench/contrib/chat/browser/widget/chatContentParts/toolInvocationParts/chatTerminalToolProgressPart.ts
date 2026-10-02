@@ -6,7 +6,6 @@
 import { h } from '../../../../../../../base/browser/dom.js';
 import { createPixelSpinner } from '../../../../../../../base/browser/ui/pixelSpinner/pixelSpinner.js';
 import { isMarkdownString, MarkdownString } from '../../../../../../../base/common/htmlContent.js';
-import { hash } from '../../../../../../../base/common/hash.js';
 import { IConfigurationService } from '../../../../../../../platform/configuration/common/configuration.js';
 import { IInstantiationService } from '../../../../../../../platform/instantiation/common/instantiation.js';
 import { ChatConfiguration } from '../../../../common/constants.js';
@@ -33,7 +32,6 @@ import { IAhpTerminalCommandSource, IChatTerminalOutputSource, IChatTerminalTool
 import { Disposable, DisposableStore, MutableDisposable, toDisposable, type IDisposable } from '../../../../../../../base/common/lifecycle.js';
 import { Emitter, Event } from '../../../../../../../base/common/event.js';
 import { onUnexpectedError } from '../../../../../../../base/common/errors.js';
-import { isEqual } from '../../../../../../../base/common/resources.js';
 import { autorun } from '../../../../../../../base/common/observable.js';
 import { ThemeIcon } from '../../../../../../../base/common/themables.js';
 import { DecorationSelector, getTerminalCommandDecorationState, getTerminalCommandDecorationTooltip } from '../../../../../terminal/browser/xterm/decorationStyles.js';
@@ -64,8 +62,6 @@ import { PANEL_BACKGROUND } from '../../../../../../common/theme.js';
 import { editorBackground } from '../../../../../../../platform/theme/common/colorRegistry.js';
 import { asCssVariable } from '../../../../../../../platform/theme/common/colorUtils.js';
 import { CommandsRegistry } from '../../../../../../../platform/commands/common/commands.js';
-import { IEditorService } from '../../../../../../services/editor/common/editorService.js';
-import { ChatTerminalOutputResource, IChatTerminalOutputTextModelService } from '../../../agentSessions/agentHost/chatTerminalOutputTextModelContentProvider.js';
 
 /**
  * Minimum number of rows to display in the terminal output view.
@@ -97,13 +93,8 @@ const OUTPUT_POLL_DELAY_MS = 100;
  */
 const MIN_DATA_EVENTS_FOR_REAL_OUTPUT = 2;
 
-const OPEN_TERMINAL_FULL_OUTPUT_ACTION_ID = 'workbench.action.chat.openTerminalFullOutput';
 const MAX_OUTPUT_CLICK_MOVEMENT = 5;
 const FULL_OUTPUT_SINGLE_CLICK_DELAY = 500;
-
-function getTerminalFullOutputLabel(runId: string): string {
-	return localize('chatTerminalFullOutputLabel', "Terminal Output · {0}", runId);
-}
 
 /**
  * Remembers whether a tool invocation was last expanded so state survives virtualization re-renders.
@@ -365,8 +356,6 @@ export class ChatTerminalToolProgressPart extends BaseChatToolInvocationSubPart 
 		@ITerminalEditorService private readonly _terminalEditorService: ITerminalEditorService,
 		@ITerminalGroupService private readonly _terminalGroupService: ITerminalGroupService,
 		@ITelemetryService private readonly _telemetryService: ITelemetryService,
-		@IEditorService private readonly _editorService: IEditorService,
-		@IChatTerminalOutputTextModelService private readonly _terminalOutputTextModelService: IChatTerminalOutputTextModelService,
 	) {
 		super(toolInvocation);
 
@@ -417,15 +406,6 @@ export class ChatTerminalToolProgressPart extends BaseChatToolInvocationSubPart 
 		this._register(titlePart.onDidChangeHeight(() => {
 			this._decoration.update();
 		}));
-
-		const terminalUri = URI.revive(this._terminalData.terminalCommandUri);
-		const hasRetainedOutputCandidate = terminalUri
-			&& this._terminalData.isPty === false
-			&& this._terminalData.terminalCommandOutput?.truncated === true
-			&& IChatToolInvocation.isComplete(toolInvocation);
-		const runId = (hash(toolInvocation.toolCallId) >>> 0).toString(36).padStart(5, '0').slice(-5);
-		const outputName = `terminal-output-${runId}.txt`;
-		const resource = hasRetainedOutputCandidate ? ChatTerminalOutputResource.create(this._sessionResource, toolInvocation.toolCallId, terminalUri, outputName) : undefined;
 
 		this._outputView = this._register(this._instantiationService.createInstance(
 			ChatTerminalToolOutputSection,
@@ -540,9 +520,6 @@ export class ChatTerminalToolProgressPart extends BaseChatToolInvocationSubPart 
 			void this._toggleOutput(true);
 		}
 		this._register(this._terminalChatService.registerProgressPart(this));
-		if (resource && terminalUri) {
-			void this._probeFullOutput(resource, terminalUri, runId);
-		}
 	}
 
 	/**
@@ -819,39 +796,6 @@ export class ChatTerminalToolProgressPart extends BaseChatToolInvocationSubPart 
 			return output;
 		}
 		return { ...output, text: output.fullOutputPreview };
-	}
-
-	private async _probeFullOutput(resource: URI, terminalUri: URI, runId: string): Promise<void> {
-		if (!await this._terminalOutputTextModelService.canResolve(resource)) {
-			return;
-		}
-		if (this._store.isDisposed) {
-			return;
-		}
-		const currentData = this.toolInvocation.toolSpecificData?.kind === 'terminal'
-			? migrateLegacyTerminalToolSpecificData(this.toolInvocation.toolSpecificData)
-			: undefined;
-		const currentTerminalUri = URI.revive(currentData?.terminalCommandUri);
-		if (currentData?.isPty !== false || currentData.terminalCommandOutput?.truncated !== true || !currentTerminalUri || !isEqual(currentTerminalUri, terminalUri)) {
-			return;
-		}
-		const editorService = this._editorService;
-		const action = this._register(new Action(
-			OPEN_TERMINAL_FULL_OUTPUT_ACTION_ID,
-			localize('openTerminalFullOutputReadonly', "Open Full Output (Read-Only)"),
-			ThemeIcon.asClassName(Codicon.openInProduct),
-			true,
-			() => editorService.openEditor({
-				resource,
-				label: getTerminalFullOutputLabel(runId),
-				description: localize('chatTerminalFullOutputDescription', "Read-only"),
-				options: { revealIfOpened: true }
-			})
-		));
-		this.fullOutputAction = action;
-		this._outputView.updateFullOutputAvailability();
-		this._updateToolbarActions();
-		void this._outputView.refresh().catch(onUnexpectedError);
 	}
 
 	private _getResolvedCommand(instance?: ITerminalInstance): ITerminalCommand | undefined {
@@ -1594,11 +1538,6 @@ export class ChatTerminalToolOutputSection extends Disposable {
 			? ariaLabel + ', ' + accessibleViewHint
 			: ariaLabel;
 		scrollableDomNode.setAttribute('aria-label', label);
-	}
-
-	public updateFullOutputAvailability(): void {
-		this.updateAriaLabel();
-		this._setTruncationMessage(!!this._getTerminalCommandOutput()?.truncated);
 	}
 
 	public getCommandAndOutputAsText(): string | undefined {
