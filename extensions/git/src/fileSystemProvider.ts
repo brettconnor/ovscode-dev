@@ -138,10 +138,9 @@ export class GitFileSystemProvider implements FileSystemProvider {
 			return repository;
 		}
 
-		// In case of the empty window, or the agent sessions window, no repositories are open
-		// so we need to explicitly open a repository before we can serve git content for the
-		// given git resource.
-		if (workspace.workspaceFolders === undefined || workspace.isAgentSessionsWorkspace) {
+		// In an empty window, no repositories are open, so explicitly open the repository
+		// before serving Git content for the given resource.
+		if (workspace.workspaceFolders === undefined) {
 			const fsPath = typeof uri === 'string' ? uri : fromGitUri(uri).path;
 			this.logger.info(`[GitFileSystemProvider][getOrOpenRepository] Opening repository for ${fsPath}`);
 
