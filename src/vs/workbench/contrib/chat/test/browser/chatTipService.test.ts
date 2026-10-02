@@ -90,7 +90,6 @@ suite('ChatTipService', () => {
 		for (const tip of TIP_CATALOG) {
 			const message = tip.buildMessage({
 				keybindingService: { lookupKeybinding: () => undefined } as Partial<IKeybindingService> as IKeybindingService,
-				experimentalTipMessages: new Map(),
 			}).value;
 			for (const commandId of extractCommandIds(message)) {
 				if (registrations.has(commandId) || CommandsRegistry.getCommand(commandId)) {
@@ -229,7 +228,6 @@ suite('ChatTipService', () => {
 				keybindingService: {
 					lookupKeybinding: () => undefined,
 				} as Partial<IKeybindingService> as IKeybindingService,
-				experimentalTipMessages: new Map(),
 			}).value;
 
 			const commandLinkRegex = /\[[^\]]+\]\((command:[^)]+)\)/g;
@@ -272,7 +270,6 @@ suite('ChatTipService', () => {
 		assert.strictEqual(
 			tip.buildMessage({
 				keybindingService: { lookupKeybinding: () => undefined } as Partial<IKeybindingService> as IKeybindingService,
-				experimentalTipMessages: new Map(),
 			}).value,
 			'Use `/btw <question>` to ask a side question without adding it to the current conversation.',
 		);

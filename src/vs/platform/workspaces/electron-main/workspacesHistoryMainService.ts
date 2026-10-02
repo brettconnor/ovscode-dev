@@ -366,11 +366,6 @@ export class WorkspacesHistoryMainService extends Disposable implements IWorkspa
 
 		await this.updateWindowsJumpList();
 		this._register(this.onDidChangeRecentlyOpened(() => this.updateWindowsJumpList()));
-		this._register(this.configurationService.onDidChangeConfiguration(e => {
-			if (e.affectsConfiguration(ChatAIDisabledSettingId)) {
-				this.updateWindowsJumpList();
-			}
-		}));
 	}
 
 	private async updateWindowsJumpList(): Promise<void> {
