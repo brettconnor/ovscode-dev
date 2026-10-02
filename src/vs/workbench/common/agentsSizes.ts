@@ -3,16 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-// Agent-sessions size tokens.
-//
-// Registrations live here in the sessions layer. The workbench entry point
-// (`workbench.common.main.ts`) imports this file as a side-effect so the
-// tokens are present in the global size registry and JSON schema for both
-// the main workbench and the sessions workbench.
+// Agents size tokens registered for the workbench size registry and schema.
 
 import { localize } from '../../nls.js';
 import { registerSize, sizeForAllThemes } from '../../platform/theme/common/sizeUtils.js';
-import { AGENTS_FLOATING_PANEL_GAP } from './layoutConstants.js';
 
 // ============================================================================
 // Agents window — layout
@@ -21,7 +15,7 @@ import { AGENTS_FLOATING_PANEL_GAP } from './layoutConstants.js';
 /** Gap between floating panels in the Agents window. */
 export const agentsLayoutFloatingPanelGap = registerSize(
 	'agents.layout.floatingPanelGap',
-	sizeForAllThemes(AGENTS_FLOATING_PANEL_GAP, 'px'),
+	sizeForAllThemes(4, 'px'),
 	localize('agents.layout.floatingPanelGap', "Gap between floating panels in the Agents window.")
 );
 // ============================================================================
