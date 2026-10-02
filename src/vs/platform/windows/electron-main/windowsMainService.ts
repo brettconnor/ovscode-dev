@@ -1593,8 +1593,6 @@ export class WindowsMainService extends Disposable implements IWindowsMainServic
 			continueOn: this.environmentMainService.continueOn,
 
 			cssModules: this.cssDevelopmentService.isEnabled ? await this.cssDevelopmentService.getCssModules() : undefined,
-
-			isSessionsWindow: isWorkspaceIdentifier(options.workspace) && isEqual(options.workspace.configPath, this.environmentMainService.agentSessionsWorkspace),
 		};
 
 		// New window
