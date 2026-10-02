@@ -31,7 +31,7 @@ import { MarshalledId } from '../../../../../../base/common/marshallingIds.js';
 import { Schemas } from '../../../../../../base/common/network.js';
 import { mixin } from '../../../../../../base/common/objects.js';
 import { autorun, constObservable, derived, derivedOpts, IObservable, ISettableObservable, ITransaction, observableFromEvent, observableSignalFromEvent, observableValue, transaction } from '../../../../../../base/common/observable.js';
-import { isMacintosh, isWeb } from '../../../../../../base/common/platform.js';
+import { isMacintosh } from '../../../../../../base/common/platform.js';
 import { isEqual } from '../../../../../../base/common/resources.js';
 import { ScrollbarVisibility } from '../../../../../../base/common/scrollable.js';
 import { ThemeIcon } from '../../../../../../base/common/themables.js';
