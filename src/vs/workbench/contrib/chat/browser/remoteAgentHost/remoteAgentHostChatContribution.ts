@@ -145,7 +145,6 @@ export class RemoteAgentHostContribution extends Disposable implements IWorkbenc
 	/** Per-connection state: client state + per-agent registrations. */
 	private readonly _connections = this._register(new DisposableMap<string, ConnectionState>());
 	private readonly _enableSmokeTestDriver: boolean;
-	private readonly _isSessionsWindow: boolean;
 
 	constructor(
 		@IRemoteAgentHostService private readonly _remoteAgentHostService: IRemoteAgentHostService,
@@ -167,7 +166,6 @@ export class RemoteAgentHostContribution extends Disposable implements IWorkbenc
 	) {
 		super();
 		this._enableSmokeTestDriver = !!environmentService.enableSmokeTestDriver;
-		this._isSessionsWindow = environmentService.isSessionsWindow;
 
 		this._register(this._remoteAgentHostService.onDidChangeConnections(() => this._reconcile()));
 		this._register(this._defaultAccountService.onDidChangeDefaultAccount(() => this._authenticateAllConnections()));
@@ -184,7 +182,7 @@ export class RemoteAgentHostContribution extends Disposable implements IWorkbenc
 	}
 
 	private _reconcileConnections(): void {
-		const currentConnections = this._remoteAgentHostService.connections.filter(connection => this._isSessionsWindow || isCloudSandboxConnectionAddress(connection.address));
+		const currentConnections = this._remoteAgentHostService.connections.filter(connection => isCloudSandboxConnectionAddress(connection.address));
 		const connectedAddresses = new Set(
 			currentConnections
 				.filter(c => RemoteAgentHostConnectionStatus.isConnected(c.status) && c.clientId !== undefined)

@@ -34,7 +34,6 @@ class ExpandAbbreviationAction extends EmmetEditorAction {
 				group: '5_insert',
 				title: nls.localize({ key: 'miEmmetExpandAbbreviation', comment: ['&& denotes a mnemonic'] }, "Emmet: E&&xpand Abbreviation"),
 				order: 3,
-				when: IsSessionsWindowContext.negate()
 			}
 		});
 

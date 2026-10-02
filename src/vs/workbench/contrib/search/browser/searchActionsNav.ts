@@ -404,13 +404,11 @@ registerAction2(class ReplaceInFilesAction extends Action2 {
 			}],
 			category,
 			f1: true,
-			precondition: IsSessionsWindowContext.negate(),
-			menu: [{
+			precondition: menu: [{
 				id: MenuId.MenubarEditMenu,
 				group: '4_find_global',
 				order: 2,
-				when: IsSessionsWindowContext.negate(),
-			}],
+				when: }],
 		});
 	}
 

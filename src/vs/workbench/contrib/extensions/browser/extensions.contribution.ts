@@ -700,7 +700,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 			},
 			group: '2_configuration',
 			order: 3,
-			when: IsSessionsWindowContext.negate()
 		}));
 		this._register(MenuRegistry.appendMenuItem(MenuId.GlobalActivity, {
 			command: {

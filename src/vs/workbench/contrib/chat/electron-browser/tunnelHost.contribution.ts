@@ -107,7 +107,6 @@ registerAction2(class ToggleRemoteConnectionsAction extends Action2 {
 				group: 'navigation',
 				when: ContextKeyExpr.and(
 					ChatContextKeys.enabled,
-					IsSessionsWindowContext.toNegated(),
 					RemoteNameContext.isEqualTo(''),
 					ChatContextKeyExprs.isAgentHostSession,
 				)

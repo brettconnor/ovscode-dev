@@ -128,9 +128,6 @@ class MarketplaceThemesPicker implements IDisposable {
 						break;
 					}
 					const ext = gallery[i];
-					if (this.environmentService.isSessionsWindow && ext.properties.executesCode) {
-						continue; // Ideally would be in sync with canExecuteOnSessionsWindow
-					}
 					if (!installedExtensions.has(ext.identifier.id) && !this._marketplaceExtensions.has(ext.identifier.id)) {
 						this._marketplaceExtensions.add(ext.identifier.id);
 						promises.push(this.getMarketplaceColorThemes(ext.publisher, ext.name, ext.version));

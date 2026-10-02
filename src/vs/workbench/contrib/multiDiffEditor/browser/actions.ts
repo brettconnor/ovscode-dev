@@ -32,7 +32,7 @@ MenuRegistry.appendMenuItem(MenuId.EditorTitle, {
 	title: localize('diffView', "Diff View"),
 	group: '1_diff',
 	order: 10,
-	when: ContextKeyExpr.and(ActiveEditorContext.isEqualTo(MultiDiffEditor.ID), IsSessionsWindowContext.toNegated()),
+	when: ContextKeyExpr.and(ActiveEditorContext.isEqualTo(MultiDiffEditor.ID)),
 });
 
 export class GoToFileAction extends Action2 {
@@ -204,7 +204,7 @@ export class CollapseAllAction extends Action2 {
 				// In the agents window this action lives in the editor header overflow (...) menu instead of as a primary toolbar icon.
 				{
 					id: MenuId.EditorTitle,
-					when: ContextKeyExpr.and(ContextKeyExpr.equals('activeEditor', MultiDiffEditor.ID), ContextKeyExpr.not('multiDiffEditorAllCollapsed'), IsSessionsWindowContext.toNegated()),
+					when: ContextKeyExpr.and(ContextKeyExpr.equals('activeEditor', MultiDiffEditor.ID), ContextKeyExpr.not('multiDiffEditorAllCollapsed')),
 					group: 'navigation',
 					order: 100
 				},
@@ -253,7 +253,7 @@ export class ExpandAllAction extends Action2 {
 				// In the agents window this action lives in the editor header overflow (...) menu instead of as a primary toolbar icon.
 				{
 					id: MenuId.EditorTitle,
-					when: ContextKeyExpr.and(ContextKeyExpr.equals('activeEditor', MultiDiffEditor.ID), ContextKeyExpr.has('multiDiffEditorAllCollapsed'), IsSessionsWindowContext.toNegated()),
+					when: ContextKeyExpr.and(ContextKeyExpr.equals('activeEditor', MultiDiffEditor.ID), ContextKeyExpr.has('multiDiffEditorAllCollapsed')),
 					group: 'navigation',
 					order: 100
 				},

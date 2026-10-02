@@ -265,7 +265,6 @@ MenuRegistry.appendMenuItem(MenuId.MenubarMainMenu, {
 		mnemonicTitle: nls.localize({ key: 'mRun', comment: ['&& denotes a mnemonic'] }, "&&Run")
 	},
 	order: 6,
-	when: IsSessionsWindowContext.negate()
 });
 
 MenuRegistry.appendMenuItem(MenuId.MenubarDebugMenu, {

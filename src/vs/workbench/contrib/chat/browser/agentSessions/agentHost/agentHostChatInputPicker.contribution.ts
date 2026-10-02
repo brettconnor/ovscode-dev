@@ -9,7 +9,7 @@ import { ClaudeSessionConfigKey } from '../../../../../../platform/agentHost/com
 import { CodexSessionConfigKey } from '../../../../../../platform/agentHost/common/codexSessionConfigKeys.js';
 import { SessionConfigKey } from '../../../../../../platform/agentHost/common/sessionConfigKeys.js';
 import { ContextKeyExpr } from '../../../../../../platform/contextkey/common/contextkey.js';
-import { IsSessionsWindowContext, WorkspaceFolderCountContext } from '../../../../../common/contextkeys.js';
+import { WorkspaceFolderCountContext } from '../../../../../common/contextkeys.js';
 import { ChatContextKeys, ChatContextKeyExprs } from '../../../common/actions/chatContextKeys.js';
 
 /**
@@ -47,13 +47,11 @@ export class OpenAgentHostFolderPickerAction extends Action2 {
 				group: 'navigation',
 				order: 1.1,
 				// Only relevant when there is more than one root folder to choose
-				// from and we are in a regular editor window (the agent sessions
-				// window has its own workspace picker). Ordered last in the chip
-				// row to match the extension-host Copilot CLI layout.
+				// from. Ordered last in the chip row to match the extension-host
+				// Copilot CLI layout.
 				when: ContextKeyExpr.and(
 					ChatContextKeyExprs.isAgentHostSession,
 					WorkspaceFolderCountContext.greater(1),
-					IsSessionsWindowContext.negate(),
 					// Equal-peer providers add every workspace folder automatically, so they do not need a primary picker.
 					ChatContextKeys.chatAgentHostHasImmutablePrimaryWorkingDirectory,
 					// Hidden by default; the harness decision reveals the picker (e.g. when several folders carry hooks),

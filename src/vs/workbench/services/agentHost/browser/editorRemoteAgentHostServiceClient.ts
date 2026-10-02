@@ -31,8 +31,7 @@ import type { CreateResourceWatchParams, CreateResourceWatchResult, ResourceCopy
 import { ComponentToState, RootState, StateComponents } from '../../../../platform/agentHost/common/state/sessionState.js';
 import type { InitializeResult } from '../../../../platform/agentHost/common/state/protocol/common/commands.js';
 import { IRemoteAgentService } from '../../remote/common/remoteAgentService.js';
-import { IWorkbenchEnvironmentService } from '../../environment/common/environmentService.js';
-import { agentsWindowAgentHostClientInfo, editorWindowAgentHostClientInfo } from '../../../../platform/agentHost/common/agentHostClientInfo.js';
+import { editorWindowAgentHostClientInfo } from '../../../../platform/agentHost/common/agentHostClientInfo.js';
 import { agentHostAuthority, fromAgentHostUri, identityAgentHostResourceUriMapper } from '../../../../platform/agentHost/common/agentHostUri.js';
 import { IAgentHostFileSystemService } from '../common/agentHostFileSystemService.js';
 import { EditorRemoteAgentHostTransport } from '../common/editorRemoteAgentHostTransport.js';
@@ -84,7 +83,6 @@ export class EditorRemoteAgentHostServiceClient extends Disposable implements IA
 		@IAgentHostEnablementService agentHostEnablementService: IAgentHostEnablementService,
 		@IInstantiationService instantiationService: IInstantiationService,
 		@ILogService private readonly _logService: ILogService,
-		@IWorkbenchEnvironmentService environmentService: IWorkbenchEnvironmentService,
 		@IAgentHostFileSystemService agentHostFileSystemService: IAgentHostFileSystemService,
 	) {
 		super();
@@ -106,8 +104,7 @@ export class EditorRemoteAgentHostServiceClient extends Disposable implements IA
 			connection.remoteAuthority,
 		);
 		const address = `vscode-remote://${connection.remoteAuthority}`;
-		const clientInfo = environmentService.isSessionsWindow ? agentsWindowAgentHostClientInfo : editorWindowAgentHostClientInfo;
-		this._protocolClient = this._register(instantiationService.createInstance(AgentHostProtocolClient, address, createTransport, { clientInfo }));
+		this._protocolClient = this._register(instantiationService.createInstance(AgentHostProtocolClient, address, createTransport, { clientInfo: editorWindowAgentHostClientInfo }));
 		// Resources this client hands out (e.g. debug-log artifacts) are stamped with the
 		// address-derived authority, so register it for reads. The ambient `local` authority
 		// registered elsewhere covers a different URI namespace.

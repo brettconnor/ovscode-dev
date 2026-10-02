@@ -254,8 +254,7 @@ export class QuickDiffModel extends Disposable {
 	}
 
 	private diff(): Promise<{ allChanges: QuickDiffChange[]; changes: QuickDiffChange[]; mapChanges: Map<string, number[]>; versionId: number } | null> {
-		const location = this.environmentService.isSessionsWindow ? ProgressLocation.Window : ProgressLocation.Scm;
-		return this.progressService.withProgress({ location, delay: 250 }, async () => {
+		return this.progressService.withProgress({ location: ProgressLocation.Scm, delay: 250 }, async () => {
 			if (this._disposed || this._model.isDisposed()) {
 				return null;
 			}

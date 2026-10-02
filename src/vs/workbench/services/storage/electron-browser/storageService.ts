@@ -4,9 +4,9 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { IMainProcessService } from '../../../../platform/ipc/common/mainProcessService.js';
-import { IStorage, Storage, MigratingStorage } from '../../../../base/parts/storage/common/storage.js';
+import { IStorage, MigratingStorage } from '../../../../base/parts/storage/common/storage.js';
 import { RemoteStorageService } from '../../../../platform/storage/common/storageService.js';
-import { FallbackApplicationStorageDatabaseClient, ApplicationSharedStorageDatabaseClient } from '../../../../platform/storage/common/storageIpc.js';
+import { ApplicationSharedStorageDatabaseClient } from '../../../../platform/storage/common/storageIpc.js';
 import { StorageScope } from '../../../../platform/storage/common/storage.js';
 import { IUserDataProfilesService } from '../../../../platform/userDataProfile/common/userDataProfile.js';
 import { IAnyWorkspaceIdentifier } from '../../../../platform/workspace/common/workspace.js';
@@ -42,16 +42,9 @@ export class NativeWorkbenchStorageService extends RemoteStorageService {
 			// Fall back to APPLICATION storage for transparent
 			// migration of keys moved to APPLICATION_SHARED scope. On hit, values
 			// are automatically written through to the shared storage.
-			let applicationSharedFallbackStorage;
-			if (this.workbenchEnvironmentService.isSessionsWindow) {
-				const channel = this.remoteService.getChannel('storage');
-				applicationSharedFallbackStorage = this._register(new Storage(this._register(new FallbackApplicationStorageDatabaseClient(channel))));
-				await applicationSharedFallbackStorage.init();
-			} else {
-				applicationSharedFallbackStorage = this.getStorage(StorageScope.APPLICATION);
-			}
+			const applicationSharedFallbackStorage = this.getStorage(StorageScope.APPLICATION);
 			if (applicationSharedFallbackStorage) {
-				applicationSharedStorage.setFallbackStorage(applicationSharedFallbackStorage, this.workbenchEnvironmentService.isSessionsWindow);
+				applicationSharedStorage.setFallbackStorage(applicationSharedFallbackStorage, false);
 			}
 		}
 	}
@@ -60,4 +53,3 @@ export class NativeWorkbenchStorageService extends RemoteStorageService {
 		this._register(this.userDataProfileService.onDidChangeCurrentProfile(e => e.join(this.switchToProfile(e.profile))));
 	}
 }
-

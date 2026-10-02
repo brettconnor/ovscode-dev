@@ -213,7 +213,7 @@ export class RemoteStatusIndicator extends Disposable implements IWorkbenchContr
 						category,
 						title: nls.localize2('remote.close', "Close Remote Connection"),
 						f1: true,
-						precondition: ContextKeyExpr.and(ContextKeyExpr.or(RemoteNameContext, VirtualWorkspaceContext), IsSessionsWindowContext.negate())
+						precondition: ContextKeyExpr.and(ContextKeyExpr.or(RemoteNameContext, VirtualWorkspaceContext))
 					});
 				}
 				run = () => that.hostService.openWindow({ forceReuseWindow: true, remoteAuthority: null });
@@ -225,8 +225,7 @@ export class RemoteStatusIndicator extends Disposable implements IWorkbenchContr
 						id: RemoteStatusIndicator.CLOSE_REMOTE_COMMAND_ID,
 						title: nls.localize({ key: 'miCloseRemote', comment: ['&& denotes a mnemonic'] }, "Close Re&&mote Connection")
 					},
-					when: IsSessionsWindowContext.negate(),
-					order: 3.5
+					when: order: 3.5
 				});
 			}
 		}

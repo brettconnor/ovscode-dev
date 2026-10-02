@@ -264,17 +264,18 @@ export function isAgentEnabled(envValue: string | undefined, defaultEnabled: boo
  */
 export const CodexPreferAgentHostEditorSettingId = 'chat.editor.codex.preferAgentHost';
 
-export function affectsAgentHostProviderPreference(event: IConfigurationChangeEvent, isSessionsWindow: boolean): boolean {
+
+export function affectsAgentHostProviderPreference(event: IConfigurationChangeEvent): boolean {
 	return event.affectsConfiguration(AgentHostClaudeAgentEnabledSettingId)
-		|| event.affectsConfiguration(isSessionsWindow ? AgentHostCodexAgentEnabledSettingId : CodexPreferAgentHostEditorSettingId);
+		|| event.affectsConfiguration(CodexPreferAgentHostEditorSettingId);
 }
 
-export function shouldSurfaceLocalAgentHostProvider(provider: AgentProvider, configurationService: IConfigurationService, isSessionsWindow: boolean): boolean {
+export function shouldSurfaceLocalAgentHostProvider(provider: AgentProvider, configurationService: IConfigurationService): boolean {
 	switch (provider) {
 		case CLAUDE_AGENT_PROVIDER_ID:
 			return configurationService.getValue<boolean>(AgentHostClaudeAgentEnabledSettingId) !== false;
 		case CODEX_AGENT_PROVIDER_ID:
-			return configurationService.getValue<boolean>(isSessionsWindow ? AgentHostCodexAgentEnabledSettingId : CodexPreferAgentHostEditorSettingId) === true;
+			return configurationService.getValue<boolean>(CodexPreferAgentHostEditorSettingId) === true;
 		default:
 			return true;
 	}

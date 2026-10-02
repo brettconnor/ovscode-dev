@@ -320,12 +320,10 @@ class GetStartedWithAccessibilityFeatures extends Action2 {
 			title: localize2('getStartedWithAccessibilityFeatures', 'Get Started with Accessibility Features'),
 			category: Categories.Help,
 			f1: true,
-			precondition: IsSessionsWindowContext.negate(),
-			menu: {
+			precondition: menu: {
 				id: MenuId.MenubarHelpMenu,
 				group: '1_welcome',
 				order: 6,
-				when: IsSessionsWindowContext.negate()
 			}
 		});
 	}
@@ -344,7 +342,7 @@ class AskVSCodeCopilot extends Action2 {
 			title: localize2('askVScode', 'Ask @vscode'),
 			category: Categories.Help,
 			f1: true,
-			precondition: ContextKeyExpr.and(ContextKeyExpr.equals('chatSetupHidden', false), ContextKeyExpr.equals('chatSetupDisabledInWorkspace', false), IsSessionsWindowContext.negate())
+			precondition: ContextKeyExpr.and(ContextKeyExpr.equals('chatSetupHidden', false), ContextKeyExpr.equals('chatSetupDisabledInWorkspace', false))
 		});
 	}
 
@@ -362,7 +360,7 @@ MenuRegistry.appendMenuItem(MenuId.MenubarHelpMenu, {
 	},
 	order: 7,
 	group: '1_welcome',
-	when: ContextKeyExpr.and(ContextKeyExpr.equals('chatSetupHidden', false), ContextKeyExpr.equals('chatSetupDisabledInWorkspace', false), IsSessionsWindowContext.negate())
+	when: ContextKeyExpr.and(ContextKeyExpr.equals('chatSetupHidden', false), ContextKeyExpr.equals('chatSetupDisabledInWorkspace', false))
 });
 
 // --- Actions Registration

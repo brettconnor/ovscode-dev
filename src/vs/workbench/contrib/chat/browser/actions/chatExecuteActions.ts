@@ -587,7 +587,6 @@ export class ChatSessionPrimaryPickerAction extends Action2 {
 							ChatContextKeys.chatSessionHasModels,
 							ChatContextKeys.chatSessionType.notEqualsTo(AgentSessionProviders.Cloud),
 							ContextKeyExpr.or(
-								IsSessionsWindowContext.negate(),
 								ChatContextKeys.chatSessionType.notEqualsTo(AgentSessionProviders.Background)
 							),
 							ContextKeyExpr.or(

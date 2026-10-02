@@ -504,7 +504,7 @@ export class GlobalCompareResourcesAction extends Action2 {
 			title: GlobalCompareResourcesAction.LABEL,
 			f1: true,
 			category: Categories.File,
-			precondition: ContextKeyExpr.and(ActiveEditorContext, IsSessionsWindowContext.negate()),
+			precondition: ContextKeyExpr.and(ActiveEditorContext),
 			metadata: {
 				description: nls.localize2('compareFileWithMeta', "Opens a picker to select a file to diff with the active editor.")
 			}
@@ -543,8 +543,7 @@ export class ToggleAutoSaveAction extends Action2 {
 			title: nls.localize2('toggleAutoSave', "Toggle Auto Save"),
 			f1: true,
 			category: Categories.File,
-			precondition: IsSessionsWindowContext.negate(),
-			metadata: { description: nls.localize2('toggleAutoSaveDescription', "Toggle the ability to save files automatically after typing") }
+			precondition: metadata: { description: nls.localize2('toggleAutoSaveDescription', "Toggle the ability to save files automatically after typing") }
 		});
 	}
 
@@ -636,8 +635,7 @@ export class FocusFilesExplorer extends Action2 {
 			title: FocusFilesExplorer.LABEL,
 			f1: true,
 			category: Categories.File,
-			precondition: IsSessionsWindowContext.negate(),
-			metadata: {
+			precondition: metadata: {
 				description: nls.localize2('focusFilesExplorerMetadata', "Moves focus to the file explorer view container.")
 			}
 		});
@@ -660,8 +658,7 @@ export class ShowActiveFileInExplorer extends Action2 {
 			title: ShowActiveFileInExplorer.LABEL,
 			f1: true,
 			category: Categories.File,
-			precondition: IsSessionsWindowContext.negate(),
-			metadata: {
+			precondition: metadata: {
 				description: nls.localize2('showInExplorerMetadata', "Reveals and selects the active file within the explorer view.")
 			}
 		});
@@ -689,7 +686,7 @@ export class OpenActiveFileInEmptyWorkspace extends Action2 {
 			title: OpenActiveFileInEmptyWorkspace.LABEL,
 			f1: true,
 			category: Categories.File,
-			precondition: ContextKeyExpr.and(EmptyWorkspaceSupportContext, IsSessionsWindowContext.negate()),
+			precondition: ContextKeyExpr.and(EmptyWorkspaceSupportContext),
 			metadata: {
 				description: nls.localize2('openFileInEmptyWorkspaceMetadata', "Opens the active editor in a new window with no folders open.")
 			}
@@ -799,8 +796,7 @@ export class CompareNewUntitledTextFilesAction extends Action2 {
 			title: CompareNewUntitledTextFilesAction.LABEL,
 			f1: true,
 			category: Categories.File,
-			precondition: IsSessionsWindowContext.negate(),
-			metadata: {
+			precondition: metadata: {
 				description: nls.localize2('compareNewUntitledTextFilesMeta', "Opens a new diff editor with two untitled files.")
 			}
 		});
@@ -831,8 +827,7 @@ export class CompareWithClipboardAction extends Action2 {
 			title: CompareWithClipboardAction.LABEL,
 			f1: true,
 			category: Categories.File,
-			precondition: IsSessionsWindowContext.negate(),
-			keybinding: { primary: KeyChord(KeyMod.CtrlCmd | KeyCode.KeyK, KeyCode.KeyC), weight: KeybindingWeight.WorkbenchContrib },
+			precondition: keybinding: { primary: KeyChord(KeyMod.CtrlCmd | KeyCode.KeyK, KeyCode.KeyC), weight: KeybindingWeight.WorkbenchContrib },
 			metadata: {
 				description: nls.localize2('compareWithClipboardMeta', "Opens a new diff editor to compare the active file with the contents of the clipboard.")
 			}
@@ -1341,7 +1336,7 @@ class BaseSetActiveEditorReadonlyInSession extends Action2 {
 			title,
 			f1: true,
 			category: Categories.File,
-			precondition: ContextKeyExpr.and(ActiveEditorCanToggleReadonlyContext, IsSessionsWindowContext.negate())
+			precondition: ContextKeyExpr.and(ActiveEditorCanToggleReadonlyContext)
 		});
 	}
 

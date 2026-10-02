@@ -121,8 +121,7 @@ registerAction2(class extends Action2 {
 				when: ContextKeyExpr.and(
 					ResourceContextKey.Extension.isEqualTo(WORKSPACE_SUFFIX),
 					ActiveEditorContext.isEqualTo(TEXT_FILE_EDITOR_ID),
-					TemporaryWorkspaceContext.toNegated(),
-					IsSessionsWindowContext.toNegated()
+					TemporaryWorkspaceContext.toNegated()
 				)
 			}
 		});

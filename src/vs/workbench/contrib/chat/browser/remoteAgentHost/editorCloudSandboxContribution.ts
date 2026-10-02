@@ -23,7 +23,6 @@ import { IStorageService } from '../../../../../platform/storage/common/storage.
 import { IWorkspaceContextService } from '../../../../../platform/workspace/common/workspace.js';
 import { IWorkbenchContribution } from '../../../../common/contributions.js';
 import { IChatEntitlementService } from '../../../../services/chat/common/chatEntitlementService.js';
-import { IWorkbenchEnvironmentService } from '../../../../services/environment/common/environmentService.js';
 import { IHostService } from '../../../../services/host/browser/host.js';
 import { IGitRepository, IGitService } from '../../../git/common/gitService.js';
 import { getGitHubRepositoryFromRemoteUrl } from '../../../git/common/utils.js';
@@ -179,12 +178,9 @@ export class EditorCloudSandboxContribution extends Disposable implements IWorkb
 	static readonly ID = 'workbench.contrib.editorCloudSandbox';
 
 	constructor(
-		@IWorkbenchEnvironmentService environmentService: IWorkbenchEnvironmentService,
 		@IInstantiationService instantiationService: IInstantiationService,
 	) {
 		super();
-		if (!environmentService.isSessionsWindow) {
-			this._register(instantiationService.createInstance(EditorCloudSandboxSessionContribution));
-		}
+		this._register(instantiationService.createInstance(EditorCloudSandboxSessionContribution));
 	}
 }

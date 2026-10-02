@@ -98,7 +98,6 @@ export class BrowserViewWorkbenchService extends Disposable implements IBrowserV
 		ContextKeyExpr.has(`config.workbench.browser.enableChatTools`),
 		// If we're in Sessions Window, we require some additional conditions.
 		ContextKeyExpr.or(
-			IsSessionsWindowContext.negate(),
 			ContextKeyExpr.or(
 				ContextKeyExpr.equals('sessionType', localChatSessionType),
 				ContextKeyExpr.equals('sessions.isAgentHostSession', true),

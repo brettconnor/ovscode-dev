@@ -653,7 +653,7 @@ registerAction2(class extends Action2 {
 				order: 1
 			}, {
 				id: MenuId.CommandPalette,
-				when: ContextKeyExpr.and(ContextKeyExpr.notEquals(`config.${LayoutSettings.ACTIVITY_BAR_LOCATION}`, ActivityBarPosition.DEFAULT), IsSessionsWindowContext.negate()),
+				when: ContextKeyExpr.and(ContextKeyExpr.notEquals(`config.${LayoutSettings.ACTIVITY_BAR_LOCATION}`, ActivityBarPosition.DEFAULT)),
 			}]
 		});
 	}
@@ -679,7 +679,7 @@ registerAction2(class extends Action2 {
 				order: 2
 			}, {
 				id: MenuId.CommandPalette,
-				when: ContextKeyExpr.and(ContextKeyExpr.notEquals(`config.${LayoutSettings.ACTIVITY_BAR_LOCATION}`, ActivityBarPosition.TOP), IsSessionsWindowContext.negate()),
+				when: ContextKeyExpr.and(ContextKeyExpr.notEquals(`config.${LayoutSettings.ACTIVITY_BAR_LOCATION}`, ActivityBarPosition.TOP)),
 			}]
 		});
 	}
@@ -705,7 +705,7 @@ registerAction2(class extends Action2 {
 				order: 3
 			}, {
 				id: MenuId.CommandPalette,
-				when: ContextKeyExpr.and(ContextKeyExpr.notEquals(`config.${LayoutSettings.ACTIVITY_BAR_LOCATION}`, ActivityBarPosition.BOTTOM), IsSessionsWindowContext.negate()),
+				when: ContextKeyExpr.and(ContextKeyExpr.notEquals(`config.${LayoutSettings.ACTIVITY_BAR_LOCATION}`, ActivityBarPosition.BOTTOM)),
 			}]
 		});
 	}
@@ -731,7 +731,7 @@ registerAction2(class extends Action2 {
 				order: 4
 			}, {
 				id: MenuId.CommandPalette,
-				when: ContextKeyExpr.and(ContextKeyExpr.notEquals(`config.${LayoutSettings.ACTIVITY_BAR_LOCATION}`, ActivityBarPosition.HIDDEN), IsSessionsWindowContext.negate()),
+				when: ContextKeyExpr.and(ContextKeyExpr.notEquals(`config.${LayoutSettings.ACTIVITY_BAR_LOCATION}`, ActivityBarPosition.HIDDEN)),
 			}]
 		});
 	}
@@ -746,7 +746,6 @@ MenuRegistry.appendMenuItem(MenuId.MenubarAppearanceMenu, {
 	title: localize('positionActivituBar', "Activity Bar Position"),
 	group: '3_workbench_layout_move',
 	order: 2,
-	when: IsSessionsWindowContext.negate()
 });
 
 MenuRegistry.appendMenuItem(MenuId.ViewContainerTitleContext, {

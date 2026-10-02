@@ -45,6 +45,7 @@ export interface IBrowserWorkbenchEnvironmentService extends IWorkbenchEnvironme
 }
 
 export class BrowserWorkbenchEnvironmentService implements IBrowserWorkbenchEnvironmentService {
+	readonly isSessionsWindow = false;
 
 	declare readonly _serviceBrand: undefined;
 
@@ -272,9 +273,6 @@ export class BrowserWorkbenchEnvironmentService implements IBrowserWorkbenchEnvi
 
 	@memoize
 	get disableWorkspaceTrust(): boolean { return !this.options.enableWorkspaceTrust; }
-
-	@memoize
-	get isSessionsWindow(): boolean { return this.payload?.get('isSessionsWindow') === 'true'; }
 
 	@memoize
 	get sessionTitle(): string | undefined { return this.payload?.get('sessionTitle'); }

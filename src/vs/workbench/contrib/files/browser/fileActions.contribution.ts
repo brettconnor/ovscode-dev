@@ -214,12 +214,12 @@ appendToCommandPalette({
 	id: COPY_PATH_COMMAND_ID,
 	title: nls.localize2('copyPathOfActive', "Copy Path of Active File"),
 	category: Categories.File
-}, IsSessionsWindowContext.negate());
+});
 appendToCommandPalette({
 	id: COPY_RELATIVE_PATH_COMMAND_ID,
 	title: nls.localize2('copyRelativePathOfActive', "Copy Relative Path of Active File"),
 	category: Categories.File
-}, IsSessionsWindowContext.negate());
+});
 
 appendToCommandPalette({
 	id: SAVE_FILE_COMMAND_ID,
@@ -237,19 +237,19 @@ appendToCommandPalette({
 	id: SAVE_ALL_IN_GROUP_COMMAND_ID,
 	title: nls.localize2('saveAllInGroup', "Save All in Group"),
 	category: Categories.File
-}, IsSessionsWindowContext.negate());
+});
 
 appendToCommandPalette({
 	id: SAVE_FILES_COMMAND_ID,
 	title: nls.localize2('saveFiles', "Save All Files"),
 	category: Categories.File
-}, IsSessionsWindowContext.negate());
+});
 
 appendToCommandPalette({
 	id: REVERT_FILE_COMMAND_ID,
 	title: nls.localize2('revert', "Revert File"),
 	category: Categories.File
-}, IsSessionsWindowContext.negate());
+});
 
 appendToCommandPalette({
 	id: COMPARE_WITH_SAVED_COMMAND_ID,
@@ -264,26 +264,26 @@ appendToCommandPalette({
 	id: SAVE_FILE_AS_COMMAND_ID,
 	title: SAVE_FILE_AS_LABEL,
 	category: Categories.File
-}, IsSessionsWindowContext.negate());
+});
 
 appendToCommandPalette({
 	id: NEW_FILE_COMMAND_ID,
 	title: NEW_FILE_LABEL,
 	category: Categories.File
-}, ContextKeyExpr.and(WorkspaceFolderCountContext.notEqualsTo('0'), IsSessionsWindowContext.negate()));
+}, ContextKeyExpr.and(WorkspaceFolderCountContext.notEqualsTo('0')));
 
 appendToCommandPalette({
 	id: NEW_FOLDER_COMMAND_ID,
 	title: NEW_FOLDER_LABEL,
 	category: Categories.File,
 	metadata: { description: nls.localize2('newFolderDescription', "Create a new folder or directory") }
-}, ContextKeyExpr.and(WorkspaceFolderCountContext.notEqualsTo('0'), IsSessionsWindowContext.negate()));
+}, ContextKeyExpr.and(WorkspaceFolderCountContext.notEqualsTo('0')));
 
 appendToCommandPalette({
 	id: NEW_UNTITLED_FILE_COMMAND_ID,
 	title: NEW_UNTITLED_FILE_LABEL,
 	category: Categories.File
-}, IsSessionsWindowContext.negate());
+});
 
 // Menu registration - open editors
 

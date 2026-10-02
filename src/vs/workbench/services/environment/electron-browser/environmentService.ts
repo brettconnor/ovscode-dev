@@ -57,6 +57,7 @@ export interface INativeWorkbenchEnvironmentService extends IBrowserWorkbenchEnv
 }
 
 export class NativeWorkbenchEnvironmentService extends AbstractNativeEnvironmentService implements INativeWorkbenchEnvironmentService {
+	readonly isSessionsWindow = false;
 
 	@memoize
 	get mainPid() { return this.configuration.mainPid; }
@@ -150,9 +151,6 @@ export class NativeWorkbenchEnvironmentService extends AbstractNativeEnvironment
 
 	@memoize
 	get filesToWait(): IPathsToWaitFor | undefined { return this.configuration.filesToWait; }
-
-	@memoize
-	get isSessionsWindow(): boolean { return !!this.configuration.isSessionsWindow; }
 
 	@memoize
 	get sessionTitle(): string | undefined {

@@ -76,7 +76,7 @@ suite('shouldSurfaceLocalAgentHostProvider', () => {
 
 	ensureNoDisposablesAreLeakedInTestSuite();
 
-	test('surfaces enabled providers and uses window-specific Codex settings', () => {
+	test('surfaces providers using the regular workbench settings', () => {
 		const configurationService = new TestConfigurationService({
 			[AgentHostClaudeAgentEnabledSettingId]: true,
 			[AgentHostCodexAgentEnabledSettingId]: true,
@@ -84,16 +84,12 @@ suite('shouldSurfaceLocalAgentHostProvider', () => {
 		});
 
 		assert.deepStrictEqual({
-			agentsClaude: shouldSurfaceLocalAgentHostProvider('claude', configurationService, true),
-			editorClaude: shouldSurfaceLocalAgentHostProvider('claude', configurationService, false),
-			agentsCodex: shouldSurfaceLocalAgentHostProvider('codex', configurationService, true),
-			editorCodex: shouldSurfaceLocalAgentHostProvider('codex', configurationService, false),
-			otherProvider: shouldSurfaceLocalAgentHostProvider('copilot', configurationService, true),
+			claude: shouldSurfaceLocalAgentHostProvider('claude', configurationService),
+			codex: shouldSurfaceLocalAgentHostProvider('codex', configurationService),
+			otherProvider: shouldSurfaceLocalAgentHostProvider('copilot', configurationService),
 		}, {
-			agentsClaude: true,
-			editorClaude: true,
-			agentsCodex: true,
-			editorCodex: true,
+			claude: true,
+			codex: true,
 			otherProvider: true,
 		});
 	});
@@ -102,11 +98,9 @@ suite('shouldSurfaceLocalAgentHostProvider', () => {
 		const configurationService = new TestConfigurationService();
 
 		assert.deepStrictEqual({
-			agentsClaude: shouldSurfaceLocalAgentHostProvider('claude', configurationService, true),
-			editorClaude: shouldSurfaceLocalAgentHostProvider('claude', configurationService, false),
+			claude: shouldSurfaceLocalAgentHostProvider('claude', configurationService),
 		}, {
-			agentsClaude: true,
-			editorClaude: true,
+			claude: true,
 		});
 	});
 
@@ -118,15 +112,11 @@ suite('shouldSurfaceLocalAgentHostProvider', () => {
 		});
 
 		assert.deepStrictEqual({
-			agentsClaude: shouldSurfaceLocalAgentHostProvider('claude', configurationService, true),
-			editorClaude: shouldSurfaceLocalAgentHostProvider('claude', configurationService, false),
-			agentsCodex: shouldSurfaceLocalAgentHostProvider('codex', configurationService, true),
-			editorCodex: shouldSurfaceLocalAgentHostProvider('codex', configurationService, false),
+			claude: shouldSurfaceLocalAgentHostProvider('claude', configurationService),
+			codex: shouldSurfaceLocalAgentHostProvider('codex', configurationService),
 		}, {
-			agentsClaude: false,
-			editorClaude: false,
-			agentsCodex: false,
-			editorCodex: true,
+			claude: false,
+			codex: true,
 		});
 	});
 });

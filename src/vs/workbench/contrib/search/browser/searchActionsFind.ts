@@ -244,10 +244,8 @@ registerAction2(class FindInFilesAction extends Action2 {
 				id: MenuId.MenubarEditMenu,
 				group: '4_find_global',
 				order: 1,
-				when: IsSessionsWindowContext.negate(),
-			}],
+				when: }],
 			f1: true,
-			precondition: IsSessionsWindowContext.negate()
 		});
 
 	}

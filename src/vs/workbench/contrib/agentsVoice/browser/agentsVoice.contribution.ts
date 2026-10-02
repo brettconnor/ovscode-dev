@@ -60,7 +60,7 @@ import { IsSessionsWindowContext } from '../../../common/contextkeys.js';
 
 export const AGENTS_VOICE_WIDGET_FOCUSED = new RawContextKey<boolean>('agentsVoiceWidgetFocused', false);
 const AGENTS_VOICE_INITIATED_HERE = ContextKeyExpr.equals('agentsVoiceInitiatedHere', true);
-const VOICE_ACTIVE_ON_SURFACE = ContextKeyExpr.or(IsSessionsWindowContext.negate(), AGENTS_VOICE_INITIATED_HERE)!;
+const VOICE_ACTIVE_ON_SURFACE = ContextKeyExpr.or(AGENTS_VOICE_INITIATED_HERE)!;
 
 // --- Context Key Binding ---
 

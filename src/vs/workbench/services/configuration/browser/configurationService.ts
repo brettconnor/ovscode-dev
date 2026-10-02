@@ -1496,9 +1496,6 @@ export class ConfigurationDefaultOverridesContribution extends Disposable implem
 		if (isUndefined(value)) {
 			return false;
 		}
-		if (this.environmentService.isSessionsWindow && schema.agentsWindow?.default !== undefined) {
-			return !equals(value, schema.agentsWindow?.default);
-		}
 		return !equals(value, schema.default);
 	}
 }

@@ -31,8 +31,7 @@ registerAction2(class extends Action2 {
 			title: localize2('welcome.newFile', 'New File...'),
 			category,
 			f1: true,
-			precondition: IsSessionsWindowContext.negate(),
-			keybinding: {
+			precondition: keybinding: {
 				primary: KeyMod.Alt + KeyMod.CtrlCmd + KeyMod.WinCtrl + KeyCode.KeyN,
 				weight: KeybindingWeight.WorkbenchContrib,
 			},
@@ -40,7 +39,6 @@ registerAction2(class extends Action2 {
 				id: MenuId.MenubarFileMenu,
 				group: '1_new',
 				order: 2,
-				when: IsSessionsWindowContext.negate()
 			}
 		});
 	}

@@ -135,12 +135,7 @@ export class AgentHostShellInitSynchronizer extends Disposable implements IAgent
 		}
 
 		const enabled = this._configurationService.getValue<boolean>(AgentHostShellToolInitScriptEnabledSettingId) === true;
-		// A non-empty script belongs to the Editor Window that owns the session
-		// folder. The Agents window mounts the active session's folder into its
-		// own workspace, so ownership alone would qualify it too; it never
-		// publishes. The application-scoped disabled value is authoritative from
-		// any local window, including the Agents window.
-		const folder = enabled && !this._environmentService.isSessionsWindow ? this._resolveFolder(state) : undefined;
+		const folder = enabled ? this._resolveFolder(state) : undefined;
 		if (enabled && !folder) {
 			return;
 		}

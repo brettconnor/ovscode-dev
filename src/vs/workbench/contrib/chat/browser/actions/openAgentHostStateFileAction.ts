@@ -78,7 +78,6 @@ export class OpenAgentHostStateFileAction extends Action2 {
 			category: Categories.Developer,
 			precondition: ContextKeyExpr.and(
 				ChatContextKeys.enabled,
-				IsSessionsWindowContext.negate(),
 			),
 		});
 	}

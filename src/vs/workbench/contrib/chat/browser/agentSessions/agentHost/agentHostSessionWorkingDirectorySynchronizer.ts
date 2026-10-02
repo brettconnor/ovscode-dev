@@ -173,10 +173,6 @@ export class AgentHostSessionWorkingDirectorySynchronizer extends Disposable imp
 	 * (re-subscribe after a state error) replaces the previous registration.
 	 */
 	register(registration: IAgentHostWorkingDirectoryRegistration): IDisposable {
-		// The Agents window has no workspace folders to follow.
-		if (this._environmentService.isSessionsWindow) {
-			return Disposable.None;
-		}
 		const key = registration.session.toString();
 		this._registrations.get(key)?.store.dispose();
 

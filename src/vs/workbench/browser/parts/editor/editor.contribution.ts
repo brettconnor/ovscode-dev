@@ -425,7 +425,7 @@ MenuRegistry.appendMenuItem(MenuId.EditorTitle, {
 	title: localize('diffView', "Diff View"),
 	group: '1_diff',
 	order: 10,
-	when: ContextKeyExpr.and(ContextKeyExpr.has('isInDiffEditor'), IsSessionsWindowContext.toNegated()),
+	when: ContextKeyExpr.and(ContextKeyExpr.has('isInDiffEditor')),
 });
 MenuRegistry.appendMenuItem(MenuId.EditorTitle, {
 	command: { id: TOGGLE_DIFF_SIDE_BY_SIDE, title: localize('inlineView', "Inline View"), toggled: ContextKeyExpr.equals('config.diffEditor.renderSideBySide', false) },
@@ -536,7 +536,7 @@ appendEditorToolItem(
 		title: localize('splitEditorRight', "Split Editor Right"),
 		icon: Codicon.splitHorizontal
 	},
-	ContextKeyExpr.and(SplitEditorsVertically.negate(), IsSessionsWindowContext.toNegated()),
+	ContextKeyExpr.and(SplitEditorsVertically.negate()),
 	SPLIT_ORDER,
 	{
 		id: SPLIT_EDITOR_DOWN,
@@ -551,7 +551,7 @@ appendEditorToolItem(
 		title: localize('splitEditorDown', "Split Editor Down"),
 		icon: Codicon.splitVertical
 	},
-	ContextKeyExpr.and(SplitEditorsVertically, IsSessionsWindowContext.toNegated()),
+	ContextKeyExpr.and(SplitEditorsVertically),
 	SPLIT_ORDER,
 	{
 		id: SPLIT_EDITOR_RIGHT,
@@ -794,7 +794,6 @@ MenuRegistry.appendMenuItem(MenuId.MenubarFileMenu, {
 	submenu: MenuId.MenubarShare,
 	group: '45_share',
 	order: 1,
-	when: IsSessionsWindowContext.negate()
 });
 
 // Layout menu
@@ -803,7 +802,6 @@ MenuRegistry.appendMenuItem(MenuId.MenubarViewMenu, {
 	title: localize({ key: 'miEditorLayout', comment: ['&& denotes a mnemonic'] }, "Editor &&Layout"),
 	submenu: MenuId.MenubarLayoutMenu,
 	order: 2,
-	when: IsSessionsWindowContext.negate()
 });
 
 MenuRegistry.appendMenuItem(MenuId.MenubarLayoutMenu, {

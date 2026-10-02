@@ -193,7 +193,7 @@ export class UserDataProfilesWorkbenchContribution extends Disposable implements
 			submenu: ProfilesMenu,
 			group: '2_configuration',
 			order: 1,
-			when: ContextKeyExpr.and(HAS_PROFILES_CONTEXT, IsSessionsWindowContext.negate())
+			when: ContextKeyExpr.and(HAS_PROFILES_CONTEXT)
 		});
 	}
 
@@ -377,7 +377,7 @@ export class UserDataProfilesWorkbenchContribution extends Disposable implements
 							id: MenuId.MenubarPreferencesMenu,
 							group: '2_configuration',
 							order: 1,
-							when: ContextKeyExpr.and(HAS_PROFILES_CONTEXT.negate(), IsSessionsWindowContext.negate())
+							when: ContextKeyExpr.and(HAS_PROFILES_CONTEXT.negate())
 						},
 						{
 							id: ProfilesMenu,

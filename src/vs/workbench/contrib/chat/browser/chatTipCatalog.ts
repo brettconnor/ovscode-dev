@@ -275,8 +275,7 @@ export const TIP_CATALOG: readonly ITipDefinition[] = [
 				localize('tip.codeActions', "Select a code block in the editor and right-click to access more AI actions.")
 			);
 		},
-		when: IsSessionsWindowContext.negate(),
-		excludeWhenCommandsExecuted: ['inlineChat.start'],
+		when: excludeWhenCommandsExecuted: ['inlineChat.start'],
 	},
 	{
 		id: 'tip.undoChanges',
@@ -396,7 +395,6 @@ export const TIP_CATALOG: readonly ITipDefinition[] = [
 			);
 		},
 		when: ContextKeyExpr.and(
-			IsSessionsWindowContext.negate(),
 			ContextKeyExpr.or(
 				ChatContextKeys.chatModeKind.isEqualTo(ChatModeKind.Agent),
 				ChatContextKeys.chatModeKind.isEqualTo(ChatModeKind.Edit),
@@ -435,7 +433,6 @@ export const TIP_CATALOG: readonly ITipDefinition[] = [
 			);
 		},
 		when: ContextKeyExpr.and(
-			IsSessionsWindowContext.negate(),
 			ChatContextKeys.chatSessionType.isEqualTo(localChatSessionType),
 			ChatContextKeys.chatModeKind.isEqualTo(ChatModeKind.Agent),
 			ChatContextKeys.hasCanDelegateProviders,

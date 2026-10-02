@@ -30,7 +30,7 @@ const OPEN_NATIVE_CONSOLE_COMMAND_ID = 'workbench.action.terminal.openNativeCons
 KeybindingsRegistry.registerCommandAndKeybindingRule({
 	id: OPEN_NATIVE_CONSOLE_COMMAND_ID,
 	primary: KeyMod.CtrlCmd | KeyMod.Shift | KeyCode.KeyC,
-	when: ContextKeyExpr.and(TerminalContextKeys.notFocus, IsSessionsWindowContext.negate()),
+	when: ContextKeyExpr.and(TerminalContextKeys.notFocus),
 	weight: KeybindingWeight.WorkbenchContrib,
 	handler: async (accessor) => {
 		const historyService = accessor.get(IHistoryService);

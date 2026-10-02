@@ -15,6 +15,7 @@ export const IWorkbenchEnvironmentService = refineServiceDecorator<IEnvironmentS
  * layer.
  */
 export interface IWorkbenchEnvironmentService extends IEnvironmentService {
+	readonly isSessionsWindow: boolean;
 
 	// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 	// NOTE: KEEP THIS INTERFACE AS SMALL AS POSSIBLE. AS SUCH:
@@ -35,7 +36,6 @@ export interface IWorkbenchEnvironmentService extends IEnvironmentService {
 	readonly skipReleaseNotes: boolean;
 	readonly skipWelcome: boolean;
 	readonly disableWorkspaceTrust: boolean;
-	readonly isSessionsWindow: boolean;
 	readonly webviewExternalEndpoint: string;
 
 	// --- Development
