@@ -12,9 +12,6 @@ const _allApiProposals = {
 	agentEditorComments: {
 		proposal: 'https://raw.githubusercontent.com/microsoft/vscode/main/src/vscode-dts/vscode.proposed.agentEditorComments.d.ts',
 	},
-	agentSessionsWorkspace: {
-		proposal: 'https://raw.githubusercontent.com/microsoft/vscode/main/src/vscode-dts/vscode.proposed.agentSessionsWorkspace.d.ts',
-	},
 	agentsWindowActivation: {
 		proposal: 'https://raw.githubusercontent.com/microsoft/vscode/main/src/vscode-dts/vscode.proposed.agentsWindowActivation.d.ts',
 	},
