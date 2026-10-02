@@ -71,7 +71,6 @@ export class PlaywrightService extends Disposable implements IPlaywrightService 
 
 	constructor(
 		private readonly windowId: number,
-		private readonly useSessionStorageAffinity: boolean,
 		private readonly browserViewGroupRemoteService: IBrowserViewGroupRemoteService,
 		private readonly logService: ILogService,
 		private readonly agentNetworkFilterService: IAgentNetworkFilterService,
@@ -120,7 +119,7 @@ export class PlaywrightService extends Disposable implements IPlaywrightService 
 				host: {
 					windowId: this.windowId
 				},
-				...getAgentBrowserViewCreationDefaults(sessionId, this.useSessionStorageAffinity ? sessionId : undefined)
+				...getAgentBrowserViewCreationDefaults(sessionId)
 			}
 		);
 

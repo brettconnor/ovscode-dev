@@ -150,14 +150,12 @@ suite('AgentHostSessionWorkingDirectorySynchronizer', () => {
 			override readonly onDidChangeTrustedFolders = onDidChangeTrustedFolders;
 			override async getUriTrustInfo(uri: URI) { return { uri, trusted: await (typeof trusted === 'function' ? trusted() : trusted) }; }
 		};
-		const environmentService = { isSessionsWindow: false, remoteAuthority: undefined } as Partial<IWorkbenchEnvironmentService> as IWorkbenchEnvironmentService;
 		const uriIdentityService = new class extends mock<IUriIdentityService>() {
 			override readonly extUri = extUriBiasedIgnorePathCase;
 		};
 		return disposables.add(new AgentHostSessionWorkingDirectorySynchronizer(
 			workspaceContextService,
 			trustService,
-			environmentService,
 			uriIdentityService,
 			new NullLogService(),
 		));

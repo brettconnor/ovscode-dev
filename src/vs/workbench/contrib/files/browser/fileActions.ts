@@ -25,7 +25,7 @@ import { IClipboardService } from '../../../../platform/clipboard/common/clipboa
 import { ILanguageService } from '../../../../editor/common/languages/language.js';
 import { IModelService } from '../../../../editor/common/services/model.js';
 import { ICommandService, CommandsRegistry } from '../../../../platform/commands/common/commands.js';
-import { ContextKeyExpr, RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
+import { RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
 import { Schemas } from '../../../../base/common/network.js';
 import { IDialogService, IConfirmationResult, getFileNamesMessage } from '../../../../platform/dialogs/common/dialogs.js';
 import { INotificationService, Severity } from '../../../../platform/notification/common/notification.js';
