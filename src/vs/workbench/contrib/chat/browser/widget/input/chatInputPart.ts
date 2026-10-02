@@ -80,9 +80,6 @@ import { IStorageService, StorageScope, StorageTarget } from '../../../../../../
 import { IThemeService } from '../../../../../../platform/theme/common/themeService.js';
 import { ISharedWebContentExtractorService } from '../../../../../../platform/webContentExtractor/common/webContentExtractor.js';
 import { IWorkspaceContextService, WorkbenchState } from '../../../../../../platform/workspace/common/workspace.js';
-import { ISCMService } from '../../../../scm/common/scm.js';
-import { IWorkbenchLayoutService, Position } from '../../../../../services/layout/browser/layoutService.js';
-import { IViewDescriptorService, ViewContainerLocation } from '../../../../../common/views.js';
 import { ResourceLabels } from '../../../../../browser/labels.js';
 import { IChatEntitlementService } from '../../../../../services/chat/common/chatEntitlementService.js';
 import { ACTIVE_GROUP, IEditorService, SIDE_GROUP } from '../../../../../services/editor/common/editorService.js';
@@ -131,7 +128,7 @@ import { IChatAttachmentWidgetRegistry } from '../../attachments/chatAttachmentW
 import { DefaultChatAttachmentWidget, ElementChatAttachmentWidget, FileAttachmentWidget, ImageAttachmentWidget, BrowserViewAttachmentWidget, NotebookCellOutputChatAttachmentWidget, PasteAttachmentWidget, PromptFileAttachmentWidget, PromptTextAttachmentWidget, SCMHistoryItemAttachmentWidget, SCMHistoryItemChangeAttachmentWidget, SCMHistoryItemChangeRangeAttachmentWidget, TerminalCommandAttachmentWidget, ToolSetOrToolItemAttachmentWidget } from '../../attachments/chatAttachmentWidgets.js';
 import { ChatImplicitContexts } from '../../attachments/chatImplicitContext.js';
 import { ImplicitContextAttachmentWidget, isImplicitContextAlreadyAttached } from '../../attachments/implicitContextAttachment.js';
-import { IChatWidget, IChatWidgetService, IChatWidgetViewModelChangeEvent, ISessionTypePickerDelegate, isIChatResourceViewContext, isIChatViewViewContext, IWorkspacePickerDelegate } from '../../chat.js';
+import { IChatWidget, IChatWidgetService, IChatWidgetViewModelChangeEvent, ISessionTypePickerDelegate, IWorkspacePickerDelegate } from '../../chat.js';
 import { ChatEditingShowChangesAction, ViewPreviousEditsAction } from '../../chatEditing/chatEditingActions.js';
 import { resizeImage } from '../../chatImageUtils.js';
 import { ChatSessionPickerActionItem, IChatSessionPickerDelegate } from '../../chatSessions/chatSessionPickerActionItem.js';
@@ -342,18 +339,6 @@ export interface IChatInputPartOptions {
 
 export interface IWorkingSetEntry {
 	uri: URI;
-}
-
-export const enum ChatWidgetLocation {
-	SidebarLeft = 'sidebarLeft',
-	SidebarRight = 'sidebarRight',
-	Panel = 'panel',
-	Editor = 'editor',
-}
-
-export interface IChatWidgetLocationInfo {
-	readonly location: ChatWidgetLocation;
-	readonly isMaximized: boolean;
 }
 
 export interface IChatModeChangeEvent {
@@ -968,9 +953,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 		@IDictationOnboardingService private readonly dictationOnboardingService: IDictationOnboardingService,
 		@IChatInputNoticeHubService private readonly chatInputNoticeHubService: IChatInputNoticeHubService,
 		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
-		@ISCMService private readonly scmService: ISCMService,
-		@IWorkbenchLayoutService private readonly layoutService: IWorkbenchLayoutService,
-		@IViewDescriptorService private readonly viewDescriptorService: IViewDescriptorService,
 		@IChatAttachmentWidgetRegistry private readonly _chatAttachmentWidgetRegistry: IChatAttachmentWidgetRegistry,
 		@IChatInputNotificationService private readonly chatInputNotificationService: IChatInputNotificationService,
 		@IChatPhoneInputPresenter private readonly chatPhoneInputPresenter: IChatPhoneInputPresenter,
@@ -5123,47 +5105,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 			toolbarsWidth: this.options.renderStyle === 'compact' ? getToolbarsWidthCompact() : 0,
 			sideToolbarWidth: inputSideToolbarWidth > 0 ? inputSideToolbarWidth + 4 /*gap*/ : 0,
 		};
-	}
-
-	/**
-	 * Gets the location of the chat widget and whether that location is maximized.
-	 */
-	private getWidgetLocationInfo(widget: IChatWidget): IChatWidgetLocationInfo {
-		// Editor context (quick chat, inline chat, etc.)
-		if (isIChatResourceViewContext(widget.viewContext)) {
-			return { location: ChatWidgetLocation.Editor, isMaximized: false };
-		}
-
-		// View context - determine actual location from view descriptor service
-		if (isIChatViewViewContext(widget.viewContext)) {
-			const viewLocation = this.viewDescriptorService.getViewLocationById(widget.viewContext.viewId);
-			const sideBarPosition = this.layoutService.getSideBarPosition();
-
-			switch (viewLocation) {
-				case ViewContainerLocation.Panel:
-					return {
-						location: ChatWidgetLocation.Panel,
-						isMaximized: this.layoutService.isPanelMaximized(),
-					};
-				case ViewContainerLocation.AuxiliaryBar:
-					// AuxiliaryBar is on the opposite side of the primary sidebar
-					return {
-						location: sideBarPosition === Position.LEFT ? ChatWidgetLocation.SidebarRight : ChatWidgetLocation.SidebarLeft,
-						isMaximized: this.layoutService.isAuxiliaryBarMaximized(),
-					};
-				case ViewContainerLocation.Sidebar:
-				default:
-					// Primary sidebar follows its configured position
-					// Note: Primary sidebar cannot be maximized, so always false
-					return {
-						location: sideBarPosition === Position.LEFT ? ChatWidgetLocation.SidebarLeft : ChatWidgetLocation.SidebarRight,
-						isMaximized: false,
-					};
-			}
-		}
-
-		// Fallback for unknown contexts
-		return { location: ChatWidgetLocation.Editor, isMaximized: false };
 	}
 
 	private getDefaultScrollbarOptions(): IEditorScrollbarOptions {
