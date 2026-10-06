@@ -9,7 +9,6 @@ import { IPolicyData } from '../../../../base/common/defaultAccount.js';
 import { Event } from '../../../../base/common/event.js';
 import { ChatContextKeys } from '../../chat/common/actions/chatContextKeys.js';
 
-import './agentsVoiceColors.js'; // Register custom voice theme colors
 
 /**
  * Context keys reflecting the live Voice Mode connection state. Defined here in

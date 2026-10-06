@@ -21,7 +21,6 @@ import { IPluginInstallService } from '../common/plugins/pluginInstallService.js
 import { IMarketplacePluginItem } from './agentPluginEditor/agentPluginItems.js';
 import { buildEnablementContextMenuGroup } from './enablementActions.js';
 import { hasKey } from '../../../../base/common/types.js';
-import { URI } from '../../../../base/common/uri.js';
 import { IReader } from '../../../../base/common/observable.js';
 
 //#region Simple actions

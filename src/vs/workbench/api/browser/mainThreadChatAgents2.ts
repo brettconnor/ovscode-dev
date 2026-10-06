@@ -27,7 +27,7 @@ import { ITelemetryService } from '../../../platform/telemetry/common/telemetry.
 import { IUriIdentityService } from '../../../platform/uriIdentity/common/uriIdentity.js';
 import { IChatWidget, IChatWidgetService } from '../../contrib/chat/browser/chat.js';
 import { AddDynamicVariableAction, IAddDynamicVariableContext } from '../../contrib/chat/browser/attachments/chatDynamicVariables.js';
-import { IChatAgentHistoryEntry, IChatAgentImplementation, IChatAgentRequest, IChatAgentService } from '../../contrib/chat/common/participants/chatAgents.js';
+import { IChatAgentHistoryEntry, IChatAgentImplementation, IChatAgentRequest, IChatAgentService, IChatParticipantMetadata } from '../../contrib/chat/common/participants/chatAgents.js';
 import { IAgentSkill, IChatPromptSlashCommand, ICustomAgent, IInstructionFile, IPromptFileContext, IPromptPath, IPromptsService, PromptsStorage } from '../../contrib/chat/common/promptSyntax/service/promptsService.js';
 import { isValidPromptType, PromptsType } from '../../contrib/chat/common/promptSyntax/promptTypes.js';
 import { IChatModel, IChatResponseModel } from '../../contrib/chat/common/model/chatModel.js';
@@ -41,6 +41,7 @@ import { IExtHostContext, extHostNamedCustomer } from '../../services/extensions
 import { IExtensionService } from '../../services/extensions/common/extensions.js';
 import { Dto } from '../../services/extensions/common/proxyIdentifier.js';
 import { NotebookDto } from './mainThreadNotebookDto.js';
+import { IChatNotebookEditDto, IChatProgressDto, IExtensionChatAgentMetadata } from '../common/extHost.protocol.js';
 import { getChatSessionType } from '../../contrib/chat/common/model/chatUri.js';
 import { localChatSessionType } from '../../contrib/chat/common/chatSessionsService.js';
 import { IAgentPlugin, IAgentPluginService } from '../../contrib/chat/common/plugins/agentPluginService.js';

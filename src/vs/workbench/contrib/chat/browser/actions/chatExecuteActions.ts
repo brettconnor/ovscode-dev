@@ -373,7 +373,7 @@ export class OpenModelPickerAction extends Action2 {
 						ContextKeyExpr.or(
 							ChatContextKeys.inAgentSessionsWelcome.negate(),
 							ChatContextKeys.chatSessionHasTargetedModels,
-							ChatContextKeys.agentSessionType.isEqualTo(AgentSessionProviders.Local))
+							ChatContextKeys.agentSessionType.isEqualTo(localChatSessionType))
 					)
 			}
 		});
@@ -411,10 +411,7 @@ export class OpenPermissionPickerAction extends Action2 {
 						ChatContextKeys.chatModeKind.notEqualsTo(ChatModeKind.Ask),
 						ChatContextKeys.inQuickChat.negate(),
 						ChatContextKeys.inAutomationsDialog.negate(),
-						ContextKeyExpr.or(
-							ChatContextKeys.lockedToCodingAgent.negate(),
-							ChatContextKeys.lockedCodingAgentId.isEqualTo(AgentSessionProviders.Background),
-						),
+						ChatContextKeys.lockedToCodingAgent.negate(),
 					)
 			}
 		});
@@ -464,7 +461,7 @@ export class OpenModePickerAction extends Action2 {
 						ContextKeyExpr.or(
 							ChatContextKeys.inAgentSessionsWelcome.negate(),
 							ChatContextKeys.chatSessionHasCustomAgentTarget,
-							ChatContextKeys.agentSessionType.isEqualTo(AgentSessionProviders.Local))),
+							ChatContextKeys.agentSessionType.isEqualTo(localChatSessionType))),
 					group: 'navigation',
 				},
 			]
