@@ -634,7 +634,6 @@ suite('aiCustomizationListWidget', () => {
 				setActiveSession: () => { },
 				getActiveDescriptor: () => descriptor,
 				findHarnessById: (id) => id === descriptor.id ? descriptor : undefined,
-				registerExternalHarness: () => ({ dispose() { } }),
 			});
 
 			instaService.stub(IAgentPluginService, {

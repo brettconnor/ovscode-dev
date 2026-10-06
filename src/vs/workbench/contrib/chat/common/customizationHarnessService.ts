@@ -357,14 +357,6 @@ export interface ICustomizationHarnessService {
 	getActiveDescriptor(): IHarnessDescriptor;
 
 	/**
-	 * Registers an external harness contributed by an extension.
-	 * The harness appears in the UI toggle alongside static harnesses.
-	 * Returns a disposable that removes the harness when disposed.
-	 */
-	registerExternalHarness(descriptor: IHarnessDescriptor): IDisposable;
-
-
-	/**
 	 * Fires when one of the provided slash commands changes.
 	 */
 	readonly onDidChangeSlashCommands: Event<{ readonly sessionType: string }>;
@@ -484,7 +476,6 @@ export class CustomizationHarnessServiceBase implements ICustomizationHarnessSer
 	private readonly _onDidChangeCustomAgents = new Emitter<{ readonly sessionType: string }>();
 	readonly onDidChangeCustomAgents = this._onDidChangeCustomAgents.event;
 	private readonly _providerListeners: IDisposable[] = [];
-	private _isDisposed = false;
 
 	private readonly _activeSessionResource: ISettableObservable<URI>;
 	readonly activeSessionResource: IObservable<URI>;
@@ -493,7 +484,6 @@ export class CustomizationHarnessServiceBase implements ICustomizationHarnessSer
 	readonly activeHarness: IObservable<string>;
 
 	private readonly _staticHarnesses: readonly IHarnessDescriptor[];
-	private readonly _externalHarnesses: IHarnessDescriptor[] = [];
 	private readonly _availableHarnesses: ISettableObservable<readonly IHarnessDescriptor[]>;
 	readonly availableHarnesses: IObservable<readonly IHarnessDescriptor[]>;
 
@@ -514,21 +504,7 @@ export class CustomizationHarnessServiceBase implements ICustomizationHarnessSer
 	}
 
 	private _getAllHarnesses(): readonly IHarnessDescriptor[] {
-		// External harnesses shadow static ones with the same id so that
-		// extension-contributed harnesses can upgrade a built-in entry.
-		const externalIds = new Set(this._externalHarnesses.map(h => h.id));
-		return [
-			...this._staticHarnesses.filter(h => !externalIds.has(h.id)),
-			...this._externalHarnesses,
-		];
-	}
-
-	private _refreshAvailableHarnesses(): void {
-		if (this._isDisposed) {
-			return;
-		}
-		this._availableHarnesses.set(this._getAllHarnesses(), undefined);
-		this._rebindProviderListeners();
+		return this._staticHarnesses;
 	}
 
 	private _rebindProviderListeners(): void {
@@ -549,30 +525,12 @@ export class CustomizationHarnessServiceBase implements ICustomizationHarnessSer
 	}
 
 	dispose(): void {
-		this._isDisposed = true;
 		for (const listener of this._providerListeners) {
 			listener.dispose();
 		}
 		this._providerListeners.length = 0;
 		this._onDidChangeSlashCommands.dispose();
 		this._onDidChangeCustomAgents.dispose();
-	}
-
-	registerExternalHarness(descriptor: IHarnessDescriptor): IDisposable {
-		this._externalHarnesses.push(descriptor);
-		this._refreshAvailableHarnesses();
-		return {
-			dispose: () => {
-				if (this._isDisposed) {
-					return;
-				}
-				const idx = this._externalHarnesses.indexOf(descriptor);
-				if (idx >= 0) {
-					this._externalHarnesses.splice(idx, 1);
-					this._refreshAvailableHarnesses();
-				}
-			}
-		};
 	}
 
 	findHarnessById(id: string): IHarnessDescriptor | undefined {

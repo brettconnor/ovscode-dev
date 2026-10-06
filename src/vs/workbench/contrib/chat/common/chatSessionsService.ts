@@ -773,27 +773,6 @@ export namespace ChatSessionOptionsMap {
  */
 export type ReadonlyChatSessionOptionsMap = ReadonlyMap<string, string | IChatSessionProviderOptionItem>;
 
-export interface IChatSessionCustomizationItem {
-	readonly label: string;
-	readonly description?: string;
-	readonly uri: URI;
-	readonly storageLocation: number;
-	readonly icon?: ThemeIcon;
-}
-
-export interface IChatSessionCustomizationItemGroup {
-	readonly id: string;
-	readonly items: IChatSessionCustomizationItem[];
-	readonly commands?: readonly { readonly id: string; readonly title: string; readonly arguments?: readonly unknown[] }[];
-	readonly itemCommands?: readonly { readonly id: string; readonly title: string; readonly arguments?: readonly unknown[] }[];
-}
-
-export interface IChatSessionCustomizationsProvider {
-	readonly onDidChangeCustomizations: Event<void>;
-	provideCustomizations(token: CancellationToken): Promise<IChatSessionCustomizationItemGroup[] | undefined>;
-}
-
-
 export interface IChatSessionCommitEvent {
 	/** The original (untitled) session resource. */
 	readonly original: URI;
@@ -1056,12 +1035,6 @@ export interface IChatSessionsService {
 	 */
 	fireSessionCommitted(original: URI, committed: URI): void;
 
-	// #region Customizations provider support
-	readonly onDidChangeCustomizations: Event<{ readonly chatSessionType: string }>;
-	registerCustomizationsProvider(chatSessionType: string, provider: IChatSessionCustomizationsProvider): IDisposable;
-	hasCustomizationsProvider(chatSessionType: string): boolean;
-	getCustomizations(chatSessionType: string, token: CancellationToken): Promise<IChatSessionCustomizationItemGroup[] | undefined>;
-	// #endregion
 }
 
 export function isSessionInProgressStatus(state: ChatSessionStatus): boolean {

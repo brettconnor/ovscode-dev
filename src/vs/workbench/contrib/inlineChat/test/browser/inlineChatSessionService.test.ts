@@ -6,7 +6,6 @@
 import assert from 'assert';
 import { CancellationToken } from '../../../../../base/common/cancellation.js';
 import { Event } from '../../../../../base/common/event.js';
-import { IMarkdownString } from '../../../../../base/common/htmlContent.js';
 import { Disposable, DisposableStore, IReference, toDisposable } from '../../../../../base/common/lifecycle.js';
 import { Schemas } from '../../../../../base/common/network.js';
 import { observableValue, waitForState } from '../../../../../base/common/observable.js';
@@ -22,7 +21,6 @@ import { IResolvedTextEditorModel, ITextModelContentProvider, ITextModelService 
 import { SyncDescriptor } from '../../../../../platform/instantiation/common/descriptors.js';
 import { ServiceCollection } from '../../../../../platform/instantiation/common/serviceCollection.js';
 import { MockContextKeyService } from '../../../../../platform/keybinding/test/common/mockKeybindingService.js';
-import { IFilesConfigurationService } from '../../../../services/filesConfiguration/common/filesConfigurationService.js';
 import { IWorkbenchAssignmentService } from '../../../../services/assignment/common/assignmentService.js';
 import { NullWorkbenchAssignmentService } from '../../../../services/assignment/test/common/nullAssignmentService.js';
 import { IWorkspaceEditingService } from '../../../../services/workspaces/common/workspaceEditing.js';
@@ -37,7 +35,7 @@ import { ChatAgentLocation, ChatModeKind } from '../../../chat/common/constants.
 import { IChatEditingService } from '../../../chat/common/editing/chatEditingService.js';
 import { ChatModel } from '../../../chat/common/model/chatModel.js';
 import { IChatAgentData, IChatAgentImplementation, IChatAgentService, ChatAgentService } from '../../../chat/common/participants/chatAgents.js';
-import { IChatSessionsService, ResolvedChatSessionsExtensionPoint, SessionType } from '../../../chat/common/chatSessionsService.js';
+import { IChatSessionsService } from '../../../chat/common/chatSessionsService.js';
 import { IChatDebugService } from '../../../chat/common/chatDebugService.js';
 import { ChatDebugServiceImpl } from '../../../chat/common/chatDebugServiceImpl.js';
 import { IChatSlashCommandService } from '../../../chat/common/participants/chatSlashCommands.js';
@@ -56,52 +54,20 @@ import { IMultiDiffSourceResolver, IMultiDiffSourceResolverService } from '../..
 import { INotebookService } from '../../../notebook/common/notebookService.js';
 import { NotebookTextModel } from '../../../notebook/common/model/notebookTextModel.js';
 import { TestConfigurationService } from '../../../../../platform/configuration/test/common/testConfigurationService.js';
-import { InlineChatEditReviewSession } from '../../browser/inlineChatEditReviewSession.js';
 import { IInlineChatSession } from '../../browser/inlineChatSessionService.js';
 import { InlineChatSessionServiceImpl } from '../../browser/inlineChatSessionServiceImpl.js';
 import { IInlineChatSessionResolver, IInlineChatSessionResolution } from '../../browser/inlineChatSessionResolver.js';
 import { TestWorkerService } from './testWorkerService.js';
 
-const agentHostContribution: ResolvedChatSessionsExtensionPoint = {
-	type: SessionType.AgentHostCopilot,
-	name: 'Agent Host Copilot',
-	displayName: 'Agent Host Copilot',
-	description: 'Test contribution',
-	icon: undefined,
-	locations: [ChatAgentLocation.EditorInline],
-};
-
 class TestInlineChatSessionResolver extends mock<IInlineChatSessionResolver>() {
 	chatService!: IChatService;
-	lockToAgent: ResolvedChatSessionsExtensionPoint | undefined;
 	resolveCalls = 0;
 
 	override async resolve(_token: CancellationToken, _languageId: string | undefined, _targetUri: URI): Promise<IInlineChatSessionResolution> {
 		this.resolveCalls++;
 		return {
 			modelRef: this.chatService.startNewLocalSession(ChatAgentLocation.EditorInline, { canUseTools: false }),
-			lockToAgent: this.lockToAgent,
 		};
-	}
-}
-
-interface ReadonlyUpdate {
-	readonly resource: URI;
-	readonly value: true | IMarkdownString | false | 'toggle' | 'reset';
-}
-
-class TestFilesConfigurationService extends mock<IFilesConfigurationService>() {
-	private readonly _updates = observableValue<readonly ReadonlyUpdate[]>(this, []);
-	readonly updates = this._updates;
-
-	override async updateReadonly(resource: URI | URI[], value: true | IMarkdownString | false | 'toggle' | 'reset'): Promise<void> {
-		for (const item of Array.isArray(resource) ? resource : [resource]) {
-			this._updates.set([...this._updates.get(), { resource: item, value }], undefined);
-		}
-	}
-
-	async waitForUpdates(count: number): Promise<readonly ReadonlyUpdate[]> {
-		return waitForState(this.updates.map(updates => updates.length >= count ? updates : undefined));
 	}
 }
 
@@ -157,7 +123,6 @@ suite('InlineChatSessionService', () => {
 	let chatService: IChatService;
 	let modelService: IModelService;
 	let resolver: TestInlineChatSessionResolver;
-	let filesConfigurationService: TestFilesConfigurationService;
 	let textModelService: TestTextModelService;
 
 	setup(() => {
@@ -196,10 +161,8 @@ suite('InlineChatSessionService', () => {
 		});
 
 		resolver = new TestInlineChatSessionResolver();
-		filesConfigurationService = new TestFilesConfigurationService();
 		textModelService = new TestTextModelService();
 		collection.set(IInlineChatSessionResolver, resolver);
-		collection.set(IFilesConfigurationService, filesConfigurationService);
 		collection.set(ITextModelService, textModelService);
 
 		const instantiationService = store.add(store.add(workbenchInstantiationService(undefined, store)).createChild(collection));
@@ -229,124 +192,43 @@ suite('InlineChatSessionService', () => {
 
 	ensureNoDisposablesAreLeakedInTestSuite();
 
-	test('uses an edit review session and locks to the Agent Host contribution', async () => {
-		resolver.lockToAgent = agentHostContribution;
-
-		const session = await service.createSession(createEditor(createModel(URI.from({ scheme: Schemas.file, path: '/test/agent-host.ts' }))), false, CancellationToken.None);
-
-		assert.deepStrictEqual({
-			usesEditReviewSession: session.editingSession instanceof InlineChatEditReviewSession,
-			usesChatModelEditingSession: session.editingSession === session.chatModel.editingSession,
-			locksToContribution: session.lockToAgent === agentHostContribution,
-			chatModelEditingSession: session.chatModel.editingSession,
-		}, {
-			usesEditReviewSession: true,
-			usesChatModelEditingSession: false,
-			locksToContribution: true,
-			chatModelEditingSession: undefined,
-		});
-
-		await disposeSession(session);
-	});
-
 	test('uses the legacy editing session without Agent Host locking', async () => {
 		const session = await service.createSession(createEditor(createModel(URI.from({ scheme: Schemas.file, path: '/test/legacy.ts' }))), false, CancellationToken.None);
 
 		assert.deepStrictEqual({
 			usesChatModelEditingSession: session.editingSession === session.chatModel.editingSession,
-			lockToAgent: session.lockToAgent,
-			readonlyUpdates: filesConfigurationService.updates.get(),
 		}, {
 			usesChatModelEditingSession: true,
-			lockToAgent: undefined,
-			readonlyUpdates: [],
 		});
 
 		await disposeSession(session);
 	});
 
-	test('brackets a completed Agent Host turn with a read-only lock', async () => {
-		resolver.lockToAgent = agentHostContribution;
-		const uri = URI.from({ scheme: Schemas.file, path: '/test/complete.ts' });
-		const session = await service.createSession(createEditor(createModel(uri)), false, CancellationToken.None);
-		const request = (session.chatModel as ChatModel).addRequest({ text: '', parts: [] }, { variables: [] }, 0);
-		assert.ok(request.response);
-
-		await filesConfigurationService.waitForUpdates(1);
-		request.response.complete();
-		const updates = await filesConfigurationService.waitForUpdates(2);
-
-		assert.deepStrictEqual(updates.map(update => ({
-			resource: update.resource.toString(),
-			value: update.value === 'reset' ? 'reset' : typeof update.value === 'object' ? 'markdown' : update.value,
-		})), [
-			{ resource: uri.toString(), value: 'markdown' },
-			{ resource: uri.toString(), value: 'reset' },
-		]);
-
-		session.dispose();
-	});
-
-	test('releases the read-only lock when an Agent Host turn is cancelled', async () => {
-		resolver.lockToAgent = agentHostContribution;
-		const session = await service.createSession(createEditor(createModel(URI.from({ scheme: Schemas.file, path: '/test/cancelled.ts' }))), false, CancellationToken.None);
-		const request = (session.chatModel as ChatModel).addRequest({ text: '', parts: [] }, { variables: [] }, 0);
-		assert.ok(request.response);
-
-		await filesConfigurationService.waitForUpdates(1);
-		request.response.cancel();
-		const updates = await filesConfigurationService.waitForUpdates(2);
-
-		assert.deepStrictEqual(updates.map(update => update.value === 'reset' ? 'reset' : typeof update.value === 'object' ? 'markdown' : update.value), ['markdown', 'reset']);
-
-		await waitForState(session.editingSession.entries.map(entries => entries.length > 0 ? entries : undefined));
-		await disposeSession(session);
-	});
-
-	test('releases the read-only lock when the inline chat session is disposed mid-turn', async () => {
-		resolver.lockToAgent = agentHostContribution;
-		const session = await service.createSession(createEditor(createModel(URI.from({ scheme: Schemas.file, path: '/test/disposed.ts' }))), false, CancellationToken.None);
-		const request = (session.chatModel as ChatModel).addRequest({ text: '', parts: [] }, { variables: [] }, 0);
-		assert.ok(request.response);
-
-		await filesConfigurationService.waitForUpdates(1);
-		session.dispose();
-		const updates = await filesConfigurationService.waitForUpdates(2);
-
-		assert.deepStrictEqual(updates.map(update => update.value === 'reset' ? 'reset' : typeof update.value === 'object' ? 'markdown' : update.value), ['markdown', 'reset']);
-	});
-
 	test('uses the legacy path without resolving Agent Host for untitled documents', async () => {
-		resolver.lockToAgent = agentHostContribution;
 
 		const session = await service.createSession(createEditor(createModel(URI.from({ scheme: Schemas.untitled, path: '/test/untitled.ts' }))), false, CancellationToken.None);
 
 		assert.deepStrictEqual({
 			resolveCalls: resolver.resolveCalls,
 			usesChatModelEditingSession: session.editingSession === session.chatModel.editingSession,
-			readonlyUpdates: filesConfigurationService.updates.get(),
 		}, {
 			resolveCalls: 0,
 			usesChatModelEditingSession: true,
-			readonlyUpdates: [],
 		});
 
 		await disposeSession(session);
 	});
 
 	test('uses the legacy path without resolving Agent Host for notebooks', async () => {
-		resolver.lockToAgent = agentHostContribution;
 
 		const session = await service.createSession(createEditor(createModel(URI.from({ scheme: Schemas.file, path: '/test/notebook.ts' }))), true, CancellationToken.None);
 
 		assert.deepStrictEqual({
 			resolveCalls: resolver.resolveCalls,
 			usesChatModelEditingSession: session.editingSession === session.chatModel.editingSession,
-			readonlyUpdates: filesConfigurationService.updates.get(),
 		}, {
 			resolveCalls: 0,
 			usesChatModelEditingSession: true,
-			readonlyUpdates: [],
 		});
 
 		await disposeSession(session);

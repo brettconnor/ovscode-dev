@@ -14,7 +14,6 @@ import { Schemas } from '../../../base/common/network.js';
 import { escapeRegExpCharacters } from '../../../base/common/strings.js';
 import { ThemeIcon } from '../../../base/common/themables.js';
 import { URI, UriComponents } from '../../../base/common/uri.js';
-import { Codicon } from '../../../base/common/codicons.js';
 import { Position } from '../../../editor/common/core/position.js';
 import { Range } from '../../../editor/common/core/range.js';
 import { getWordAtText } from '../../../editor/common/core/wordHelper.js';
@@ -44,8 +43,6 @@ import { IExtensionService } from '../../services/extensions/common/extensions.j
 import { Dto } from '../../services/extensions/common/proxyIdentifier.js';
 import { NotebookDto } from './mainThreadNotebookDto.js';
 import { getChatSessionType } from '../../contrib/chat/common/model/chatUri.js';
-import { ICustomizationHarnessService, ICustomizationItem, ICustomizationItemProvider, IHarnessDescriptor } from '../../contrib/chat/common/customizationHarnessService.js';
-import { AICustomizationManagementSection } from '../../contrib/chat/common/aiCustomizationWorkspaceService.js';
 import { IAgentPlugin, IAgentPluginService } from '../../contrib/chat/common/plugins/agentPluginService.js';
 
 interface AgentData {
@@ -110,8 +107,6 @@ export class MainThreadChatAgents2 extends Disposable implements MainThreadChatA
 	private readonly _promptFileProviderEmitters = this._register(new DisposableMap<number, Emitter<void>>());
 	private readonly _promptFileContentRegistrations = this._register(new DisposableMap<number, DisposableMap<string, IDisposable>>());
 
-	private readonly _customizationProviders = this._register(new DisposableMap<number, IDisposable>());
-	private readonly _customizationProviderEmitters = this._register(new DisposableMap<number, Emitter<void>>());
 
 	private readonly _pendingProgress = new Map<string, { progress: (parts: IChatProgress[]) => void; chatSession: IChatModel | undefined; isSubagent: boolean }>();
 	private readonly _proxy: ExtHostChatAgentsShape2;
@@ -132,7 +127,6 @@ export class MainThreadChatAgents2 extends Disposable implements MainThreadChatA
 		@IUriIdentityService private readonly _uriIdentityService: IUriIdentityService,
 		@IPromptsService private readonly _promptsService: IPromptsService,
 		@ILanguageModelToolsService private readonly _languageModelToolsService: ILanguageModelToolsService,
-		@ICustomizationHarnessService private readonly _customizationHarnessService: ICustomizationHarnessService,
 		@ITelemetryService private readonly _telemetryService: ITelemetryService,
 		@IAgentPluginService private readonly _agentPluginService: IAgentPluginService,
 	) {
@@ -749,99 +743,6 @@ export class MainThreadChatAgents2 extends Disposable implements MainThreadChatA
 		}
 	}
 
-	async $registerChatSessionCustomizationProvider(handle: number, chatSessionType: string, metadata: IChatSessionCustomizationProviderMetadataDto, extensionId: ExtensionIdentifier): Promise<void> {
-		const extension = await this._extensionService.getExtension(extensionId.value);
-		if (!extension) {
-			this._logService.error(`[MainThreadChatAgents2] Could not find extension for customization provider: ${extensionId.value}`);
-			return;
-		}
-
-		const emitter = new Emitter<void>();
-		this._customizationProviderEmitters.set(handle, emitter);
-
-		// Build the item provider that calls back to the ExtHost
-		const itemProvider: ICustomizationItemProvider = {
-			onDidChange: emitter.event,
-			provideChatSessionCustomizations: async (sessionResource, token) => {
-				const items = await this._proxy.$provideChatSessionCustomizations(handle, sessionResource, token);
-				if (!items) {
-					return undefined;
-				}
-				return items.map((item: IChatSessionCustomizationItemDto): ICustomizationItem => ({
-					uri: URI.revive(item.uri),
-					type: item.type,
-					name: item.name,
-					source: item.source,
-					description: item.description,
-					groupKey: item.groupKey,
-					badge: item.badge,
-					badgeTooltip: item.badgeTooltip,
-					extensionId: item.extensionId,
-					pluginUri: item.pluginUri ? URI.revive(item.pluginUri) : undefined,
-					pluginLabel: item.pluginLabel,
-					userInvocable: item.userInvocable,
-				}));
-			},
-			provideSourceFolders: async (sessionResource, type, token) => {
-				const folders = await this._proxy.$provideSourceFolders(handle, sessionResource, type, token);
-				if (!folders) {
-					return undefined;
-				}
-				return folders.map(folder => ({
-					uri: URI.revive(folder.uri),
-					label: folder.label,
-					source: folder.source,
-					destinationGroupId: folder.destinationGroupId,
-				}));
-			},
-		};
-
-		// Convert supportedTypes whitelist to hiddenSections blacklist.
-		// Sections not in the supported list are hidden. When supportedTypes
-		// is omitted, all sections are shown.
-		const typeToSection: Record<string, string> = {
-			'agent': AICustomizationManagementSection.Agents,
-			'skill': AICustomizationManagementSection.Skills,
-			'instructions': AICustomizationManagementSection.Instructions,
-			'prompt': AICustomizationManagementSection.Prompts,
-			'hook': AICustomizationManagementSection.Hooks,
-			'plugins': AICustomizationManagementSection.Plugins,
-		};
-		let hiddenSections: string[] | undefined;
-		if (metadata.supportedTypes) {
-			const supportedSections = new Set<string>();
-			for (const t of metadata.supportedTypes) {
-				const section = typeToSection[t];
-				if (section) {
-					supportedSections.add(section);
-				}
-			}
-			hiddenSections = Object.values(typeToSection).filter(section => !supportedSections.has(section));
-		}
-
-		const descriptor: IHarnessDescriptor = {
-			id: chatSessionType,
-			label: metadata.label,
-			icon: metadata.iconId ? ThemeIcon.fromId(metadata.iconId) : ThemeIcon.fromId(Codicon.extensions.id),
-			hiddenSections,
-			itemProvider,
-		};
-
-		const registration = this._customizationHarnessService.registerExternalHarness(descriptor);
-		this._customizationProviders.set(handle, registration);
-	}
-
-	$unregisterChatSessionCustomizationProvider(handle: number): void {
-		this._customizationProviders.deleteAndDispose(handle);
-		this._customizationProviderEmitters.deleteAndDispose(handle);
-	}
-
-	$onDidChangeCustomizations(handle: number): void {
-		const emitter = this._customizationProviderEmitters.get(handle);
-		if (emitter) {
-			emitter.fire();
-		}
-	}
 }
 
 

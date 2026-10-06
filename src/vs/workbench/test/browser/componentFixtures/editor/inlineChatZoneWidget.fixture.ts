@@ -242,7 +242,6 @@ function renderInlineChatZoneWidget({ container, disposableStore, theme, focus }
 				override readonly onDidChangeSessionOptions = Event.None;
 				override readonly onDidChangeOptionGroups = Event.None;
 				override readonly onDidChangeAvailability = Event.None;
-				override readonly onDidChangeCustomizations = Event.None;
 				override readonly onDidChangeContentProviderSchemes = Event.None;
 				override readonly onDidChangeItemsProviders = Event.None;
 				override readonly onDidChangeSessionItems = Event.None;
@@ -257,7 +256,6 @@ function renderInlineChatZoneWidget({ container, disposableStore, theme, focus }
 				override getChatSessionContribution() { return undefined; }
 				override getCapabilitiesForSessionType() { return undefined; }
 				override getSessionOptions() { return undefined; }
-				override hasCustomizationsProvider() { return false; }
 			}());
 			reg.defineInstance(ILanguageModelsService, new class extends mock<ILanguageModelsService>() {
 				override readonly onDidChangeLanguageModels = Event.None;

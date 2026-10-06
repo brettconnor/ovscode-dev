@@ -1662,9 +1662,6 @@ export interface MainThreadChatAgentsShape2 extends IChatAgentProgressShape, IDi
 	$registerPromptFileProvider(handle: number, type: string, extension: ExtensionIdentifier): void;
 	$unregisterPromptFileProvider(handle: number): void;
 	$onDidChangePromptFiles(handle: number): void;
-	$registerChatSessionCustomizationProvider(handle: number, chatSessionType: string, metadata: IChatSessionCustomizationProviderMetadataDto, extension: ExtensionIdentifier): void;
-	$unregisterChatSessionCustomizationProvider(handle: number): void;
-	$onDidChangeCustomizations(handle: number): void;
 	$registerAgentCompletionsProvider(handle: number, id: string, triggerCharacters: string[]): void;
 	$unregisterAgentCompletionsProvider(handle: number, id: string): void;
 	$updateAgent(handle: number, metadataUpdate: IExtensionChatAgentMetadata): void;
@@ -1739,8 +1736,6 @@ export interface ExtHostChatAgentsShape2 {
 	$releaseSession(sessionResource: UriComponents): void;
 	$detectChatParticipant(handle: number, request: Dto<IChatAgentRequest>, context: { history: IChatAgentHistoryEntryDto[] }, options: { participants: IChatParticipantMetadata[]; location: ChatAgentLocation }, token: CancellationToken): Promise<IChatParticipantDetectionResult | null | undefined>;
 	$providePromptFiles(handle: number, type: PromptsType, context: IPromptFileContext, token: CancellationToken): Promise<Dto<IPromptFileResource>[] | undefined>;
-	$provideChatSessionCustomizations(handle: number, sessionResource: UriComponents, token: CancellationToken): Promise<IChatSessionCustomizationItemDto[] | undefined>;
-	$provideSourceFolders(handle: number, sessionResource: UriComponents, type: string, token: CancellationToken): Promise<IChatSessionCustomizationSourceFolderDto[] | undefined>;
 	$setRequestTools(requestId: string, tools: UserSelectedTools): void;
 	$setYieldRequested(requestId: string, value: boolean): void;
 	$acceptActiveChatSession(sessionResource: UriComponents | undefined): void;
@@ -1799,33 +1794,6 @@ export interface IPluginDto {
 	readonly uri: UriComponents;
 }
 
-export interface IChatSessionCustomizationProviderMetadataDto {
-	readonly label: string;
-	readonly iconId?: string;
-	readonly supportedTypes?: readonly string[];
-}
-
-export interface IChatSessionCustomizationItemDto {
-	readonly uri: UriComponents;
-	readonly type: string;
-	readonly name: string;
-	readonly source: IChatResourceSourceDto;
-	readonly description?: string;
-	readonly groupKey?: string;
-	readonly badge?: string;
-	readonly extensionId?: string;
-	readonly pluginUri?: UriComponents;
-	readonly pluginLabel?: string;
-	readonly badgeTooltip?: string;
-	readonly userInvocable?: boolean;
-}
-
-export interface IChatSessionCustomizationSourceFolderDto {
-	readonly uri: UriComponents;
-	readonly label: string;
-	readonly source: IChatResourceSourceDto;
-	readonly destinationGroupId?: string;
-}
 export interface IChatParticipantMetadata {
 	participant: string;
 	command?: string;

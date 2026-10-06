@@ -3599,17 +3599,6 @@ export enum ChatLocation {
 	Editor = 4,
 }
 
-export class ChatSessionCustomizationType {
-	static readonly Agent = new ChatSessionCustomizationType('agent');
-	static readonly Skill = new ChatSessionCustomizationType('skill');
-	static readonly Instructions = new ChatSessionCustomizationType('instructions');
-	static readonly Prompt = new ChatSessionCustomizationType('prompt');
-	static readonly Hook = new ChatSessionCustomizationType('hook');
-	static readonly Plugins = new ChatSessionCustomizationType('plugins');
-
-	constructor(public readonly id: string) { }
-}
-
 export enum ChatDebugLogLevel {
 	Trace = 0,
 	Info = 1,

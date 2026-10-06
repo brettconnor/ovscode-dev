@@ -110,16 +110,9 @@ export class InlineChatSessionServiceImpl implements IInlineChatSessionService {
 		}
 		const chatModelRef = resolution?.modelRef ?? this.#chatService.startNewLocalSession(ChatAgentLocation.EditorInline, { canUseTools: false /* SEE https://github.com/microsoft/vscode/issues/279946 */ });
 		const chatModel = chatModelRef.object;
-		const lockToAgent = resolution?.lockToAgent;
 		let reviewSession: InlineChatEditReviewSession | undefined;
-		let editingSession: IChatEditReviewSession;
-		if (lockToAgent) {
-			reviewSession = this.#instantiationService.createInstance(InlineChatEditReviewSession, chatModel.sessionResource, uri);
-			editingSession = reviewSession;
-		} else {
-			chatModel.startEditingSession(false);
-			editingSession = chatModel.editingSession!;
-		}
+		chatModel.startEditingSession(false);
+		const editingSession: IChatEditReviewSession = chatModel.editingSession!;
 		const terminationState = observableValue<InlineChatSessionTerminationState | undefined>(this, undefined);
 
 		const store = new DisposableStore();
@@ -179,7 +172,6 @@ export class InlineChatSessionServiceImpl implements IInlineChatSessionService {
 			initialSelection: editor.getSelection(),
 			chatModel,
 			editingSession,
-			lockToAgent,
 			terminationState,
 			setTerminationState: state => {
 				terminationState.set(state, undefined);

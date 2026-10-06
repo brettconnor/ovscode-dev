@@ -140,7 +140,6 @@ suite('AICustomizationItemsModel', () => {
 				},
 				getActiveDescriptor: () => availableHarnesses.get().find(d => d.id === activeHarness.get())!,
 				findHarnessById: (id: string) => availableHarnesses.get().find(d => d.id === id),
-				registerExternalHarness: () => ({ dispose() { } }),
 			});
 
 			instaService.stub(IAgentPluginService, {
@@ -696,7 +695,6 @@ suite('AICustomizationItemsModel', () => {
 				},
 				getActiveDescriptor: () => availableHarnesses.get().find(d => d.id === activeHarness.get())!,
 				findHarnessById: (id: string) => availableHarnesses.get().find(d => d.id === id),
-				registerExternalHarness: () => ({ dispose() { } }),
 			});
 			instaService.stub(IAgentPluginService, {
 				plugins,
@@ -938,7 +936,6 @@ suite('AICustomizationItemsModel', () => {
 				setActiveSession: (next: URI) => activeSessionResource.set(next, undefined),
 				getActiveDescriptor: () => availableHarnesses.get().find(d => d.id === activeHarness.get())!,
 				findHarnessById: (id: string) => availableHarnesses.get().find(d => d.id === id),
-				registerExternalHarness: () => ({ dispose() { } }),
 			});
 			instaService.stub(IAgentPluginService, {
 				plugins: observableValue<readonly IAgentPlugin[]>('plugins', []),
