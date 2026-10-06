@@ -11,9 +11,9 @@ import { IStorageService } from '../../../../platform/storage/common/storage.js'
 
 export class ExtensionsContributions extends Disposable {
 	constructor(
-		@INativeServerExtensionManagementService private readonly extensionManagementService: INativeServerExtensionManagementService,
+		@INativeServerExtensionManagementService extensionManagementService: INativeServerExtensionManagementService,
 		@IStorageService storageService: IStorageService,
-		@ILogService private readonly logService: ILogService,
+		@ILogService logService: ILogService,
 	) {
 		super();
 
