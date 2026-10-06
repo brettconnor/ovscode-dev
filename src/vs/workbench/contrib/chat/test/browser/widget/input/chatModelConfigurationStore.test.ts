@@ -4,25 +4,16 @@
  *--------------------------------------------------------------------------------------------*/
 
 import assert from 'assert';
-import { $ } from '../../../../../../../base/browser/dom.js';
 import { IStringDictionary } from '../../../../../../../base/common/collections.js';
 import { Emitter, Event } from '../../../../../../../base/common/event.js';
-import { DisposableStore, MutableDisposable } from '../../../../../../../base/common/lifecycle.js';
-import { observableValue } from '../../../../../../../base/common/observable.js';
-import { URI } from '../../../../../../../base/common/uri.js';
-import { upcastPartial } from '../../../../../../../base/test/common/mock.js';
+import { DisposableStore } from '../../../../../../../base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../../../base/test/common/utils.js';
-import { IActionWidgetService } from '../../../../../../../platform/actionWidget/browser/actionWidget.js';
-import { NullTelemetryService } from '../../../../../../../platform/telemetry/common/telemetryUtils.js';
 import { InMemoryStorageService, StorageScope, StorageTarget } from '../../../../../../../platform/storage/common/storage.js';
 import { ChatInputPart } from '../../../../browser/widget/input/chatInputPart.js';
 import { extractSchemaDefaults } from '../../../../browser/widget/input/chatModelConfigurationLogic.js';
 import { ChatModelConfigurationStore } from '../../../../browser/widget/input/chatModelConfigurationStore.js';
-import { ModelPickerConfiguration } from '../../../../browser/widget/input/modelPicker/modelPickerConfiguration.js';
 import { resolveContextWindowInputTokens } from '../../../../browser/widgetHosts/viewPane/chatContextUsageWidget.js';
 import { ILanguageModelChatMetadata, ILanguageModelConfigurationSchema, ILanguageModelsService } from '../../../../common/languageModels.js';
-import { IChatModelInputState, IInputModel } from '../../../../common/model/chatModel.js';
-import { ChatModeKind } from '../../../../common/constants.js';
 
 const schema: ILanguageModelConfigurationSchema = {
 	properties: {
