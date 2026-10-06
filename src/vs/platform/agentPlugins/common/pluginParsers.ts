@@ -13,10 +13,60 @@ import { URI } from '../../../base/common/uri.js';
 import { IFileService } from '../../files/common/files.js';
 import { parseFrontMatter } from '../../../base/common/yaml.js';
 import { IMcpRemoteServerConfiguration, IMcpServerConfiguration, IMcpStdioServerConfiguration, McpServerType } from '../../mcp/common/mcpPlatformTypes.js';
-import { CustomizationType, McpServerStatus, type AgentCustomization, type HookCustomization, type McpServerCustomization, type RuleCustomization, type SkillCustomization } from '../../agentHost/common/state/protocol/state.js';
-import { DEFAULT_MCP_APP } from '../../agentHost/common/state/protocol/mcpAppDefaults.js';
-import { customizationId } from '../../agentHost/common/state/sessionState.js';
 import { readAgentPluginManifest } from './agentPluginParser.js';
+
+const enum CustomizationType {
+	Agent = 'agent',
+	Skill = 'skill',
+	Rule = 'rule',
+	Hook = 'hook',
+	McpServer = 'mcpServer',
+}
+
+const enum McpServerStatus {
+	Stopped = 'stopped',
+}
+
+interface IPluginCustomizationBase {
+	readonly type: CustomizationType;
+	readonly id: string;
+	readonly uri: string;
+	readonly name: string;
+}
+
+interface AgentCustomization extends IPluginCustomizationBase {
+	readonly type: CustomizationType.Agent;
+	description?: string;
+	model?: string;
+	tools?: string[];
+	disableModelInvocation?: boolean;
+	disableUserInvocation?: boolean;
+}
+
+interface SkillCustomization extends IPluginCustomizationBase {
+	readonly type: CustomizationType.Skill;
+	description?: string;
+	disableModelInvocation?: boolean;
+	disableUserInvocation?: boolean;
+}
+
+interface RuleCustomization extends IPluginCustomizationBase {
+	readonly type: CustomizationType.Rule;
+	description?: string;
+}
+
+interface HookCustomization extends IPluginCustomizationBase {
+	readonly type: CustomizationType.Hook;
+}
+
+interface McpServerCustomization extends IPluginCustomizationBase {
+	readonly type: CustomizationType.McpServer;
+	readonly state: { readonly kind: McpServerStatus };
+}
+
+function customizationId(uri: string): string {
+	return uri;
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -387,12 +437,10 @@ function makeHookCustomization(hookUri: URI): HookCustomization {
 }
 
 /**
- * Builds the protocol {@link McpServerCustomization} for an MCP server
+ * Builds a parsed MCP server customization
  * declared at `definitionUri` (the manifest / settings / `.mcp.json` file
  * the server is defined in). The id is disambiguated by server `name` so
- * multiple servers declared in one file get distinct ids, and the entry
- * carries {@link DEFAULT_MCP_APP} so MCP App support is advertised
- * consistently with every other MCP customization.
+ * multiple servers declared in one file get distinct ids.
  *
  * The seed state is {@link McpServerStatus.Stopped}: a declared-but-not-yet
  * connected server has not been started by any SDK, so it must not claim to
@@ -406,7 +454,6 @@ export function makeMcpServerCustomization(definitionUri: URI, name: string): Mc
 		uri: definitionUri.toString(),
 		name,
 		state: { kind: McpServerStatus.Stopped },
-		mcpApp: DEFAULT_MCP_APP,
 	};
 }
 

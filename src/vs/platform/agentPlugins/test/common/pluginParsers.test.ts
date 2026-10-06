@@ -14,12 +14,12 @@ import { FileSystemProviderCapabilities } from '../../../files/common/files.js';
 import { InMemoryFileSystemProvider } from '../../../files/common/inMemoryFilesystemProvider.js';
 import { NullLogService } from '../../../log/common/log.js';
 import { McpServerType } from '../../../mcp/common/mcpPlatformTypes.js';
-import { CustomizationType, McpServerStatus, type McpServerCustomization } from '../../../agentHost/common/state/protocol/state.js';
-import { DEFAULT_MCP_APP } from '../../../agentHost/common/state/protocol/mcpAppDefaults.js';
 
 const customizationId = (uri: string) => uri;
+const CustomizationType = { Agent: 'agent', Skill: 'skill', Rule: 'rule', Hook: 'hook', McpServer: 'mcpServer' } as const;
+const McpServerStatus = { Starting: 'starting', Stopped: 'stopped' } as const;
 
-function stubMcpCustomization(): McpServerCustomization {
+function stubMcpCustomization() {
 	return { type: CustomizationType.McpServer, id: 'stub', uri: 'file:///plugin', name: 'test', state: { kind: McpServerStatus.Starting } };
 }
 import {
@@ -494,7 +494,7 @@ suite('pluginParsers', () => {
 
 	suite('makeMcpServerCustomization', () => {
 
-		test('builds a Stopped server with DEFAULT_MCP_APP and a name-disambiguated id', () => {
+		test('builds a stopped server with a name-disambiguated id', () => {
 			const uri = URI.file('/workspace/.mcp.json');
 			const customization = makeMcpServerCustomization(uri, 'fs server');
 			assert.deepStrictEqual(customization, {
@@ -503,7 +503,6 @@ suite('pluginParsers', () => {
 				uri: uri.toString(),
 				name: 'fs server',
 				state: { kind: McpServerStatus.Stopped },
-				mcpApp: DEFAULT_MCP_APP,
 			});
 		});
 
