@@ -18,7 +18,6 @@ import { ChatQueryTitlePart } from '../../../../browser/widget/chatContentParts/
 import { getChatMarkdownRenderOptions } from '../../../../browser/widget/chatContentMarkdownRenderer.js';
 import { ChatPetAchievementId, ChatPetAchievementIds } from '../../../../browser/chatPetAchievements.js';
 import { IChatPetService } from '../../../../browser/chatPetService.js';
-import { IOpenerService } from '../../../../../../../platform/opener/common/opener.js';
 
 suite('ChatInlineAnchorWidget Metadata Validation', () => {
 	const store = ensureNoDisposablesAreLeakedInTestSuite();
