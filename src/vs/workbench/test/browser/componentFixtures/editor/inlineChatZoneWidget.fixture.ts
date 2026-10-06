@@ -41,7 +41,6 @@ import { IChatImageCarouselService } from '../../../../contrib/chat/browser/chat
 import { IChatTipService } from '../../../../contrib/chat/browser/chatTipService.js';
 import { ChatAgentLocation } from '../../../../contrib/chat/common/constants.js';
 import { IChatService } from '../../../../contrib/chat/common/chatService/chatService.js';
-import { IChatSessionsService } from '../../../../contrib/chat/common/chatSessionsService.js';
 import { IChatModeService, ChatMode } from '../../../../contrib/chat/common/chatModes.js';
 import { ILanguageModelsService } from '../../../../contrib/chat/common/languageModels.js';
 import { IChatAgentService } from '../../../../contrib/chat/common/participants/chatAgents.js';
@@ -237,26 +236,6 @@ function renderInlineChatZoneWidget({ container, disposableStore, theme, focus }
 				override readonly onDidChangeUsageBasedBilling = Event.None;
 			}());
 			reg.defineInstance(IChatModeService, new MockChatModeService());
-			reg.defineInstance(IChatSessionsService, new class extends mock<IChatSessionsService>() {
-				override getAllChatSessionContributions() { return []; }
-				override readonly onDidChangeSessionOptions = Event.None;
-				override readonly onDidChangeOptionGroups = Event.None;
-				override readonly onDidChangeAvailability = Event.None;
-				override readonly onDidChangeContentProviderSchemes = Event.None;
-				override readonly onDidChangeItemsProviders = Event.None;
-				override readonly onDidChangeSessionItems = Event.None;
-				override readonly onDidCommitSession = Event.None;
-				override readonly onDidChangeInProgress = Event.None;
-				override sessionSupportsFork() { return false; }
-				override supportsDelegationForSessionType() { return false; }
-				override getOptionGroupsForSessionType() { return undefined; }
-				override getCustomAgentTargetForSessionType() { return Target.Undefined; }
-				override requiresCustomModelsForSessionType() { return false; }
-				override supportsAutoModelForSessionType() { return true; }
-				override getChatSessionContribution() { return undefined; }
-				override getCapabilitiesForSessionType() { return undefined; }
-				override getSessionOptions() { return undefined; }
-			}());
 			reg.defineInstance(ILanguageModelsService, new class extends mock<ILanguageModelsService>() {
 				override readonly onDidChangeLanguageModels = Event.None;
 				override readonly onDidChangeModelVisibility = Event.None;

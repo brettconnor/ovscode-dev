@@ -64,7 +64,6 @@ import { IChatWidgetHistoryService } from '../../../../contrib/chat/common/widge
 import { IChatModeService } from '../../../../contrib/chat/common/chatModes.js';
 import { MockChatModeService } from '../../../../contrib/chat/test/common/mockChatModeService.js';
 import { IChatService } from '../../../../contrib/chat/common/chatService/chatService.js';
-import { IChatSessionsService } from '../../../../contrib/chat/common/chatSessionsService.js';
 import { ISessionChatPillVisibilityService, SessionChatPillVisibility } from '../../../../contrib/chat/common/sessionChatPills.js';
 import { Target } from '../../../../contrib/chat/common/promptSyntax/promptTypes.js';
 import { ILanguageModelsService } from '../../../../contrib/chat/common/languageModels.js';
@@ -270,21 +269,6 @@ export function registerChatFixtureServices(reg: ServiceRegistration, options: I
 	reg.defineInstance(IWorkbenchEnvironmentService, new class extends mock<IWorkbenchEnvironmentService>() {
 		override readonly isExtensionDevelopment = false;
 		override readonly isBuilt = true;
-	}());
-	reg.defineInstance(IChatSessionsService, new class extends mock<IChatSessionsService>() {
-		override getAllChatSessionContributions() { return []; }
-		override readonly onDidChangeSessionOptions = Event.None;
-		override readonly onDidChangeOptionGroups = Event.None;
-		override readonly onDidChangeAvailability = Event.None;
-		override getCustomAgentTargetForSessionType() { return Target.Undefined; }
-		override requiresCustomModelsForSessionType() { return false; }
-		override supportsAutoModelForSessionType() { return false; }
-		override getOptionGroupsForSessionType() { return []; }
-		override supportsDelegationForSessionType() { return false; }
-		override getSessionOption() { return undefined; }
-		override getCapabilitiesForSessionType() { return undefined; }
-		override async getChatInputCompletionTriggerCharacters() { return []; }
-		override resolveChatResponseUri(_sessionResource: URI, href: string) { return href; }
 	}());
 	reg.defineInstance(IChatEntitlementService, new class extends mock<IChatEntitlementService>() {
 		override readonly quotas = {};
