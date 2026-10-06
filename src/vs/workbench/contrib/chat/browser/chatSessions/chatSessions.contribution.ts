@@ -695,49 +695,6 @@ export class ChatSessionsService extends Disposable implements IChatSessionsServ
 	}
 
 
-	registerChatSessionContribution(contribution: IChatSessionsExtensionPoint): IDisposable {
-		if (this._contributions.has(contribution.type)) {
-			return { dispose: () => { } };
-		}
-
-		this._contributions.set(contribution.type, { contribution, extension: undefined });
-		if (contribution.alternativeIds) {
-			for (const alternativeId of contribution.alternativeIds) {
-				this._alternativeIdMap.set(alternativeId, contribution.type);
-			}
-		}
-		// Programmatically-registered contributions are always considered
-		// available; mark them as such so the autorun in the constructor
-		// registers the in-place "New {0} Session" action for them. Without
-		// this, types like `agent-host-copilotcli` (registered by the local
-		// agent host) have no `openNewChatSessionInPlace.<type>` command.
-		const disposables = new DisposableStore();
-		this._contributionDisposables.set(contribution.type, disposables);
-		// A programmatic contribution can derive its availability (e.g. a functional
-		// `requiresCopilotSignIn`) and signal when it changes; re-fire the aggregate
-		// availability event so consumers re-evaluate. Generic — no per-provider
-		// knowledge lives here.
-		if (contribution.onDidChangeRequiresCopilotSignIn) {
-			disposables.add(contribution.onDidChangeRequiresCopilotSignIn(() => this._onDidChangeAvailability.fire()));
-		}
-		this._updateHasCanDelegateProvidersContextKey();
-		this._onDidChangeAvailability.fire();
-
-		return toDisposable(() => {
-			this._contributions.delete(contribution.type);
-			if (contribution.alternativeIds) {
-				for (const alternativeId of contribution.alternativeIds) {
-					if (this._alternativeIdMap.get(alternativeId) === contribution.type) {
-						this._alternativeIdMap.delete(alternativeId);
-					}
-				}
-			}
-			this._contributionDisposables.deleteAndDispose(contribution.type);
-			this._updateHasCanDelegateProvidersContextKey();
-			this._onDidChangeAvailability.fire();
-		});
-	}
-
 	async activateChatSessionItemProvider(chatViewType: string): Promise<void> {
 		await this.doActivateChatSessionItemController(chatViewType);
 	}

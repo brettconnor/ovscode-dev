@@ -364,18 +364,6 @@ export class MockChatSessionsService implements IChatSessionsService {
 		// noop
 	}
 
-	registerChatSessionContribution(contribution: IChatSessionsExtensionPoint): IDisposable {
-		this.contributions.push(contribution);
-		return {
-			dispose: () => {
-				const idx = this.contributions.indexOf(contribution);
-				if (idx >= 0) {
-					this.contributions.splice(idx, 1);
-				}
-			}
-		};
-	}
-
 	private readonly _onDidChangeCustomizations = new Emitter<{ readonly chatSessionType: string }>();
 	readonly onDidChangeCustomizations = this._onDidChangeCustomizations.event;
 

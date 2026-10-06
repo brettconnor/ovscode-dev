@@ -4,14 +4,10 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { CancellationToken } from '../../../../../base/common/cancellation.js';
-import { isCancellationError, onUnexpectedError } from '../../../../../base/common/errors.js';
 import { OperatingSystem } from '../../../../../base/common/platform.js';
-import { withChatSurfaceMeta } from '../../../../../platform/agentHost/common/meta/agentChatSurfaceMeta.js';
-import { IConfigurationService } from '../../../../../platform/configuration/common/configuration.js';
 import { createDecorator } from '../../../../../platform/instantiation/common/instantiation.js';
 import { IChatModelReference, IChatService } from '../../../chat/common/chatService/chatService.js';
-import { ChatAgentLocation, ChatConfiguration } from '../../../chat/common/constants.js';
-import { IChatSessionsService, ResolvedChatSessionsExtensionPoint, SessionType } from '../../../chat/common/chatSessionsService.js';
+import { ChatAgentLocation } from '../../../chat/common/constants.js';
 
 export const ITerminalChatSessionResolver = createDecorator<ITerminalChatSessionResolver>('terminalChatSessionResolver');
 
@@ -24,7 +20,7 @@ export interface ITerminalChatSessionResolution {
 	 * terminal participant. `undefined` for a local fallback session, which
 	 * must stay on the legacy extension-host agent.
 	 */
-	readonly lockToAgent: ResolvedChatSessionsExtensionPoint | undefined;
+	readonly lockToAgent: undefined;
 }
 
 /** Resolves the chat model reference used by the terminal chat surface. */
@@ -57,47 +53,14 @@ function getOperatingSystemName(os: OperatingSystem): string {
 export class TerminalChatSessionResolver implements ITerminalChatSessionResolver {
 	declare readonly _serviceBrand: undefined;
 
-	constructor(
-		@IChatSessionsService private readonly _chatSessionsService: IChatSessionsService,
-		@IChatService private readonly _chatService: IChatService,
-		@IConfigurationService private readonly _configurationService: IConfigurationService,
-	) { }
+	constructor(@IChatService private readonly _chatService: IChatService) { }
 
-	async resolve(token: CancellationToken, shellType: string | undefined, os: OperatingSystem): Promise<ITerminalChatSessionResolution | undefined> {
+	async resolve(token: CancellationToken, _shellType: string | undefined, _os: OperatingSystem): Promise<ITerminalChatSessionResolution | undefined> {
 		if (token.isCancellationRequested) {
 			return undefined;
 		}
 
-		const meta = getTerminalChatSessionMeta(shellType, os);
-		let modelRef: IChatModelReference | undefined;
-		const agentHostEnabled = this._configurationService.getValue<boolean>(ChatConfiguration.TerminalAgentHostEnabled) === true;
-		const contribution = agentHostEnabled ? this._chatSessionsService.getChatSessionContribution(SessionType.AgentHostCopilot) : undefined;
-		if (contribution?.locations?.includes(ChatAgentLocation.Terminal)) {
-			try {
-				const item = await this._chatSessionsService.createNewChatSessionItem(SessionType.AgentHostCopilot, {
-					prompt: '',
-					isEphemeral: true,
-					_meta: meta,
-				}, token);
-				modelRef = item && await this._chatService.acquireOrLoadSession(item.resource, ChatAgentLocation.Terminal, token, 'TerminalChatSessionResolver#resolve');
-			} catch (error) {
-				if (isCancellationError(error) || token.isCancellationRequested) {
-					throw error;
-				}
-				onUnexpectedError(error);
-			}
-		}
-
-		if (token.isCancellationRequested) {
-			modelRef?.dispose();
-			return undefined;
-		}
-
-		if (modelRef) {
-			return { modelRef, lockToAgent: contribution };
-		}
-
-		modelRef = this._chatService.startNewLocalSession(ChatAgentLocation.Terminal);
+		const modelRef = this._chatService.startNewLocalSession(ChatAgentLocation.Terminal);
 		if (token.isCancellationRequested) {
 			modelRef.dispose();
 			return undefined;

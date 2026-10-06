@@ -10,7 +10,7 @@ import { Codicon } from '../../../../../../base/common/codicons.js';
 import { CancellationError } from '../../../../../../base/common/errors.js';
 import { Event } from '../../../../../../base/common/event.js';
 import { appendEscapedMarkdownInlineCode, escapeMarkdownSyntaxTokens, MarkdownString, type IMarkdownString } from '../../../../../../base/common/htmlContent.js';
-import { Disposable, DisposableMap, DisposableStore, IDisposable, MutableDisposable, toDisposable } from '../../../../../../base/common/lifecycle.js';
+import { Disposable, DisposableMap, DisposableStore, IDisposable, toDisposable } from '../../../../../../base/common/lifecycle.js';
 import { ResourceMap } from '../../../../../../base/common/map.js';
 import { getMediaMime } from '../../../../../../base/common/mime.js';
 import { basename, posix, win32 } from '../../../../../../base/common/path.js';
@@ -18,7 +18,6 @@ import { OperatingSystem, OS } from '../../../../../../base/common/platform.js';
 import { count } from '../../../../../../base/common/strings.js';
 import { generateUuid } from '../../../../../../base/common/uuid.js';
 import { localize } from '../../../../../../nls.js';
-import { ConfirmationOptionKind } from '../../../../../../platform/agentHost/common/state/protocol/state.js';
 import { IConfigurationService } from '../../../../../../platform/configuration/common/configuration.js';
 import { IFileService } from '../../../../../../platform/files/common/files.js';
 import { IInstantiationService, type ServicesAccessor } from '../../../../../../platform/instantiation/common/instantiation.js';
@@ -79,7 +78,6 @@ import { TerminalChatCommandId } from '../../../chat/browser/terminalChat.js';
 import { clamp } from '../../../../../../base/common/numbers.js';
 import { IOutputAnalyzer } from './outputAnalyzer.js';
 import { SandboxOutputAnalyzer, outputLooksSandboxBlocked, outputLooksSandboxNetworkBlocked } from './sandboxOutputAnalyzer.js';
-import { IAgentSessionsService } from '../../../../chat/browser/agentSessions/agentSessionsService.js';
 import { ITerminalSandboxService, TerminalSandboxPrerequisiteCheck, TerminalSandboxPreCheckRemediation, type ITerminalSandboxPrecheckInputs, type ITerminalSandboxResolvedNetworkDomains } from '../../common/terminalSandboxService.js';
 import { LanguageModelPartAudience } from '../../../../chat/common/languageModels.js';
 import { isSessionAutoApproveLevel, isTerminalAutoApproveAllowed, isToolEligibleForTerminalAutoApproval } from './terminalToolAutoApprove.js';
@@ -87,7 +85,6 @@ import type { IJSONSchemaMap } from '../../../../../../base/common/jsonSchema.js
 import { ChatElicitationRequestPart } from '../../../../chat/common/model/chatProgressTypes/chatElicitationRequestPart.js';
 import { getSandboxPrecheckInputsForToolInvocation } from '../../../../chat/browser/tools/toolHelpers.js';
 import { compact } from './consoleCompactor/consoleCompactor.js';
-import { IChatSessionsService } from '../../../../chat/common/chatSessionsService.js';
 
 // #region Tool data
 
@@ -678,7 +675,6 @@ export class RunInTerminalTool extends Disposable implements IToolImpl {
 	private readonly _commandLineAnalyzers: ICommandLineAnalyzer[];
 	private readonly _commandLinePresenters: ICommandLinePresenter[];
 	private readonly _outputAnalyzers: IOutputAnalyzer[];
-	private readonly _archivedSessionListener = this._register(new MutableDisposable());
 
 	protected readonly _sessionTerminalAssociations = new ResourceMap<IToolTerminal>();
 	protected readonly _sessionTerminalInstances = new ResourceMap<Set<ITerminalInstance>>();
@@ -865,8 +861,6 @@ export class RunInTerminalTool extends Disposable implements IToolImpl {
 		@ITerminalSandboxService private readonly _terminalSandboxService: ITerminalSandboxService,
 		@IWorkspaceContextService private readonly _workspaceContextService: IWorkspaceContextService,
 		@IChatWidgetService private readonly _chatWidgetService: IChatWidgetService,
-		@IAgentSessionsService private readonly _agentSessionsService: IAgentSessionsService,
-		@IChatSessionsService private readonly _chatSessionsService: IChatSessionsService,
 		@ILifecycleService lifecycleService: ILifecycleService,
 	) {
 		super();
@@ -1113,8 +1107,8 @@ export class RunInTerminalTool extends Disposable implements IToolImpl {
 					depsList
 				)),
 				customOptions: [
-					{ id: 'install', label: localize('runInTerminal.missingDeps.install', "Install"), kind: ConfirmationOptionKind.Approve },
-					{ id: 'cancel', label: localize('runInTerminal.missingDeps.cancel', "Cancel"), kind: ConfirmationOptionKind.Deny },
+					{ id: 'install', label: localize('runInTerminal.missingDeps.install', "Install") },
+					{ id: 'cancel', label: localize('runInTerminal.missingDeps.cancel', "Cancel") },
 				],
 			};
 		}
@@ -2925,8 +2919,6 @@ export class RunInTerminalTool extends Disposable implements IToolImpl {
 	}
 
 	private _addSessionTerminalAssociation(chatSessionResource: URI, toolTerminal: IToolTerminal): void {
-		this._ensureArchivedSessionListener();
-
 		let sessionTerminals = this._sessionTerminalInstances.get(chatSessionResource);
 		if (!sessionTerminals) {
 			sessionTerminals = new Set<ITerminalInstance>();
@@ -2937,20 +2929,6 @@ export class RunInTerminalTool extends Disposable implements IToolImpl {
 		if (!toolTerminal.isBackground) {
 			this._sessionTerminalAssociations.set(chatSessionResource, toolTerminal);
 		}
-	}
-
-	private _ensureArchivedSessionListener(): void {
-		if (this._archivedSessionListener.value) {
-			return;
-		}
-
-		// Archiving a session does not fire onDidDisposeSession, but we still need to dispose
-		// any terminals associated with the archived session to avoid process accumulation.
-		this._archivedSessionListener.value = this._agentSessionsService.onDidChangeSessionArchivedState(session => {
-			if (session.isArchived()) {
-				this._cleanupSessionTerminals(session.resource);
-			}
-		});
 	}
 
 	private _removeTerminalAssociations(terminal: ITerminalInstance): void {
@@ -3039,14 +3017,10 @@ export class RunInTerminalTool extends Disposable implements IToolImpl {
 			sendOptions.modeInfo = lastRequest.modeInfo;
 			const previousAgentId = lastRequest.response?.agent?.id;
 			sendOptions.agentIdSilent = previousAgentId;
-			const contribution = previousAgentId ? this._chatSessionsService.getChatSessionContribution(previousAgentId) : undefined;
-			const autoAttachEnabled = contribution ? contribution.autoAttachReferences === true : true;
-			if (autoAttachEnabled) {
-				sendOptions.instructionContext = {
-					modeKind: lastRequest.modeInfo?.kind ?? ChatModeKind.Agent,
-					enabledTools: lastRequest.userSelectedTools,
-				};
-			}
+			sendOptions.instructionContext = {
+				modeKind: lastRequest.modeInfo?.kind ?? ChatModeKind.Agent,
+				enabledTools: lastRequest.userSelectedTools,
+			};
 			if (lastRequest.userSelectedTools) {
 				sendOptions.userSelectedTools = constObservable(lastRequest.userSelectedTools);
 			}

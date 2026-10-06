@@ -50,7 +50,7 @@ import { MockChatService } from '../../../../contrib/chat/test/common/chatServic
 import { TestFileService } from '../../../common/workbenchTestServices.js';
 import { MockChatEditingSession } from '../../../../contrib/chat/test/common/mockChatEditingSession.js';
 import { ComponentFixtureContext, createEditorServices, defineComponentFixture, defineThemedFixtureGroup, type ServiceRegistration } from '../fixtureUtils.js';
-import { FixtureMenuService, registerChatFixtureServices, registerSubagentFixtureServices } from './chatFixtureUtils.js';
+import { FixtureMenuService, registerChatFixtureServices } from './chatFixtureUtils.js';
 import { IDetachedXTermOptions, ITerminalChatService, ITerminalConfigurationService, ITerminalService } from '../../../../contrib/terminal/browser/terminal.js';
 import { createFakeDetachedTerminal } from '../../../../contrib/terminal/test/browser/chatTerminalMirrorTestUtils.js';
 import { ChatPetWidget } from '../../../../contrib/chat/browser/widget/chatPetWidget.js';
@@ -231,7 +231,6 @@ export async function renderChatWidget(context: ComponentFixtureContext, options
 				reg.defineInstance(ILanguageModelToolsConfirmationService, new MockLanguageModelToolsConfirmationService());
 			}
 			if (hasSubagents) {
-				registerSubagentFixtureServices(reg);
 			}
 			reg.define(IAgentEditorCommentsBridge, AgentEditorCommentsBridge);
 			reg.define(IPlanReviewFeedbackService, PlanReviewFeedbackService);

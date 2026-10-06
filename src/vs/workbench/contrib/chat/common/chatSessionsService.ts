@@ -827,12 +827,6 @@ export interface IChatSessionsService {
 	 */
 	getChatSessionHistory(sessionResource: URI, token: CancellationToken): Promise<readonly IChatSessionHistoryItem[]>;
 
-	/**
-	 * Programmatically register a chat session contribution (for internal session types
-	 * that don't go through the extension point).
-	 */
-	registerChatSessionContribution(contribution: IChatSessionsExtensionPoint): IDisposable;
-
 	getRegisteredChatSessionItemProviders(): readonly string[];
 	activateChatSessionItemProvider(chatSessionType: string): Promise<void>;
 
