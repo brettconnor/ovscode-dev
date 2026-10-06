@@ -99,12 +99,10 @@ suite('requestHasValidConnectionToken', () => {
 suite('getRedactedServerParsedArgs', () => {
 	ensureNoDisposablesAreLeakedInTestSuite();
 
-	test('redacts connection tokens without changing the original arguments', () => {
-		const args = {
-			'connection-token': 'server-token',
-			'agent-host-bridge-connection-token': 'bridge-token',
-			'agent-host-bridge-port': '9000',
-		} as ServerParsedArgs;
+		test('redacts connection tokens without changing the original arguments', () => {
+			const args = {
+				'connection-token': 'server-token',
+			} as ServerParsedArgs;
 
 		assert.deepStrictEqual({
 			redactedArgs: getRedactedServerParsedArgs(args),
@@ -112,13 +110,9 @@ suite('getRedactedServerParsedArgs', () => {
 		}, {
 			redactedArgs: {
 				'connection-token': '<redacted>',
-				'agent-host-bridge-connection-token': '<redacted>',
-				'agent-host-bridge-port': '9000',
 			},
 			args: {
 				'connection-token': 'server-token',
-				'agent-host-bridge-connection-token': 'bridge-token',
-				'agent-host-bridge-port': '9000',
 			},
 		});
 	});

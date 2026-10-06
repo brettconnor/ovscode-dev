@@ -22,7 +22,6 @@ import { type IExtensionDefinition, getExtensionStream } from './builtInExtensio
 import { fetchUrls, fetchGithub } from './fetch.ts';
 import { createTsgoStream, spawnTsgo } from './tsgo.ts';
 import watcher from './watch/index.ts';
-import { getCopilotSdkPackageFiles } from './copilot.ts';
 
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
@@ -201,12 +200,6 @@ function fromLocalEsbuild(extensionPath: string, esbuildConfigFileName: string):
 			);
 
 			fileNames = Array.from(new Set([...fileNames, ...packagedDependencyFileNames]));
-		}
-
-		if (extensionName === 'copilot') {
-			// The shared production dependency filter strips @github/copilot/**.
-			// Re-add only the direct SDK files already allowlisted by .vscodeignore.
-			fileNames = Array.from(new Set([...fileNames, ...getCopilotSdkPackageFiles(extensionPath)]));
 		}
 
 		const files = fileNames
@@ -465,33 +458,6 @@ function doPackageLocalExtensionsStream(forWeb: boolean, native: boolean): Strea
 		result
 			.pipe(util2.setExecutableBit(['**/*.sh']))
 	);
-}
-
-/**
- * Package the built-in copilot extension specifically.
- * This is used by non-CI local builds where copilot is not downloaded as a VSIX
- * but must be compiled from source and included in the build.
- */
-export function packageCopilotExtensionStream(): Stream {
-	const extensionPath = path.join(root, 'extensions', 'copilot');
-	if (!fs.existsSync(extensionPath)) {
-		return es.readArray([]);
-	}
-
-	const localExtensionsStream = minifyExtensionResources(
-		fromLocal(extensionPath, false)
-			.pipe(rename(p => p.dirname = `extensions/copilot/${p.dirname}`))
-	);
-
-	const productionDependencies = getProductionDependencies('extensions/copilot');
-	const dependenciesSrc = productionDependencies.map(d => path.relative(root, d)).map(d => [`${d}/**`, `!${d}/**/{test,tests}/**`]).flat();
-
-	return es.merge(
-		localExtensionsStream,
-		gulp.src(dependenciesSrc, { base: '.' })
-			.pipe(util2.cleanNodeModules(path.join(root, 'build', '.moduleignore')))
-			.pipe(util2.cleanNodeModules(path.join(root, 'build', `.moduleignore.${process.platform}`)))
-	).pipe(util2.setExecutableBit(['**/*.sh']));
 }
 
 export function packageMarketplaceExtensionsStream(forWeb: boolean): Stream {
