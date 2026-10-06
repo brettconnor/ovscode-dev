@@ -10,7 +10,6 @@ import { IKeybindingService } from '../../../../platform/keybinding/common/keybi
 import { MenuRegistry } from '../../../../platform/actions/common/actions.js';
 import { ChatConfiguration, ChatModeKind } from '../common/constants.js';
 import { ChatContextKeys } from '../common/actions/chatContextKeys.js';
-import { IsSessionsWindowContext } from '../../../common/contextkeys.js';
 import { localChatSessionType } from '../common/chatSessionsService.js';
 import { ITipExclusionConfig } from './chatTipEligibilityTracker.js';
 import { TipTrackingCommands } from './chatTipStorageKeys.js';
@@ -315,7 +314,6 @@ export const TIP_CATALOG: readonly ITipDefinition[] = [
 		},
 		when: ContextKeyExpr.and(
 			ContextKeyExpr.equals(`config.${ChatConfiguration.BtwTipEnabled}`, true),
-			IsSessionsWindowContext,
 			ContextKeyExpr.has('sessionIsCreated'),
 			ContextKeyExpr.not('sessionIsArchived'),
 			ContextKeyExpr.has('sessionSupportsSideChat'),

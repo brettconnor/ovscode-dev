@@ -111,8 +111,6 @@ export function bindWidgetToController(widget: AgentsVoiceWidget, services: IWid
 	_updateStatusCounts(widget, services);
 	_updateSessionData(widget, services);
 
-	// Suppress unused-var warning for environmentService when bundlers tree-shake
-	void environmentService;
 	return store;
 }
 
@@ -212,36 +210,5 @@ function _updateSessionData(widget: AgentsVoiceWidget, services: IWidgetBindingS
 
 	widget.setSessions(sessionRows);
 
-	// In sessions window, group by repository
-	if (environmentService.isSessionsWindow) {
-		const repoMap = new Map<string, SessionRowData[]>();
-		const otherRows: SessionRowData[] = [];
-
-		for (let i = 0; i < sorted.length; i++) {
-			const repoName = getRepositoryName(sorted[i]);
-			const row = sessionRows[i];
-			if (repoName) {
-				let group = repoMap.get(repoName);
-				if (!group) {
-					group = [];
-					repoMap.set(repoName, group);
-				}
-				group.push(row);
-			} else {
-				otherRows.push(row);
-			}
-		}
-
-		const groups: SessionGroupData[] = [];
-		for (const [label, rows] of repoMap) {
-			groups.push({ label, sessions: rows });
-		}
-		if (otherRows.length > 0) {
-			groups.push({ label: localize('agentsVoice.otherSessions', "Other"), sessions: otherRows });
-		}
-
-		widget.setSessionGroups(groups.length > 0 ? groups : undefined);
-	} else {
-		widget.setSessionGroups(undefined);
-	}
+	widget.setSessionGroups(undefined);
 }

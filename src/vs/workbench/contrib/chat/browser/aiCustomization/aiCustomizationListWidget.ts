@@ -1342,7 +1342,7 @@ export class AICustomizationListWidget extends Disposable {
 
 		// Hooks have a simplified action set
 		if (promptType === PromptsType.hook) {
-			if (!this.workspaceService.isSessionsWindow && !descriptor.hideGenerateButton) {
+			if (!descriptor.hideGenerateButton) {
 				actions.push({
 					label: localize('generateWithAI', "Generate with AI"),
 					tooltip: localize('generateCustomizationWithAI', "Generate {0} with AI", typeLabel),
@@ -1374,7 +1374,7 @@ export class AICustomizationListWidget extends Disposable {
 
 		if (!override?.rootFile) {
 			// Determine the primary action (first in list)
-			if (!this.workspaceService.isSessionsWindow && !descriptor.hideGenerateButton) {
+			if (!descriptor.hideGenerateButton) {
 				// Local exposes one non-storage-scoped AI generation action.
 				actions.push({
 					label: localize('generateWithAI', "Generate with AI"),

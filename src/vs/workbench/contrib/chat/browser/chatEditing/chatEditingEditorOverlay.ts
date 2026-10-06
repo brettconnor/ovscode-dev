@@ -414,10 +414,6 @@ export class ChatEditingEditorOverlay implements IWorkbenchContribution {
 
 		this._store.add(autorun(r => {
 
-			if (environmentService.isSessionsWindow) {
-				return;
-			}
-
 			const toDelete = new Set(overlayWidgets.keys());
 			const groups = editorGroups.read(r);
 

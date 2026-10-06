@@ -29,7 +29,6 @@ import { CONFIGURE_PROMPTS_ACTION_ID } from './promptSyntax/runPromptAction.js';
 import { CONFIGURE_SKILLS_ACTION_ID } from './promptSyntax/skillActions.js';
 import { IChatWidgetService } from './chat.js';
 import { agentSlashCommandToMarkdown, agentToMarkdown } from './widget/chatContentParts/chatMarkdownDecorationsRenderer.js';
-import { IWorkbenchEnvironmentService } from '../../../services/environment/common/environmentService.js';
 import { ContextKeyExpr } from '../../../../platform/contextkey/common/contextkey.js';
 import { IChatPetService } from './chatPetService.js';
 import { ChatSessionArchiveActionWording, ChatSessionArchiveActionWordingSettingId, getChatSessionArchiveActionWording } from '../../../../platform/chat/common/sessionArchiveActions.js';
@@ -48,7 +47,6 @@ export class ChatSlashCommandsContribution extends Disposable {
 		@IConfigurationService configurationService: IConfigurationService,
 		@IChatWidgetService chatWidgetService: IChatWidgetService,
 		@IChatPetService chatPetService: IChatPetService,
-		@IWorkbenchEnvironmentService private readonly environmentService: IWorkbenchEnvironmentService,
 	) {
 		super();
 
@@ -128,8 +126,7 @@ export class ChatSlashCommandsContribution extends Disposable {
 		}, async () => {
 			await commandService.executeCommand(ManagePluginsAction.ID);
 		}));
-		if (!this.environmentService.isSessionsWindow) {
-			this._store.add(slashCommandService.registerSlashCommand({
+		this._store.add(slashCommandService.registerSlashCommand({
 				command: 'debug',
 				detail: nls.localize('debug', "Show Chat Debug View"),
 				sortText: 'z3_debug',
@@ -138,8 +135,7 @@ export class ChatSlashCommandsContribution extends Disposable {
 				locations: [ChatAgentLocation.Chat],
 			}, async () => {
 				await commandService.executeCommand('github.copilot.debug.showChatLogView');
-			}));
-		}
+		}));
 		this._store.add(slashCommandService.registerSlashCommand({
 			command: 'agents',
 			detail: nls.localize('agents', "Configure custom agents"),

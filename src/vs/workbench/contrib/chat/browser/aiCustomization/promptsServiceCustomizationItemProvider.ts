@@ -201,7 +201,7 @@ export class PromptsServiceCustomizationItemProvider implements ICustomizationIt
 		}
 
 		// Agent-embedded hooks (not in sessions window).
-		const agents = !this.workspaceService.isSessionsWindow ? await this.promptsService.getCustomAgents(CancellationToken.None) : [];
+		const agents = await this.promptsService.getCustomAgents(CancellationToken.None);
 		for (const agent of agents) {
 			if (!agent.hooks || !agent.enabled) {
 				continue;

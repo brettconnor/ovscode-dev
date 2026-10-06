@@ -45,7 +45,6 @@ export interface IBrowserWorkbenchEnvironmentService extends IWorkbenchEnvironme
 }
 
 export class BrowserWorkbenchEnvironmentService implements IBrowserWorkbenchEnvironmentService {
-	readonly isSessionsWindow = false;
 
 	declare readonly _serviceBrand: undefined;
 

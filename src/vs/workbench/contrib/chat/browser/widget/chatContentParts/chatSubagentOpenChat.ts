@@ -806,12 +806,8 @@ class EditorOpenSubagentChatActionViewItemContribution extends Disposable implem
 
 	constructor(
 		@IActionViewItemService actionViewItemService: IActionViewItemService,
-		@IWorkbenchEnvironmentService environmentService: IWorkbenchEnvironmentService,
 	) {
 		super();
-		if (environmentService.isSessionsWindow) {
-			return;
-		}
 		const onDidRegister = this._register(new Emitter<void>());
 		this._register(actionViewItemService.register(MenuId.ChatSubagentContent, CHAT_OPEN_AGENT_HOST_CHAT_COMMAND_ID, (action, options, instantiationService) => {
 			if (!(action instanceof MenuItemAction)) {

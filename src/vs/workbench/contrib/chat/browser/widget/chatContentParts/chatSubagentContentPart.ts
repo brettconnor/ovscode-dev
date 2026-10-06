@@ -404,7 +404,7 @@ export class ChatSubagentContentPart extends ChatThinkingStyleContentPart implem
 
 	private _shouldUseOpenChatPresentation(): boolean {
 		// The preference chooses a child-chat presentation; phases have no transcript to expand.
-		return this._isPhasePresentation() || this.environmentService.isSessionsWindow || this.configurationService.getValue<boolean>(ChatConfiguration.SubagentsUseRichRendering);
+		return this._isPhasePresentation() || this.configurationService.getValue<boolean>(ChatConfiguration.SubagentsUseRichRendering);
 	}
 
 	private _shouldReserveOpenChatPresentation(): boolean {

@@ -27,7 +27,7 @@ import { IKeybindingService } from '../../../../../platform/keybinding/common/ke
 import { ITelemetryService } from '../../../../../platform/telemetry/common/telemetry.js';
 import { IOpenerService } from '../../../../../platform/opener/common/opener.js';
 import { IWorkbenchContribution } from '../../../../common/contributions.js';
-import { IsSessionsWindowContext, ResourceContextKey } from '../../../../common/contextkeys.js';
+import { ResourceContextKey } from '../../../../common/contextkeys.js';
 import { IEditorService } from '../../../../services/editor/common/editorService.js';
 import { IFileService } from '../../../../../platform/files/common/files.js';
 import { IChatAgentService } from '../../common/participants/chatAgents.js';
@@ -40,7 +40,7 @@ import { ChatSendResult, IChatService } from '../../common/chatService/chatServi
 import { ResolvedChatSessionsExtensionPoint, IChatSessionsService, SessionType } from '../../common/chatSessionsService.js';
 import { ChatAgentLocation } from '../../common/constants.js';
 import { PROMPT_LANGUAGE_ID } from '../../common/promptSyntax/promptTypes.js';
-import { AgentSessionProviders, AgentSessionTarget, CHAT_DELEGATE_TO_AGENT_HOST_SESSION_COMMAND_ID, getAgentSessionProvider, getAgentSessionProviderIcon, getAgentSessionProviderName, IAgentHostDelegationRequest, isAgentHostTarget } from '../agentSessions/agentSessions.js';
+import { AgentSessionProviders, AgentSessionTarget, getAgentSessionProvider, getAgentSessionProviderIcon, getAgentSessionProviderName, isAgentHostTarget } from '../agentSessions/agentSessions.js';
 import { ISCMService } from '../../../scm/common/scm.js';
 import { IWorkspaceContextService } from '../../../../../platform/workspace/common/workspace.js';
 import { IAgentSessionsService } from '../agentSessions/agentSessionsService.js';
@@ -519,16 +519,15 @@ export class CreateRemoteAgentJobAction {
 			// the target type and hand off the prior conversation as an attachment
 			// (history-import) instead of sending to the current (incompatible)
 			// session resource. This happens for any cross-type delegation in the
-			// sessions window, and whenever either the source or the target is an
+			// workbench, and whenever either the source or the target is an
 			// agent host session (e.g. Copilot CLI / Codex / Claude agent host),
 			// so delegation works from anything to any agent host session and from
 			// any agent host session to any target.
-			const isSessionsWindow = IsSessionsWindowContext.getValue(contextKeyService);
 			// Resolve a source session type that also covers dynamically-registered
 			// agent host providers (e.g. `agent-host-codex`), which are not part of
 			// the AgentSessionProviders enum.
 			const sourceSessionType = getAgentSessionProvider(sessionResource) ?? getChatSessionType(sessionResource);
-			const handoffToNewSession = isSessionsWindow || isAgentHostTarget(continuationTargetType) || (!!sourceSessionType && isAgentHostTarget(sourceSessionType));
+			const handoffToNewSession = isAgentHostTarget(continuationTargetType) || (!!sourceSessionType && isAgentHostTarget(sourceSessionType));
 			if (handoffToNewSession && sourceSessionType && sourceSessionType !== continuationTargetType) {
 				const isSidebar = isIChatViewViewContext(widget.viewContext);
 
@@ -547,7 +546,7 @@ export class CreateRemoteAgentJobAction {
 				// attachment. The turns are threaded through the normal
 				// `openChatSession` flow so the session lifecycle (model picker,
 				// config chips, etc.) is unchanged.
-				const importConversationTurns = (continuationTargetType === SessionType.AgentHostCopilot && !isSessionsWindow)
+				const importConversationTurns = continuationTargetType === SessionType.AgentHostCopilot
 					? importedTurnsFromChatModel(chatModel)
 					: undefined;
 				// Carry the source session's selected model so the imported session
@@ -575,20 +574,8 @@ export class CreateRemoteAgentJobAction {
 				}
 
 				// Agent host targets are delegated generically (no per-session-type
-				// command). In the Agents window a single registered command creates
-				// the target session through the session management service; in the
-				// main window we open the session directly. Both paths carry the
-				// transcript as an attachment.
+				// command) through the regular chat session lifecycle.
 				if (isAgentHostTarget(continuationTargetType)) {
-					if (isSessionsWindow) {
-						const delegationRequest: IAgentHostDelegationRequest = {
-							type: continuationTargetType,
-							displayName: continuationTarget.displayName,
-							prompt: handoffPrompt,
-							attachedContext: continuationContext,
-						};
-						await commandService.executeCommand(CHAT_DELEGATE_TO_AGENT_HOST_SESSION_COMMAND_ID, delegationRequest);
-					} else {
 						await instantiationService.invokeFunction(innerAccessor => openChatSession(
 							innerAccessor,
 							{
@@ -610,8 +597,7 @@ export class CreateRemoteAgentJobAction {
 								initialSessionOptions: initialSessionOptions.size > 0 ? initialSessionOptions : undefined,
 								importConversation: importConversationTurns ? { turns: importConversationTurns, model: importConversationModel } : undefined,
 							}
-						));
-					}
+					));
 					return;
 				}
 

@@ -26,7 +26,6 @@ import { IKeybindingService } from '../../../../platform/keybinding/common/keybi
 import { TipEligibilityTracker } from './chatTipEligibilityTracker.js';
 import { ChatTipTier, extractCommandIds, ITipBuildContext, ITipDefinition, TIP_CATALOG } from './chatTipCatalog.js';
 import { ChatTipStorageKeys, TipTrackingCommands } from './chatTipStorageKeys.js';
-import { IsSessionsWindowContext } from '../../../common/contextkeys.js';
 import { IChatWidgetService } from './chat.js';
 
 type ChatTipEvent = {
@@ -514,8 +513,7 @@ export class ChatTipService extends Disposable implements IChatTipService {
 
 	private _hasSingleForegroundChatSurface(contextKeyService: IContextKeyService): boolean {
 		const foregroundSessionCount = contextKeyService.getContextKeyValue<number>(ChatContextKeys.foregroundSessionCount.key);
-		return foregroundSessionCount === 1
-			|| (foregroundSessionCount === 0 && contextKeyService.getContextKeyValue<boolean>(IsSessionsWindowContext.key) === true);
+		return foregroundSessionCount === 1;
 	}
 
 	private _findNextEligibleTip(currentTipId: string, contextKeyService: IContextKeyService): ITipDefinition | undefined {

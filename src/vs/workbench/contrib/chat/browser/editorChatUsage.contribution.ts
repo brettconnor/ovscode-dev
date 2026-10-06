@@ -12,7 +12,6 @@ import { URI } from '../../../../base/common/uri.js';
 import { generateUuid } from '../../../../base/common/uuid.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
 import { IStorageService } from '../../../../platform/storage/common/storage.js';
-import { IWorkbenchEnvironmentService } from '../../../services/environment/common/environmentService.js';
 import { ILifecycleService } from '../../../services/lifecycle/common/lifecycle.js';
 import { IChatRequestAcceptedEvent, IChatService } from '../common/chatService/chatService.js';
 import { isSessionInProgressStatus } from '../common/chatSessionsService.js';
@@ -39,7 +38,6 @@ export class EditorChatUsageContribution extends Disposable {
 	static readonly ID = 'workbench.contrib.editorChatUsage';
 
 	constructor(
-		@IWorkbenchEnvironmentService environmentService: IWorkbenchEnvironmentService,
 		@IChatService chatService: IChatService,
 		@IAgentSessionsService agentSessionsService: IAgentSessionsService,
 		@IStorageService storageService: IStorageService,
@@ -47,10 +45,6 @@ export class EditorChatUsageContribution extends Disposable {
 		@ILogService logService: ILogService,
 	) {
 		super();
-		if (environmentService.isSessionsWindow) {
-			return;
-		}
-
 		const hasOtherSession = (resource: URI) =>
 			hasOtherEditorSessionInProgress(resource, chatService.chatModels.get(), agentSessionsService.model.sessions);
 		this._register(new EditorChatUsageTracker(

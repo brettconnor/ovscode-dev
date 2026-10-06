@@ -57,7 +57,6 @@ export interface INativeWorkbenchEnvironmentService extends IBrowserWorkbenchEnv
 }
 
 export class NativeWorkbenchEnvironmentService extends AbstractNativeEnvironmentService implements INativeWorkbenchEnvironmentService {
-	readonly isSessionsWindow = false;
 
 	@memoize
 	get mainPid() { return this.configuration.mainPid; }

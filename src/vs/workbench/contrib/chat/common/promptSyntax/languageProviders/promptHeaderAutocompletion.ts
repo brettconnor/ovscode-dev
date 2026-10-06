@@ -217,8 +217,8 @@ export class PromptHeaderAutocompletion implements CompletionItemProvider {
 				if (value.type === 'sequence') {
 					// if the position is inside the tools metadata, we provide tool name completions
 					const getValues = async () => {
-						if (target === Target.GitHubCopilot || this.environmentService.isSessionsWindow) {
-							// for GitHub Copilot targets and the Sessions Window, we only suggest the known set of tools that are supported by GitHub Copilot, instead of all tools that the user has defined, because many tools won't work in these contexts and it would be frustrating for users to select a tool that doesn't work
+						if (target === Target.GitHubCopilot) {
+							// For GitHub Copilot targets, suggest only the known tools supported by Copilot.
 							return knownGithubCopilotTools;
 						} else if (target === Target.Claude) {
 							return knownClaudeTools;

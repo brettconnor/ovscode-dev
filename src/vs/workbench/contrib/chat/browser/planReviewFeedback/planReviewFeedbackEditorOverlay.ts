@@ -215,12 +215,8 @@ export class PlanReviewFeedbackEditorOverlay extends Disposable implements IWork
 	constructor(
 		@IEditorGroupsService editorGroupsService: IEditorGroupsService,
 		@IInstantiationService instantiationService: IInstantiationService,
-		@IWorkbenchEnvironmentService environmentService: IWorkbenchEnvironmentService,
 	) {
 		super();
-		if (environmentService.isSessionsWindow) {
-			return;
-		}
 		const editorGroups = observableFromEvent(
 			this,
 			Event.any(editorGroupsService.onDidAddGroup, editorGroupsService.onDidRemoveGroup),

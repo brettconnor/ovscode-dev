@@ -87,13 +87,8 @@ export class ChatEditorTopologyTelemetry extends Disposable implements IWorkbenc
 		@IEditorService private readonly editorService: IEditorService,
 		@IEditorGroupsService private readonly editorGroupsService: IEditorGroupsService,
 		@ITelemetryService private readonly telemetryService: ITelemetryService,
-		@IWorkbenchEnvironmentService environmentService: IWorkbenchEnvironmentService,
 	) {
 		super();
-
-		if (environmentService.isSessionsWindow) {
-			return;
-		}
 
 		void this.initialize();
 	}

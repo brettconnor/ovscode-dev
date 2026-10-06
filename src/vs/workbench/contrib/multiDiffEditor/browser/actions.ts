@@ -99,7 +99,6 @@ export class OpenMultiDiffEditorLayoutDebugAction extends Action2 {
 
 	async run(accessor: ServicesAccessor): Promise<void> {
 		const editorService = accessor.get(IEditorService);
-		const environmentService = accessor.get(IWorkbenchEnvironmentService);
 		const activeEditorPane = editorService.activeEditorPane;
 		if (!isMultiDiffEditorLayoutDebugStateProvider(activeEditorPane)) {
 			return;
@@ -113,7 +112,7 @@ export class OpenMultiDiffEditorLayoutDebugAction extends Action2 {
 		try {
 			const editor = await editorService.openEditor(
 				{ resource: model.uri, options: { pinned: true } },
-				environmentService.isSessionsWindow ? AUX_WINDOW_GROUP : SIDE_GROUP,
+				SIDE_GROUP,
 			);
 			if (!editor) {
 				model.dispose();

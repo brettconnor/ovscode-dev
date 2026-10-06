@@ -326,7 +326,6 @@ export interface IChatInputPartOptions {
 	 * Whether we are running in the sessions window.
 	 * When true, the secondary toolbar (permissions picker) is hidden.
 	 */
-	isSessionsWindow?: boolean;
 	/**
 	 * Total horizontal gutter (in pixels) reserved outside the input box when
 	 * computing the editor width. Defaults account for the `.interactive-input-part`
@@ -1457,7 +1456,7 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 			showUnavailableFeatured: useRichPicker,
 			showFeatured: useRichPicker,
 			showAutoModel: this._showAutoModel(),
-			showModelIcon: this.options.isSessionsWindow || !this._usesHarnessProviderIcon(),
+			showModelIcon: !this._usesHarnessProviderIcon(),
 		};
 	}
 
@@ -3067,11 +3066,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 	}
 
 	private updateDeferredNotificationsEligibility(e?: IChatWidgetViewModelChangeEvent): void {
-		if (this.environmentService.isSessionsWindow) {
-			this._deferredNotificationsEnabled.set(true, undefined);
-			return;
-		}
-
 		this._isFirstWorkbenchSession ??= !this.chatService.hasSessions();
 		if (
 			this._isFirstWorkbenchSession
@@ -5100,7 +5094,7 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 			// content cards. The editor width is computed here, so it must account
 			// for the same 64px total horizontal gutter or the editor overflows its
 			// container and renders wider than the message content above it.
-			inputPartHorizontalPadding: this.options.inputPartHorizontalPadding ?? (this.options.renderStyle === 'compact' ? 16 : (this.options.isSessionsWindow ? 64 : 24)),
+			inputPartHorizontalPadding: this.options.inputPartHorizontalPadding ?? (this.options.renderStyle === 'compact' ? 16 : 24),
 			inputPartHorizontalPaddingInside: this.options.renderStyle === 'compact' ? 12 : 10,
 			toolbarsWidth: this.options.renderStyle === 'compact' ? getToolbarsWidthCompact() : 0,
 			sideToolbarWidth: inputSideToolbarWidth > 0 ? inputSideToolbarWidth + 4 /*gap*/ : 0,

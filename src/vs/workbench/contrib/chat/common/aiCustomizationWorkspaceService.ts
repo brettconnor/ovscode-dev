@@ -107,7 +107,6 @@ export interface IAICustomizationWorkspaceService {
 	/**
 	 * Whether this is a sessions window (vs core VS Code).
 	 */
-	readonly isSessionsWindow: boolean;
 
 	/**
 	 * Controls which features are displayed on the welcome page.
