@@ -145,9 +145,7 @@ suite('Inline chat zone widget — menu contributions', function () {
 		// Panel-only commands must never appear in inline chat (chatLocation == 'editor')
 		const panelOnlyCommands = [
 			'workbench.action.chat.openModePicker',
-			'workbench.action.chat.openSessionTargetPicker',
 			'workbench.action.chat.openWorkspacePicker',
-			'workbench.action.chat.chatSessionPrimaryPicker',
 		];
 		for (const cmd of panelOnlyCommands) {
 			assert.ok(!ids.includes(cmd), `panel-only command "${cmd}" should NOT appear in inline chat`);

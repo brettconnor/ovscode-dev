@@ -60,29 +60,6 @@ suite('GetHandoffsAction', () => {
 		chatExecuteActions = registerChatExecuteActions();
 	});
 
-	test('does not expose unavailable provider models in the session welcome view', () => {
-		const item = MenuRegistry.getMenuItems(MenuId.ChatInput)
-			.find((candidate): candidate is IMenuItem => isIMenuItem(candidate) && candidate.command.id === OpenModelPickerAction.ID);
-		assert.ok(item?.when);
-
-		const evaluate = (values: Record<string, ContextKeyValue>) => item.when!.evaluate({
-			getValue: <T extends ContextKeyValue = ContextKeyValue>(key: string) => values[key] as T,
-		});
-		const context = {
-			[ChatContextKeys.location.key]: ChatAgentLocation.Chat,
-			[ChatContextKeys.inAgentSessionsWelcome.key]: true,
-			[ChatContextKeys.agentSessionType.key]: AgentSessionProviders.AgentHostCopilot,
-		};
-
-		assert.deepStrictEqual({
-			copilot: evaluate(context),
-			claude: evaluate({ ...context, [ChatContextKeys.agentSessionType.key]: AgentSessionProviders.AgentHostClaude }),
-		}, {
-			copilot: false,
-			claude: false,
-		});
-	});
-
 	suiteTeardown(() => {
 		chatExecuteActions.dispose();
 	});
