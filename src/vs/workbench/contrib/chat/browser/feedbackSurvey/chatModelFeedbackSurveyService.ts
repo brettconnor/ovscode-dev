@@ -20,7 +20,6 @@ import { CHAT_MODEL_FEEDBACK_SURVEY_TELEMETRY_COMMAND_ID, ChatModelFeedbackSurve
 import { ILanguageModelsService } from '../../common/languageModels.js';
 import { getChatSessionType } from '../../common/model/chatUri.js';
 import { IChatResponseViewModel } from '../../common/model/chatViewModel.js';
-import { IChatSessionsService } from '../../common/chatSessionsService.js';
 import { IChatService } from '../../common/chatService/chatService.js';
 
 /** Name of the experiment treatment carrying the survey payload. */
@@ -157,7 +156,6 @@ export class ChatModelFeedbackSurveyService extends Disposable implements IChatM
 		@ITelemetryService private readonly telemetryService: ITelemetryService,
 		@ICommandService private readonly commandService: ICommandService,
 		@ILanguageModelsService private readonly languageModelsService: ILanguageModelsService,
-		@IChatSessionsService private readonly chatSessionsService: IChatSessionsService,
 		@IChatService private readonly chatService: IChatService,
 		@ILogService private readonly logService: ILogService,
 	) {
@@ -521,7 +519,6 @@ export class ChatModelFeedbackSurveyService extends Disposable implements IChatM
 			selectedModelAliases: this.getModelAliases(selectedModelId),
 			resolvedModelId: this.getResolvedModelId(response),
 			modeId: request?.modeInfo?.telemetryModeId,
-			harness: this.getHarness(response.sessionResource),
 			sessionType: getChatSessionType(response.sessionResource),
 		}) ? this._config : undefined;
 	}
@@ -535,11 +532,6 @@ export class ChatModelFeedbackSurveyService extends Disposable implements IChatM
 	private getResolvedModelId(response: IChatResponseViewModel): string | undefined {
 		const resolvedModel = response.result?.metadata?.resolvedModel;
 		return typeof resolvedModel === 'string' ? resolvedModel : undefined;
-	}
-
-	/** Normalizes local and remote session types to one provider id, which is what a config targets. */
-	private getHarness(sessionResource: URI): string | undefined {
-		return this.chatSessionsService.getChatSessionContribution(getChatSessionType(sessionResource))?.agentHostProviderId;
 	}
 
 	// --- prompt pacing storage
@@ -645,7 +637,6 @@ export class ChatModelFeedbackSurveyService extends Disposable implements IChatM
 			modelId: escapeModelIdForTelemetry(request?.modelId),
 			resolvedModelId: escapeModelIdForTelemetry(this.getResolvedModelId(response)),
 			modeId: request?.modeInfo?.telemetryModeId,
-			harness: this.getHarness(response.sessionResource),
 			sessionType: getChatSessionType(response.sessionResource),
 		};
 	}

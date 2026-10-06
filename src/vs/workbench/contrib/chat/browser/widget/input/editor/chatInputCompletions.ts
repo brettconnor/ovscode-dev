@@ -54,7 +54,7 @@ import { IChatRequestVariableEntry } from '../../../../common/attachments/chatVa
 import { IDynamicVariable, toAttachedContextDynamicVariable } from '../../../../common/attachments/chatVariables.js';
 import { ChatAgentLocation, ChatModeKind, isSupportedChatFileScheme } from '../../../../common/constants.js';
 import { isToolSet } from '../../../../common/tools/languageModelToolsService.js';
-import { IChatSessionsService, isAgentHostTarget } from '../../../../common/chatSessionsService.js';
+import { isAgentHostTarget } from '../../../../common/chatSessionsService.js';
 import { ICustomizationHarnessService } from '../../../../common/customizationHarnessService.js';
 import { matchesSessionType } from '../../../../common/promptSyntax/service/promptsService.js';
 import { ChatSubmitAction, IChatExecuteActionContext } from '../../../actions/chatExecuteActions.js';
@@ -64,7 +64,6 @@ import { ChatDynamicVariableModel } from '../../../attachments/chatDynamicVariab
 import { IChatService } from '../../../../common/chatService/chatService.js';
 import { getChatSessionType } from '../../../../common/model/chatUri.js';
 import { attachedContextCompletionAdditionalTriggerCharacters, computeCompletionRanges, escapeForCharClass, getAttachedContextCompletionMatch, getAttachedContextCompletionSortText, getCompletionRangeWord, IChatCompletionRangeResult, isEmptyUpToCompletionWord } from './chatInputCompletionUtils.js';
-import { getAgentSessionProviderIcon, AgentSessionProviders } from '../../../agentSessions/agentSessions.js';
 
 /**
  * Regex matching a slash command word (e.g. `/foo`). Uses `\p{L}` for Unicode
@@ -95,7 +94,6 @@ class SlashCommandCompletions extends Disposable {
 		@IChatSlashCommandService private readonly chatSlashCommandService: IChatSlashCommandService,
 		@ICustomizationHarnessService private readonly harnessService: ICustomizationHarnessService,
 		@IChatService chatService: IChatService,
-		@IChatSessionsService chatSessionsService: IChatSessionsService,
 		@IMcpService mcpService: IMcpService,
 	) {
 		super();
@@ -347,7 +345,6 @@ class AgentCompletions extends Disposable {
 		@IChatWidgetService private readonly chatWidgetService: IChatWidgetService,
 		@IChatAgentService private readonly chatAgentService: IChatAgentService,
 		@IChatAgentNameService private readonly chatAgentNameService: IChatAgentNameService,
-		@IChatSessionsService private readonly chatSessionsService: IChatSessionsService,
 	) {
 		super();
 
@@ -886,7 +883,6 @@ class BuiltinDynamicCompletions extends Disposable {
 		@ICodeEditorService private readonly codeEditorService: ICodeEditorService,
 		@IChatAgentService private readonly chatAgentService: IChatAgentService,
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
-		@IChatSessionsService private readonly chatSessionsService: IChatSessionsService,
 	) {
 		super();
 
@@ -1016,77 +1012,6 @@ class BuiltinDynamicCompletions extends Disposable {
 
 			return result;
 		});
-
-		// Session Reference completion
-		const sessionWordPattern = new RegExp(`${chatVariableLeader}[^\\s]*`, 'g');
-		this.registerVariableCompletions('sessionReference', async ({ widget, range }, token) => {
-			if (widget.location !== ChatAgentLocation.Chat) {
-				return;
-			}
-
-			const typedWord = range.varWord?.word ?? '';
-			const sessionPrefix = `${chatVariableLeader}session`;
-			const result: CompletionList = { suggestions: [] };
-
-			if (typedWord.toLowerCase().startsWith(`${sessionPrefix}:`)) {
-				// User has typed #session: — fetch all sessions and show them inline
-				const allSessions: { title: string; sessionResource: URI; lastMessageDate: number; icon: ThemeIcon }[] = [];
-
-				const sessionProviderFilter = [AgentSessionProviders.Local, AgentSessionProviders.Background, AgentSessionProviders.AgentHostCopilot];
-				for await (const group of this.chatSessionsService.getChatSessionItems(sessionProviderFilter, token)) {
-					if (token.isCancellationRequested) {
-						return;
-					}
-					const providerIcon = getAgentSessionProviderIcon(group.chatSessionType);
-					for (const item of group.items) {
-						allSessions.push({
-							title: item.label,
-							sessionResource: item.resource,
-							lastMessageDate: item.timing.lastRequestEnded ?? item.timing.created,
-							icon: item.iconPath ?? providerIcon,
-						});
-					}
-				}
-
-				const currentSessionResource = widget.viewModel?.sessionResource;
-				const filteredSessions = allSessions
-					.filter(s => !currentSessionResource || s.sessionResource.toString() !== currentSessionResource.toString())
-					.sort((a, b) => b.lastMessageDate - a.lastMessageDate);
-
-				for (const session of filteredSessions) {
-					const text = `${sessionPrefix}:${session.title}`;
-					const dateStr = new Date(session.lastMessageDate).toLocaleString();
-					result.suggestions.push({
-						label: { label: session.title, description: dateStr },
-						filterText: `${sessionPrefix}:${session.title}`,
-						insertText: range.varWord?.endColumn === range.replace.endColumn ? `${text} ` : text,
-						range,
-						kind: CompletionItemKind.Text,
-						sortText: `z${String(Number.MAX_SAFE_INTEGER - session.lastMessageDate).padStart(20, '0')}`,
-						command: {
-							id: BuiltinDynamicCompletions.addReferenceCommand, title: '', arguments: [new ReferenceArgument(widget, {
-								id: session.sessionResource.toString(),
-								icon: session.icon,
-								range: { startLineNumber: range.replace.startLineNumber, startColumn: range.replace.startColumn, endLineNumber: range.replace.endLineNumber, endColumn: range.replace.startColumn + text.length },
-								data: session.sessionResource
-							})]
-						}
-					});
-				}
-			} else {
-				// User typed # or #s etc — show single #session entry that inserts #session: and re-triggers suggest
-				result.suggestions.push({
-					label: { label: sessionPrefix, description: localize('session.description', 'Attach a chat session') },
-					filterText: sessionPrefix,
-					insertText: `${sessionPrefix}:`,
-					range,
-					kind: CompletionItemKind.Text,
-					sortText: 'z',
-					command: { id: 'editor.action.triggerSuggest', title: '' },
-				});
-			}
-			return result;
-		}, sessionWordPattern);
 
 		this._register(CommandsRegistry.registerCommand(BuiltinDynamicCompletions.addReferenceCommand, (_services, arg) => {
 			assertType(arg instanceof ReferenceArgument);

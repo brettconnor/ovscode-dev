@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Schemas } from '../../../../base/common/network.js';
-import { IChatSessionsService, localChatSessionType } from './chatSessionsService.js';
+import { localChatSessionType } from './chatSessionsService.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { IStorageService } from '../../../../platform/storage/common/storage.js';
 import { IWorkspace, IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
@@ -322,16 +322,9 @@ export function isChatInputModel(uri: URI): boolean {
 	return chatInputSchemes.includes(uri.scheme);
 }
 
-export function isSupportedChatFileScheme(accessor: ServicesAccessor, scheme: string): boolean {
-	const chatService = accessor.get(IChatSessionsService);
-
+export function isSupportedChatFileScheme(_accessor: ServicesAccessor, scheme: string): boolean {
 	// Exclude schemes we always know are bad
 	if (chatAlwaysUnsupportedFileSchemes.has(scheme)) {
-		return false;
-	}
-
-	// Plus any schemes used by content providers
-	if (chatService.getContentProviderSchemes().includes(scheme)) {
 		return false;
 	}
 

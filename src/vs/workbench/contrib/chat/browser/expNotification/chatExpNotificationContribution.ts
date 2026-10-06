@@ -11,7 +11,6 @@ import { IStorageService, StorageScope } from '../../../../../platform/storage/c
 import { IWorkbenchContribution } from '../../../../common/contributions.js';
 import { IWorkbenchAssignmentService } from '../../../../services/assignment/common/assignmentService.js';
 import { IChatEntitlementService } from '../../../../services/chat/common/chatEntitlementService.js';
-import { IChatSessionsService } from '../../common/chatSessionsService.js';
 import { modelSelectorAliases } from '../../common/expPayload.js';
 import { addDismissedNotificationId, IChatInputNotificationContext, IChatInputNotificationService, readDismissedNotificationIds } from '../widget/input/chatInputNotificationService.js';
 import { ChatExpNotification, IChatExpNotificationMatch, matchesChatExpNotification, parseChatExpNotifications } from './chatExpNotificationConfig.js';
@@ -42,7 +41,6 @@ export class ChatExpNotificationContribution extends Disposable implements IWork
 	constructor(
 		@IWorkbenchAssignmentService private readonly _assignmentService: IWorkbenchAssignmentService,
 		@IChatInputNotificationService private readonly _notificationService: IChatInputNotificationService,
-		@IChatSessionsService private readonly _chatSessionsService: IChatSessionsService,
 		@IConfigurationService private readonly _configurationService: IConfigurationService,
 		@IChatEntitlementService private readonly _entitlementService: IChatEntitlementService,
 		@IStorageService private readonly _storageService: IStorageService,
@@ -125,7 +123,7 @@ export class ChatExpNotificationContribution extends Disposable implements IWork
 		const model = context.modelState.currentModel;
 		return matchesChatExpNotification(match, {
 			sessionType: context.sessionType,
-			harness: context.sessionType ? this._chatSessionsService.getChatSessionContribution(context.sessionType)?.agentHostProviderId : undefined,
+			harness: undefined,
 			selectedModelId: model?.identifier,
 			selectedModelAliases: model && modelSelectorAliases(model.metadata),
 		});

@@ -62,7 +62,6 @@ import { ChatModeService, IChatMode, IChatModeService, IChatModes } from '../com
 import { IChatService } from '../common/chatService/chatService.js';
 import { ChatRequestOriginService, IChatRequestOriginService } from '../common/chatRequestOrigin.js';
 import { ChatService } from '../common/chatService/chatServiceImpl.js';
-import { IChatSessionsService } from '../common/chatSessionsService.js';
 import { IAgentSessionsService, AgentSessionsService } from './agentSessions/agentSessionsService.js';
 import { LocalAgentsSessionsController } from './agentSessions/localAgentSessionsController.js';
 import { ChatSideChatService, IChatSideChatService } from '../common/chatSideChatService.js';
@@ -2818,7 +2817,6 @@ class ChatResolverContribution extends Disposable {
 	private readonly _editorRegistrations = this._register(new DisposableMap<string>());
 
 	constructor(
-		@IChatSessionsService chatSessionsService: IChatSessionsService,
 		@IEditorResolverService private readonly editorResolverService: IEditorResolverService,
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
 	) {
@@ -2826,19 +2824,6 @@ class ChatResolverContribution extends Disposable {
 
 		this._registerEditor(Schemas.vscodeChatEditor);
 		this._registerEditor(Schemas.vscodeLocalChatSession);
-
-		this._register(chatSessionsService.onDidChangeContentProviderSchemes((e) => {
-			for (const scheme of e.added) {
-				this._registerEditor(scheme);
-			}
-			for (const scheme of e.removed) {
-				this._editorRegistrations.deleteAndDispose(scheme);
-			}
-		}));
-
-		for (const scheme of chatSessionsService.getContentProviderSchemes()) {
-			this._registerEditor(scheme);
-		}
 	}
 
 	private _registerEditor(scheme: string): void {

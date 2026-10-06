@@ -4,20 +4,13 @@
  *--------------------------------------------------------------------------------------------*/
 
 import * as dom from '../../../../../../base/browser/dom.js';
-import { Action } from '../../../../../../base/common/actions.js';
 import { Emitter, Event } from '../../../../../../base/common/event.js';
 import { Disposable, DisposableStore } from '../../../../../../base/common/lifecycle.js';
-import { ThemeIcon } from '../../../../../../base/common/themables.js';
 import { localize } from '../../../../../../nls.js';
 import { IConfigurationService } from '../../../../../../platform/configuration/common/configuration.js';
-import { IContextKeyService } from '../../../../../../platform/contextkey/common/contextkey.js';
-import { IContextMenuService } from '../../../../../../platform/contextview/browser/contextView.js';
-import { ChatContextKeys } from '../../../common/actions/chatContextKeys.js';
 import { ChatConfiguration } from '../../../common/constants.js';
 import { IChatMode } from '../../../common/chatModes.js';
-import { IChatSessionsService } from '../../../common/chatSessionsService.js';
 import { IHandOff } from '../../../common/promptSyntax/promptFileParser.js';
-import { getAgentCanContinueIn, getAgentSessionProvider, getAgentSessionProviderIcon, getAgentSessionProviderName } from '../../agentSessions/agentSessions.js';
 
 export interface INextPromptSelection {
 	readonly handoff: IHandOff;
@@ -41,9 +34,6 @@ export class ChatSuggestNextWidget extends Disposable {
 
 	constructor(
 		@IConfigurationService private readonly configurationService: IConfigurationService,
-		@IContextMenuService private readonly contextMenuService: IContextMenuService,
-		@IChatSessionsService private readonly chatSessionsService: IChatSessionsService,
-		@IContextKeyService private readonly contextKeyService: IContextKeyService,
 	) {
 		super();
 		this.domNode = this.createSuggestNextWidget();
@@ -135,94 +125,12 @@ export class ChatSuggestNextWidget extends Disposable {
 		const titleElement = dom.append(button, dom.$('.chat-welcome-view-suggested-prompt-title'));
 		titleElement.textContent = handoff.label;
 
-		// Optional showContinueOn behaves like send: only present if specified
-		const showContinueOn = handoff.showContinueOn ?? true;
-
-		// Get chat session contributions to show in chevron dropdown
-		// Filter to only first-party providers that support "continue in".
-		// TODO: Expand later to any agent with `canDelegate` === true.
-		const currentSessionType = this.contextKeyService.getContextKeyValue<string>(ChatContextKeys.chatSessionType.key);
-		const contributions = this.chatSessionsService.getAllChatSessionContributions();
-		const availableContributions = contributions.filter(c => {
-			if (!c.canDelegate) {
-				return false;
+		disposables.add(dom.addDisposableListener(button, 'click', () => {
+			const currentHandoff = getCurrentHandoff();
+			if (currentHandoff) {
+				this._onDidSelectPrompt.fire({ handoff: currentHandoff });
 			}
-			if (c.type === currentSessionType) {
-				return false;
-			}
-			const provider = getAgentSessionProvider(c.type);
-			return provider !== undefined && getAgentCanContinueIn(provider);
-		});
-
-		if (showContinueOn && availableContributions.length > 0) {
-			button.classList.add('chat-suggest-next-has-dropdown');
-			// Create a dropdown container that wraps separator and chevron for a larger hit area
-			const dropdownContainer = dom.append(button, dom.$('.chat-suggest-next-dropdown'));
-			dropdownContainer.setAttribute('tabindex', '0');
-			dropdownContainer.setAttribute('role', 'button');
-			dropdownContainer.setAttribute('aria-label', localize('chat.suggestNext.moreOptions', 'More options for {0}', handoff.label));
-			dropdownContainer.setAttribute('aria-haspopup', 'true');
-
-			const separator = dom.append(dropdownContainer, dom.$('.chat-suggest-next-separator'));
-			separator.setAttribute('aria-hidden', 'true');
-			const chevron = dom.append(dropdownContainer, dom.$('.codicon.codicon-chevron-down-compact.dropdown-chevron'));
-			chevron.setAttribute('aria-hidden', 'true');
-
-			const showContextMenu = (e: MouseEvent | KeyboardEvent, anchor?: HTMLElement) => {
-				e.preventDefault();
-				e.stopPropagation();
-
-				const actions = availableContributions.map(contrib => {
-					const provider = getAgentSessionProvider(contrib.type)!;
-					const icon = getAgentSessionProviderIcon(provider);
-					const name = getAgentSessionProviderName(provider);
-					return new Action(
-						contrib.type,
-						localize('continueIn', "Continue in {0}", name),
-						ThemeIcon.isThemeIcon(icon) ? ThemeIcon.asClassName(icon) : undefined,
-						true,
-						() => {
-							const currentHandoff = getCurrentHandoff();
-							if (currentHandoff) {
-								this._onDidSelectPrompt.fire({ handoff: currentHandoff, agentId: contrib.name });
-							}
-						}
-					);
-				});
-
-				this.contextMenuService.showContextMenu({
-					getAnchor: () => anchor || dropdownContainer,
-					getActions: () => actions,
-					autoSelectFirstItem: true,
-				});
-			};
-
-			disposables.add(dom.addDisposableListener(dropdownContainer, 'click', (e: MouseEvent) => {
-				showContextMenu(e, dropdownContainer);
-			}));
-
-			disposables.add(dom.addDisposableListener(dropdownContainer, 'keydown', (e) => {
-				if (e.key === 'Enter' || e.key === ' ') {
-					showContextMenu(e, dropdownContainer);
-				}
-			}));
-			disposables.add(dom.addDisposableListener(button, 'click', (e: MouseEvent) => {
-				if (dom.isHTMLElement(e.target) && e.target.closest('.chat-suggest-next-dropdown')) {
-					return;
-				}
-				const currentHandoff = getCurrentHandoff();
-				if (currentHandoff) {
-					this._onDidSelectPrompt.fire({ handoff: currentHandoff });
-				}
-			}));
-		} else {
-			disposables.add(dom.addDisposableListener(button, 'click', () => {
-				const currentHandoff = getCurrentHandoff();
-				if (currentHandoff) {
-					this._onDidSelectPrompt.fire({ handoff: currentHandoff });
-				}
-			}));
-		}
+		}));
 
 		disposables.add(dom.addDisposableListener(button, 'keydown', (e) => {
 			if (e.key === 'Enter' || e.key === ' ') {
