@@ -37,11 +37,11 @@ import { getDynamicVariablesForWidget, getSelectedToolAndToolSetsForWidget } fro
 import { IChatContentInlineReference, IChatContentReference, IChatFollowup, IChatNotebookEdit, IChatProgress, IChatService, IChatTask, IChatTaskSerialized, IChatWarningMessage } from '../../contrib/chat/common/chatService/chatService.js';
 import { ChatAgentLocation, ChatModeKind } from '../../contrib/chat/common/constants.js';
 import { ILanguageModelToolsService } from '../../contrib/chat/common/tools/languageModelToolsService.js';
-import { IExtHostContext, extHostNamedCustomer } from '../../services/extensions/common/extHostCustomers.js';
+import { ExtHostContext, IExtHostContext, extHostNamedCustomer } from '../../services/extensions/common/extHostCustomers.js';
 import { IExtensionService } from '../../services/extensions/common/extensions.js';
 import { Dto } from '../../services/extensions/common/proxyIdentifier.js';
 import { NotebookDto } from './mainThreadNotebookDto.js';
-import { IChatNotebookEditDto, IChatProgressDto, IExtensionChatAgentMetadata } from '../common/extHost.protocol.js';
+import { ExtHostChatAgentsShape2, IChatAgentInvokeResult, IChatNotebookEditDto, IChatProgressDto, ICustomAgentDto, IDynamicChatAgentProps, IExtensionChatAgentMetadata, IHookDto, IInstructionDto, IPluginDto, ISkillDto, ISlashCommandDto, MainContext, MainThreadChatAgentsShape2 } from '../common/extHost.protocol.js';
 import { getChatSessionType } from '../../contrib/chat/common/model/chatUri.js';
 import { localChatSessionType } from '../../contrib/chat/common/chatSessionsService.js';
 import { IAgentPlugin, IAgentPluginService } from '../../contrib/chat/common/plugins/agentPluginService.js';
@@ -408,11 +408,6 @@ export class MainThreadChatAgents2 extends Disposable implements MainThreadChatA
 				return this._proxy.$provideChatSummary(handle, history, token);
 			},
 		};
-
-		// Do not attempt to register migrated chatSession providers
-		if (chatSessionRegistration?.alternativeIds?.includes(id)) {
-			return;
-		}
 
 		let disposable: IDisposable;
 		if (!staticAgentRegistration && dynamicProps) {

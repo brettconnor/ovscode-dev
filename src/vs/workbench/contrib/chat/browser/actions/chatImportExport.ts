@@ -91,8 +91,7 @@ export function registerChatExportActions() {
 		async run(accessor: ServicesAccessor, opts?: ChatImportOptions) {
 			const fileService = accessor.get(IFileService);
 			const widgetService = accessor.get(IChatWidgetService);
-			const chatService = accessor.get(IChatService);
-			const fileDialogService = accessor.get(IFileDialogService);
+						const fileDialogService = accessor.get(IFileDialogService);
 
 			let inputPath = opts?.inputPath;
 			if (!inputPath) {

@@ -16,7 +16,8 @@ import { NullLogService } from '../../../log/common/log.js';
 import { McpServerType } from '../../../mcp/common/mcpPlatformTypes.js';
 import { CustomizationType, McpServerStatus, type McpServerCustomization } from '../../../agentHost/common/state/protocol/state.js';
 import { DEFAULT_MCP_APP } from '../../../agentHost/common/state/protocol/mcpAppDefaults.js';
-import { customizationId } from '../../../agentHost/common/state/sessionState.js';
+
+const customizationId = (uri: string) => uri;
 
 function stubMcpCustomization(): McpServerCustomization {
 	return { type: CustomizationType.McpServer, id: 'stub', uri: 'file:///plugin', name: 'test', state: { kind: McpServerStatus.Starting } };
