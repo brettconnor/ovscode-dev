@@ -19,7 +19,6 @@ import { getChatMarkdownRenderOptions } from '../../../../browser/widget/chatCon
 import { ChatPetAchievementId, ChatPetAchievementIds } from '../../../../browser/chatPetAchievements.js';
 import { IChatPetService } from '../../../../browser/chatPetService.js';
 import { IOpenerService } from '../../../../../../../platform/opener/common/opener.js';
-import { rewriteAgentHostLinkTarget } from '../../../../browser/agentSessions/agentHost/stateToProgressAdapter.js';
 
 suite('ChatInlineAnchorWidget Metadata Validation', () => {
 	const store = ensureNoDisposablesAreLeakedInTestSuite();
@@ -109,44 +108,6 @@ suite('ChatInlineAnchorWidget Metadata Validation', () => {
 
 			assert.strictEqual(renderFileAnchor(anchor, instantiationService, mockAnchorService, disposables, { linkTypes: ['markdown-preview'] }), rendered);
 		});
-	}
-
-	for (const authority of ['local', 'remote-host']) {
-		for (const [linkType, editorOverride] of [
-			['markdown-preview', 'vscode.markdown.preview.editor'],
-			['file', undefined],
-		]) {
-			test(`opens ${linkType} links with the expected editor on ${authority}`, async () => {
-				const resource = URI.file('/session/diagnostics/sandbox-policy.md');
-				const link = resource.with({ query: `vscodeLinkType=${linkType}` });
-				const element = createTestElement('Open Sandbox Policy', rewriteAgentHostLinkTarget(link.toString(), authority));
-				const opened = new DeferredPromise<Parameters<IOpenerService['open']>>();
-				instantiationService.stub(IOpenerService, new class extends mock<IOpenerService>() {
-					override async open(...args: Parameters<IOpenerService['open']>): Promise<boolean> {
-						opened.complete(args);
-						return true;
-					}
-				}());
-				renderFileWidgets(element, instantiationService, mockAnchorService, disposables);
-
-				element.querySelector<HTMLElement>('.chat-inline-anchor-widget')?.click();
-
-				const [openedResource, options] = await opened.p;
-				assert.deepStrictEqual({
-					resource: openedResource.toString(),
-					options,
-					hasLinkStyle: element.querySelector('.chat-inline-anchor-widget')?.classList.contains('chat-markdown-preview-link'),
-				}, {
-					resource: rewriteAgentHostLinkTarget(resource.toString(), authority),
-					options: {
-						fromUserGesture: true,
-						editorOptions: { override: editorOverride, selection: undefined },
-					},
-					hasLinkStyle: linkType === 'markdown-preview',
-				});
-				await timeout(0);
-			});
-		}
 	}
 
 	test('uses a custom resource opener when provided', async () => {

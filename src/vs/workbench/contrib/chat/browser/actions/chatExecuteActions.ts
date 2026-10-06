@@ -30,13 +30,11 @@ import { ChatStopCancellationNoopClassification, ChatStopCancellationNoopEvent, 
 import { ChatAgentLocation, ChatConfiguration, ChatModeKind } from '../../common/constants.js';
 import { ILanguageModelChatMetadata } from '../../common/languageModels.js';
 import { ILanguageModelToolsService } from '../../common/tools/languageModelToolsService.js';
-import { IChatSessionsService, localChatSessionType } from '../../common/chatSessionsService.js';
+import { localChatSessionType } from '../../common/chatSessionsService.js';
 import { type IChatAcceptInputOptions, IChatWidget, IChatWidgetService } from '../chat.js';
-import { getAgentSessionProvider, AgentSessionProviders, AgentSessionTarget } from '../agentSessions/agentSessions.js';
 import { getEditingSessionContext } from '../chatEditing/chatEditingActions.js';
 import { ctxHasEditorModification, ctxHasRequestInProgress, ctxIsGlobalEditingSession } from '../chatEditing/chatEditingEditorContextKeys.js';
 import { ACTION_ID_NEW_CHAT, CHAT_CATEGORY, clearChatSessionPreservingType, handleCurrentEditingSession, handleModeSwitch } from './chatActions.js';
-import { CreateRemoteAgentJobAction } from './chatContinueInAction.js';
 
 export interface IVoiceChatExecuteActionContext {
 	readonly disableTimeout?: boolean;
@@ -58,12 +56,6 @@ abstract class SubmitAction extends Action2 {
 
 		if (widget?.isTranscriptProgressActive) {
 			return;
-		}
-
-		// Check if there's a pending delegation target
-		const pendingDelegationTarget = widget?.input.pendingDelegationTarget;
-		if (pendingDelegationTarget && pendingDelegationTarget !== AgentSessionProviders.Local) {
-			return await this.handleDelegation(accessor, widget, pendingDelegationTarget);
 		}
 
 		if (widget?.viewModel?.editing) {
@@ -160,27 +152,6 @@ abstract class SubmitAction extends Action2 {
 			widget.viewModel.model.setCheckpoint(undefined);
 		}
 		widget?.acceptInput(context?.inputValue, context?.acceptInputOptions);
-	}
-
-	private async handleDelegation(accessor: ServicesAccessor, widget: IChatWidget, delegationTarget: Exclude<AgentSessionTarget, AgentSessionProviders.Local>): Promise<void> {
-		const chatSessionsService = accessor.get(IChatSessionsService);
-
-		// Find the contribution for the delegation target
-		const contributions = chatSessionsService.getAllChatSessionContributions();
-		const targetContribution = contributions.find(contrib => {
-			const providerType = getAgentSessionProvider(contrib.type);
-			return providerType === delegationTarget || contrib.type === delegationTarget;
-		});
-
-		if (!targetContribution) {
-			throw new Error(`No contribution found for delegation target: ${delegationTarget}`);
-		}
-
-		if (targetContribution.canDelegate === false) {
-			throw new Error(`The contribution for delegation target: ${delegationTarget} does not support delegation.`);
-		}
-
-		return new CreateRemoteAgentJobAction().run(accessor, targetContribution, widget);
 	}
 }
 

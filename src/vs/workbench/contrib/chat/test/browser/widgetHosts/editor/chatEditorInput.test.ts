@@ -7,7 +7,6 @@ import assert from 'assert';
 import { CancellationToken } from '../../../../../../../base/common/cancellation.js';
 import { Event } from '../../../../../../../base/common/event.js';
 import { DisposableStore } from '../../../../../../../base/common/lifecycle.js';
-import { Schemas } from '../../../../../../../base/common/network.js';
 import { constObservable } from '../../../../../../../base/common/observable.js';
 import { isEqual } from '../../../../../../../base/common/resources.js';
 import { URI } from '../../../../../../../base/common/uri.js';
@@ -21,18 +20,15 @@ import { TestInstantiationService } from '../../../../../../../platform/instanti
 import { ILogService, NullLogService } from '../../../../../../../platform/log/common/log.js';
 import { IStorageService } from '../../../../../../../platform/storage/common/storage.js';
 import { IWorkspaceContextService } from '../../../../../../../platform/workspace/common/workspace.js';
-import { isResourceEditorInput } from '../../../../../../common/editor.js';
-import { IEditorService } from '../../../../../../services/editor/common/editorService.js';
 import { IEditorGroup } from '../../../../../../services/editor/common/editorGroupsService.js';
-import { clearChatEditor } from '../../../../browser/actions/chatClear.js';
 import { ChatEditorInput, ChatEditorInputSerializer } from '../../../../browser/widgetHosts/editor/chatEditorInput.js';
 import { IChatEditorOptions } from '../../../../browser/widgetHosts/editor/chatEditor.js';
 import { IChatService, IChatSessionStartOptions } from '../../../../common/chatService/chatService.js';
-import { IChatSessionsService, localChatSessionType, SessionType } from '../../../../common/chatSessionsService.js';
+import { IChatSessionsService, localChatSessionType } from '../../../../common/chatSessionsService.js';
 import { ChatAgentLocation, SessionTypeSelectionReason } from '../../../../common/constants.js';
 import { IChatEditingSession, IModifiedFileEntry, ModifiedFileEntryState } from '../../../../common/editing/chatEditingService.js';
 import { IChatModel } from '../../../../common/model/chatModel.js';
-import { getChatSessionType, isUntitledChatSession, LocalChatSessionUri } from '../../../../common/model/chatUri.js';
+import { getChatSessionType, LocalChatSessionUri } from '../../../../common/model/chatUri.js';
 import { MockChatSessionsService } from '../../../common/mockChatSessionsService.js';
 import { TestContextService, TestStorageService } from '../../../../../../test/common/workbenchTestServices.js';
 

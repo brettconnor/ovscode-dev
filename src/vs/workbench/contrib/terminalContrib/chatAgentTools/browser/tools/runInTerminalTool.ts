@@ -28,7 +28,7 @@ import { ICommandDetectionCapability, TerminalCapability } from '../../../../../
 import { ITerminalLogService, ITerminalProfile, TerminalExitReason } from '../../../../../../platform/terminal/common/terminal.js';
 import { IRemoteAgentService } from '../../../../../services/remote/common/remoteAgentService.js';
 import { TerminalToolConfirmationStorageKeys } from '../../../../chat/browser/widget/chatContentParts/toolInvocationParts/chatTerminalToolConfirmationSubPart.js';
-import { IChatService, ChatRequestQueueKind, ElicitationState, type IChatExternalToolInvocationUpdate, type IChatSendRequestOptions, type IChatTerminalToolInvocationData } from '../../../../chat/common/chatService/chatService.js';
+import { IChatService, ChatRequestQueueKind, ConfirmationOptionKind, ElicitationState, type IChatExternalToolInvocationUpdate, type IChatSendRequestOptions, type IChatTerminalToolInvocationData } from '../../../../chat/common/chatService/chatService.js';
 import { autorun, constObservable } from '../../../../../../base/common/observable.js';
 import { ChatModel } from '../../../../chat/common/model/chatModel.js';
 import { ChatConfiguration, ChatModeKind, ChatPermissionLevel, isAutoApproveLevel } from '../../../../chat/common/constants.js';
@@ -1107,8 +1107,8 @@ export class RunInTerminalTool extends Disposable implements IToolImpl {
 					depsList
 				)),
 				customOptions: [
-					{ id: 'install', label: localize('runInTerminal.missingDeps.install', "Install") },
-					{ id: 'cancel', label: localize('runInTerminal.missingDeps.cancel', "Cancel") },
+					{ id: 'install', label: localize('runInTerminal.missingDeps.install', "Install"), kind: ConfirmationOptionKind.Approve },
+					{ id: 'cancel', label: localize('runInTerminal.missingDeps.cancel', "Cancel"), kind: ConfirmationOptionKind.Deny },
 				],
 			};
 		}

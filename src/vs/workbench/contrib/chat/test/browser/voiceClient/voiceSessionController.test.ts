@@ -400,7 +400,7 @@ class TestMicCaptureService extends mock<IMicCaptureService>() {
 
 class TestAgentSessionsService extends mock<IAgentSessionsService>() {
 	override readonly onDidChangeSessionArchivedState = Event.None;
-	override readonly model: IAgentSessionsModel;
+	readonly model: IAgentSessionsModel;
 
 	constructor(sessions: readonly unknown[] = []) {
 		super();
