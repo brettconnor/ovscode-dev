@@ -41,7 +41,6 @@ import { ChatModel, IChatResponseModel } from '../../../common/model/chatModel.j
 import { IChatService } from '../../../common/chatService/chatService.js';
 import { ChatService } from '../../../common/chatService/chatServiceImpl.js';
 import { IChatSlashCommandService } from '../../../common/participants/chatSlashCommands.js';
-import { ChatTransferService, IChatTransferService } from '../../../common/model/chatTransferService.js';
 import { IChatVariablesService } from '../../../common/attachments/chatVariables.js';
 import { ChatAgentLocation, ChatModeKind } from '../../../common/constants.js';
 import { ILanguageModelsService } from '../../../common/languageModels.js';
@@ -85,7 +84,6 @@ suite('ChatEditingService', function () {
 		collection.set(IChatAgentService, new SyncDescriptor(ChatAgentService));
 		collection.set(IChatVariablesService, new MockChatVariablesService());
 		collection.set(IChatSlashCommandService, new class extends mock<IChatSlashCommandService>() { });
-		collection.set(IChatTransferService, new SyncDescriptor(ChatTransferService));
 		collection.set(IChatEditingService, new SyncDescriptor(ChatEditingService));
 		collection.set(IEditorWorkerService, new SyncDescriptor(TestWorkerService));
 		collection.set(IChatService, new SyncDescriptor(ChatService));
@@ -121,7 +119,6 @@ suite('ChatEditingService', function () {
 		chatService = insta.get(IChatService);
 
 		store.add(chatService as ChatService);
-		chatService.setSaveModelsEnabled(false);
 
 		const chatAgentService = insta.get(IChatAgentService);
 

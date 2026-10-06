@@ -28,7 +28,6 @@ import { ChatContextKeys } from '../common/actions/chatContextKeys.js';
 import { IChatService } from '../common/chatService/chatService.js';
 import { ChatModeKind } from '../common/constants.js';
 import { IPluginGitService } from '../common/plugins/pluginGitService.js';
-import { registerChatDeveloperActions } from './actions/chatDeveloperActions.js';
 import { registerChatExportZipAction } from './actions/chatExportZip.js';
 import { registerInstallDictationModelAction } from './actions/installDictationModelAction.js';
 import { HoldToVoiceChatInChatViewAction, InlineVoiceChatAction, KeywordActivationContribution, QuickVoiceChatAction, ReadChatResponseAloud, StartVoiceChatAction, StopListeningAction, StopListeningAndSubmitAction, StopReadAloud, StopReadChatItemAloud, VoiceChatInChatViewAction } from './actions/voiceChatActions.js';
@@ -149,7 +148,6 @@ registerAction2(ReadChatResponseAloud);
 registerAction2(StopReadChatItemAloud);
 registerAction2(StopReadAloud);
 
-registerChatDeveloperActions();
 registerChatExportZipAction();
 registerInstallDictationModelAction();
 

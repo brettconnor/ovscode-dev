@@ -35,7 +35,6 @@ import { IChatAgentData, IChatAgentImplementation, IChatAgentService, ChatAgentS
 import { IChatDebugService } from '../../../chat/common/chatDebugService.js';
 import { ChatDebugServiceImpl } from '../../../chat/common/chatDebugServiceImpl.js';
 import { IChatSlashCommandService } from '../../../chat/common/participants/chatSlashCommands.js';
-import { ChatTransferService, IChatTransferService } from '../../../chat/common/model/chatTransferService.js';
 import { IChatVariablesService } from '../../../chat/common/attachments/chatVariables.js';
 import { ILanguageModelsService } from '../../../chat/common/languageModels.js';
 import { ICustomizationMigrationService } from '../../../chat/common/promptSyntax/service/customizationMigrationService.js';
@@ -127,7 +126,6 @@ suite('InlineChatSessionService', () => {
 		collection.set(IChatAgentService, new SyncDescriptor(ChatAgentService));
 		collection.set(IChatVariablesService, new MockChatVariablesService());
 		collection.set(IChatSlashCommandService, new class extends mock<IChatSlashCommandService>() { });
-		collection.set(IChatTransferService, new SyncDescriptor(ChatTransferService));
 		collection.set(IChatEditingService, new SyncDescriptor(ChatEditingService));
 		collection.set(IEditorWorkerService, new SyncDescriptor(TestWorkerService));
 		collection.set(IChatService, new SyncDescriptor(ChatService));
@@ -164,7 +162,6 @@ suite('InlineChatSessionService', () => {
 		store.add(instantiationService.get(IEditorWorkerService) as TestWorkerService);
 		chatService = instantiationService.get(IChatService);
 		store.add(chatService as ChatService);
-		chatService.setSaveModelsEnabled(false);
 		modelService = instantiationService.get(IModelService);
 		resolver.chatService = chatService;
 

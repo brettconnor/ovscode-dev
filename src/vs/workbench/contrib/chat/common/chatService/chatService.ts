@@ -36,8 +36,6 @@ import { HookTypeValue } from '../promptSyntax/hookTypes.js';
 import { IParsedChatRequest } from '../requestParser/chatParserTypes.js';
 import { IChatParserContext } from '../requestParser/chatRequestParser.js';
 import { IPreparedToolInvocation, IToolConfirmationMessages, IToolResult, IToolResultInputOutputDetails, ToolDataSource } from '../tools/languageModelToolsService.js';
-import { type McpOAuthClient, type MessageOrigin } from '../../../../../platform/agentHost/common/state/protocol/state.js';
-import { AgentFusionPhaseStatus } from '../../../../../platform/agentHost/common/meta/agentToolCallMeta.js';
 
 export interface IChatRequest {
 	message: string;
@@ -1219,7 +1217,7 @@ export interface IChatSubagentToolInvocationData {
 	kind: 'subagent';
 	/** Reuse the compact pill for a phase summary without a child-chat navigation target. */
 	presentation?: 'phase';
-	phaseStatus?: AgentFusionPhaseStatus;
+	phaseStatus?: 'running' | 'succeeded' | 'failed' | 'cancelled';
 	/** Content-free phase activity, not a tool name or a model-authored summary. */
 	activityDescription?: string;
 	/** Whether the child has reported a turn; false defers its entry, while undefined preserves legacy publication. */
@@ -1463,7 +1461,6 @@ export interface IChatMcpAuthenticationRequiredServer {
 	readonly id: string;
 	readonly name: string;
 	readonly resource: string;
-	readonly oauthClient?: McpOAuthClient;
 	readonly authorizationServers?: readonly string[];
 	readonly supportedScopes?: readonly string[];
 	readonly requiredScopes?: readonly string[];
@@ -1968,7 +1965,6 @@ export interface IRemotePendingRequest {
 	readonly modelConfiguration?: IStringDictionary<unknown>;
 	readonly timestamp?: number;
 	/** When supplied, metadata and systemInitiatedLabel replace local values, including when absent. */
-	readonly agentHostMessageOrigin?: MessageOrigin;
 	readonly metadata?: Record<string, unknown>;
 	readonly isSystemInitiated?: boolean;
 	readonly systemInitiatedLabel?: string;
@@ -2001,7 +1997,6 @@ export interface IChatSendRequestOptions {
 	resolvedVariables?: IChatRequestVariableEntry[];
 	agentHostSessionConfig?: Record<string, unknown>;
 	/** Original actor when resending an Agent Host pending message. */
-	agentHostMessageOrigin?: MessageOrigin;
 	/** Provider-specific request metadata, separate from the prompt. */
 	metadata?: Record<string, unknown>;
 
@@ -2220,7 +2215,6 @@ export interface IChatService {
 	/**
 	 * For tests only!
 	 */
-	setSaveModelsEnabled(enabled: boolean): void;
 
 	/**
 	 * For tests only!

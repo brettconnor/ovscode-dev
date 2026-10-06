@@ -9,7 +9,6 @@ import { CancellationToken } from '../../../../../../base/common/cancellation.js
 import { Event } from '../../../../../../base/common/event.js';
 import { MarkdownString } from '../../../../../../base/common/htmlContent.js';
 import { DisposableStore } from '../../../../../../base/common/lifecycle.js';
-import { Schemas } from '../../../../../../base/common/network.js';
 import { constObservable, ISettableObservable, observableValue } from '../../../../../../base/common/observable.js';
 import { URI } from '../../../../../../base/common/uri.js';
 import { mockObject } from '../../../../../../base/test/common/mock.js';
@@ -22,14 +21,11 @@ import { TestConfigurationService } from '../../../../../../platform/configurati
 import { IContextKeyService } from '../../../../../../platform/contextkey/common/contextkey.js';
 import { IEnvironmentService } from '../../../../../../platform/environment/common/environment.js';
 import { ExtensionIdentifier } from '../../../../../../platform/extensions/common/extensions.js';
-import { IFileService } from '../../../../../../platform/files/common/files.js';
-import { FileService } from '../../../../../../platform/files/common/fileService.js';
-import { InMemoryFileSystemProvider } from '../../../../../../platform/files/common/inMemoryFilesystemProvider.js';
 import { ServiceCollection } from '../../../../../../platform/instantiation/common/serviceCollection.js';
 import { TestInstantiationService } from '../../../../../../platform/instantiation/test/common/instantiationServiceMock.js';
 import { MockContextKeyService } from '../../../../../../platform/keybinding/test/common/mockKeybindingService.js';
 import { ILogService, NullLogService } from '../../../../../../platform/log/common/log.js';
-import { IStorageService, StorageScope, WillSaveStateReason } from '../../../../../../platform/storage/common/storage.js';
+import { IStorageService, StorageScope } from '../../../../../../platform/storage/common/storage.js';
 import { ITelemetryService } from '../../../../../../platform/telemetry/common/telemetry.js';
 import { NullTelemetryService } from '../../../../../../platform/telemetry/common/telemetryUtils.js';
 import { IUserDataProfilesService, toUserDataProfile } from '../../../../../../platform/userDataProfile/common/userDataProfile.js';
@@ -41,7 +37,7 @@ import { IExtensionService, nullExtensionDescription } from '../../../../../serv
 import { ILifecycleService } from '../../../../../services/lifecycle/common/lifecycle.js';
 import { IViewsService } from '../../../../../services/views/common/viewsService.js';
 import { IWorkspaceEditingService } from '../../../../../services/workspaces/common/workspaceEditing.js';
-import { InMemoryTestFileService, mock, TestChatEntitlementService, TestContextService, TestExtensionService, TestStorageService } from '../../../../../test/common/workbenchTestServices.js';
+import { mock, TestChatEntitlementService, TestContextService, TestExtensionService, TestStorageService } from '../../../../../test/common/workbenchTestServices.js';
 import { IMcpService } from '../../../../mcp/common/mcpTypes.js';
 import { TestMcpService } from '../../../../mcp/test/common/testMcpService.js';
 import { ChatPasteAttachmentMetadata, IChatRequestVariableEntry, toPasteVariableEntry } from '../../../common/attachments/chatVariableEntries.js';
@@ -149,7 +145,6 @@ suite('ChatService', () => {
 	const testDisposables = new DisposableStore();
 
 	let instantiationService: TestInstantiationService;
-	let testFileService: InMemoryTestFileService;
 	let editingSessionEntries: ISettableObservable<readonly IModifiedFileEntry[]>;
 
 	let chatAgentService: IChatAgentService;
@@ -167,14 +162,6 @@ suite('ChatService', () => {
 	function startSessionModel(service: IChatService, location: ChatAgentLocation = ChatAgentLocation.Chat): IChatModelReference {
 		const ref = testDisposables.add(service.startNewLocalSession(location));
 		return ref;
-	}
-
-	async function getOrRestoreModel(service: IChatService, resource: URI): Promise<IChatModel | undefined> {
-		const ref = await service.acquireOrLoadSession(resource, ChatAgentLocation.Chat, CancellationToken.None);
-		if (!ref) {
-			return undefined;
-		}
-		return testDisposables.add(ref).object;
 	}
 
 	setup(async () => {
@@ -216,10 +203,6 @@ suite('ChatService', () => {
 				} as unknown as IChatEditingSession;
 			}
 		});
-
-		// Configure test file service with tracking and in-memory storage
-		testFileService = testDisposables.add(new InMemoryTestFileService());
-		instantiationService.stub(IFileService, testFileService);
 
 		chatAgentService = testDisposables.add(instantiationService.createInstance(ChatAgentService));
 		instantiationService.stub(IChatAgentService, chatAgentService);

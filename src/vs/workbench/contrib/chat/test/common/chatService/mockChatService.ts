@@ -38,10 +38,6 @@ export class MockChatService implements IChatService {
 		this._onDidDisposeSession.fire({ sessionResources, reason });
 	}
 
-	setSaveModelsEnabled(enabled: boolean): void {
-
-	}
-
 	processPendingRequests(sessionResource: URI): void {
 
 	}

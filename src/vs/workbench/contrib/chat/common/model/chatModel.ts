@@ -67,7 +67,6 @@ export interface IChatPendingRequest {
  * Excludes observables and non-serializable fields.
  */
 export interface ISerializableSendOptions {
-	agentHostMessageOrigin?: IChatSendRequestOptions['agentHostMessageOrigin'];
 	metadata?: IChatSendRequestOptions['metadata'];
 	modeInfo?: IChatRequestModeInfo;
 	userSelectedModelId?: string;
@@ -3644,7 +3643,6 @@ export function getCodeCitationsMessage(citations: ReadonlyArray<IChatCodeCitati
  */
 export function serializeSendOptions(options: IChatSendRequestOptions): ISerializableSendOptions {
 	return {
-		agentHostMessageOrigin: options.agentHostMessageOrigin,
 		metadata: options.metadata,
 		modeInfo: options.modeInfo,
 		userSelectedModelId: options.userSelectedModelId,

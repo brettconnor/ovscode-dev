@@ -5,22 +5,19 @@
 
 import { DeferredPromise, raceTimeout } from '../../../../../base/common/async.js';
 import { CancellationToken, CancellationTokenSource } from '../../../../../base/common/cancellation.js';
-import { IStringDictionary } from '../../../../../base/common/collections.js';
 import { toErrorMessage } from '../../../../../base/common/errorMessage.js';
 import { BugIndicatingError, ErrorNoTelemetry, onUnexpectedError } from '../../../../../base/common/errors.js';
 import { Emitter, Event } from '../../../../../base/common/event.js';
 import { Codicon } from '../../../../../base/common/codicons.js';
 import { createMarkdownCommandLink, MarkdownString } from '../../../../../base/common/htmlContent.js';
 import { Iterable } from '../../../../../base/common/iterator.js';
-import { Disposable, DisposableResourceMap, DisposableStore, IDisposable, MutableDisposable } from '../../../../../base/common/lifecycle.js';
+import { Disposable, DisposableResourceMap, DisposableStore, IDisposable } from '../../../../../base/common/lifecycle.js';
 import { equals } from '../../../../../base/common/objects.js';
 import { autorun, derived, IObservable, ISettableObservable, observableValue } from '../../../../../base/common/observable.js';
-import { isEqual } from '../../../../../base/common/resources.js';
 import { StopWatch } from '../../../../../base/common/stopwatch.js';
 import { isDefined } from '../../../../../base/common/types.js';
 import { URI } from '../../../../../base/common/uri.js';
 import { generateUuid } from '../../../../../base/common/uuid.js';
-import { OffsetRange } from '../../../../../editor/common/core/ranges/offsetRange.js';
 import { localize } from '../../../../../nls.js';
 import { IConfigurationService } from '../../../../../platform/configuration/common/configuration.js';
 import { IInstantiationService } from '../../../../../platform/instantiation/common/instantiation.js';
@@ -37,8 +34,7 @@ import { IMcpService } from '../../../mcp/common/mcpTypes.js';
 import { awaitStatsForSession } from '../chat.js';
 import { ChatPerfMark, clearChatMarks, markChat } from '../chatPerf.js';
 import { IChatAgentAttachmentCapabilities, IChatAgentCommand, IChatAgentData, IChatAgentHistoryEntry, IChatAgentRequest, IChatAgentResult, IChatAgentService } from '../participants/chatAgents.js';
-import { chatEditingSessionIsReady } from '../editing/chatEditingService.js';
-import { ChatModel, ChatRequestModel, ChatRequestRemovalReason, getRestoredChatRequestSource, IChatModel, IChatPendingRequest, IChatRequestModel, IChatRequestVariableData, IChatResponseModel, IExportableChatData, ISerializableChatData, toChatHistoryContent, updateRanges, ISerializableChatModelInputState } from '../model/chatModel.js';
+import { ChatModel, ChatRequestModel, ChatRequestRemovalReason, IChatModel, IChatPendingRequest, IChatRequestModel, IChatRequestVariableData, IChatResponseModel, IExportableChatData, ISerializableChatData, toChatHistoryContent, updateRanges, ISerializableChatModelInputState } from '../model/chatModel.js';
 import { ChatModelStore, IStartSessionProps } from '../model/chatModelStore.js';
 import { chatAgentLeader, ChatRequestAgentPart, ChatRequestAgentSubcommandPart, ChatRequestSlashCommandPart, chatSubcommandLeader, getPromptText, IParsedChatRequest } from '../requestParser/chatParserTypes.js';
 import { ChatRequestParser } from '../requestParser/chatRequestParser.js';
@@ -46,10 +42,8 @@ import { ChatMcpServersStarting, ChatPendingRequestChangeClassification, ChatPen
 import { ChatRequestTelemetry, ChatServiceTelemetry } from './chatServiceTelemetry.js';
 import { isAgentHostTarget } from '../chatSessionsService.js';
 import { IChatSlashCommandService } from '../participants/chatSlashCommands.js';
-import { IChatTransferService } from '../model/chatTransferService.js';
 import { chatSessionResourceToId, getChatSessionType, LocalChatSessionUri } from '../model/chatUri.js';
 import { ChatRequestVariableSet, IChatRequestVariableEntry, isExplicitFileOrImageVariableEntry, isPromptTextVariableEntry } from '../attachments/chatVariableEntries.js';
-import { IDynamicVariable } from '../attachments/chatVariables.js';
 import { ChatAgentLocation, SessionTypeSelectionReason, ChatConfiguration, ChatModeKind, CustomizationMigrationHintMode } from '../constants.js';
 import { ChatMessageRole, IChatMessage, ILanguageModelsService } from '../languageModels.js';
 import { ILanguageModelToolsService } from '../tools/languageModelToolsService.js';
@@ -160,7 +154,6 @@ export class ChatService extends Disposable implements IChatService {
 	private readonly _pendingRequests = this._register(new DisposableResourceMap<CancellableRequest>());
 	private readonly _queuedRequestDeferreds = new Map<string, DeferredPromise<ChatSendResult>>();
 
-	private _saveModelsEnabled = true;
 
 	private _transferredSessionResource: URI | undefined;
 	public get transferredSessionResource(): URI | undefined {
@@ -193,13 +186,6 @@ export class ChatService extends Disposable implements IChatService {
 	/**
 	 * For test use only
 	 */
-	setSaveModelsEnabled(enabled: boolean): void {
-		this._saveModelsEnabled = enabled;
-	}
-
-	/**
-	 * For test use only
-	 */
 	waitForModelDisposals(): Promise<void> {
 		return this._sessionModels.waitForModelDisposals();
 	}
@@ -214,7 +200,6 @@ export class ChatService extends Disposable implements IChatService {
 		@IChatSlashCommandService private readonly chatSlashCommandService: IChatSlashCommandService,
 		@IChatAgentService private readonly chatAgentService: IChatAgentService,
 		@IConfigurationService private readonly configurationService: IConfigurationService,
-		@IChatTransferService private readonly chatTransferService: IChatTransferService,
 		@IMcpService private readonly mcpService: IMcpService,
 		@IPromptsService private readonly promptsService: IPromptsService,
 		@IChatEntitlementService private readonly chatEntitlementService: IChatEntitlementService,
@@ -302,10 +287,6 @@ export class ChatService extends Disposable implements IChatService {
 		} else {
 			this.logService.info(`ChatService#${method}`);
 		}
-	}
-
-	private error(method: string, message: string): void {
-		this.logService.error(`ChatService#${method} ${message}`);
 	}
 
 	/**
@@ -564,7 +545,6 @@ export class ChatService extends Disposable implements IChatService {
 		}
 
 		const submittedModeKind = options?.modeInfo?.kind;
-		const submittedModeId = options?.modeInfo?.isBuiltin ? submittedModeKind : options?.modeInfo?.modeInstructions?.uri?.toString();
 
 		let model = this._sessionModels.get(sessionResource);
 		if (!model) {
@@ -977,7 +957,6 @@ export class ChatService extends Disposable implements IChatService {
 							acceptedConfirmationData: options?.acceptedConfirmationData,
 							rejectedConfirmationData: options?.rejectedConfirmationData,
 							agentHostSessionConfig: options?.agentHostSessionConfig,
-							agentHostMessageOrigin: options?.agentHostMessageOrigin,
 							metadata: options?.metadata,
 							userSelectedModelId: options?.userSelectedModelId,
 							modelConfiguration,
@@ -1604,14 +1583,13 @@ export class ChatService extends Disposable implements IChatService {
 			const local = existingById.get(remote.id);
 			const modelId = remote.modelId ?? local?.request.modelId;
 			const modelConfiguration = remote.modelId !== undefined ? remote.modelConfiguration : local?.request.modelConfiguration;
-			const agentHostMessageOrigin = remote.agentHostMessageOrigin ?? local?.sendOptions.agentHostMessageOrigin;
-			const metadata = remote.agentHostMessageOrigin !== undefined ? remote.metadata : remote.metadata ?? local?.sendOptions.metadata;
+			const metadata = remote.metadata ?? local?.sendOptions.metadata;
 			const isSystemInitiated = remote.isSystemInitiated ?? local?.request.isSystemInitiated;
-			const systemInitiatedLabel = remote.agentHostMessageOrigin !== undefined ? remote.systemInitiatedLabel : remote.systemInitiatedLabel ?? local?.request.systemInitiatedLabel;
+			const systemInitiatedLabel = remote.systemInitiatedLabel ?? local?.request.systemInitiatedLabel;
 			if (local && local.request.message.text === remote.message && equals(local.request.variableData, variableData)
 				&& local.request.modelId === modelId && equals(local.request.modelConfiguration, modelConfiguration)
 				&& local.request.isSystemInitiated === isSystemInitiated && local.request.systemInitiatedLabel === systemInitiatedLabel
-				&& equals(local.sendOptions.agentHostMessageOrigin, agentHostMessageOrigin) && equals(local.sendOptions.metadata, metadata)) {
+				&& equals(local.sendOptions.metadata, metadata)) {
 				return local.kind === remote.kind ? local : { ...local, kind: remote.kind };
 			}
 			const parsedRequest = this.parseChatRequest(sessionResource, remote.message, model.initialLocation, undefined);
@@ -1632,7 +1610,6 @@ export class ChatService extends Disposable implements IChatService {
 				kind: remote.kind,
 				sendOptions: {
 					...local?.sendOptions,
-					agentHostMessageOrigin,
 					metadata,
 					isSystemInitiated,
 					systemInitiatedLabel,
@@ -1721,13 +1698,6 @@ export class ChatService extends Disposable implements IChatService {
 		model?.acceptResponseProgress(request, progress);
 	}
 
-	private toLocalSessionId(sessionResource: URI) {
-		const localSessionId = LocalChatSessionUri.parseLocalSessionId(sessionResource);
-		if (!localSessionId) {
-			throw new Error(`Invalid local chat session resource: ${sessionResource}`);
-		}
-		return localSessionId;
-	}
 }
 
 export async function chatModelToChatDetail(model: IChatModel): Promise<IChatDetail> {

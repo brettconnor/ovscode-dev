@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { URI } from '../../../../../base/common/uri.js';
-import type { JsonPrimitive } from '../../../../../platform/agentHost/common/state/protocol/state.js';
+type JsonPrimitive = string | number | boolean | null;
 
 /**
  * How often an automation runs. `hourly` fires every hour from creation/update;
