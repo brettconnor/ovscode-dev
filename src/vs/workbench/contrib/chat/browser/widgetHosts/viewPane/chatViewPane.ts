@@ -53,7 +53,7 @@ import { ChatContextKeys } from '../../../common/actions/chatContextKeys.js';
 import { IChatModel, IChatModelInputState } from '../../../common/model/chatModel.js';
 import { CHAT_PROVIDER_ID } from '../../../common/participants/chatParticipantContribTypes.js';
 import { IChatModelReference, IChatService } from '../../../common/chatService/chatService.js';
-import { IChatSessionsService, localChatSessionType } from '../../../common/chatSessionsService.js';
+import { localChatSessionType } from '../../../common/chatSessionsService.js';
 import { LocalChatSessionUri, getChatSessionType, getNewChatSessionResource, isUntitledChatSession } from '../../../common/model/chatUri.js';
 import { ChatAgentLocation, ChatConfiguration, ChatModeKind, getDefaultNewChatSessionType, getDefaultNewChatSessionTypeAndReasonFromServices, getLocalFallbackSessionTypeSelectionReason, SessionTypeSelectionReason } from '../../../common/constants.js';
 import { AgentSessionsControl } from '../../agentSessions/agentSessionsControl.js';
@@ -152,7 +152,6 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 		@ILogService private readonly logService: ILogService,
 		@INotificationService private readonly notificationService: INotificationService,
 		@IWorkbenchLayoutService private readonly layoutService: IWorkbenchLayoutService,
-		@IChatSessionsService private readonly chatSessionsService: IChatSessionsService,
 		@ITelemetryService private readonly telemetryService: ITelemetryService,
 		@ILifecycleService lifecycleService: ILifecycleService,
 		@IProgressService private readonly progressService: IProgressService,
@@ -277,20 +276,6 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 
 		// Agent changes
 		this._register(this.chatAgentService.onDidChangeAgents(() => this.onDidChangeAgents()));
-
-		// Session changes
-		this._register(this.chatSessionsService.onDidCommitSession(async (e) => {
-			if (!this.modelRef.value) {
-				return;
-			}
-
-			if (!isEqual(e.original, this.modelRef.value.object.sessionResource)) {
-				return;
-			}
-
-			const modelRef = await this.chatService.acquireOrLoadSession(e.committed, ChatAgentLocation.Chat, CancellationToken.None, 'ChatViewPane#onDidCommitSession');
-			await this.showModel(CancellationToken.None, modelRef);
-		}));
 
 		// Layout changes
 		this._register(Event.any(
@@ -1255,7 +1240,7 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 	 */
 	private async acquireDefaultNewSession(token: CancellationToken, localFallbackSelectionReason?: SessionTypeSelectionReason): Promise<IChatSessionAcquisitionResult> {
 		const workspace = this.workspaceContextService.getWorkspace();
-		const defaultTypeAndReason = getDefaultNewChatSessionTypeAndReasonFromServices(this.configurationService, this.chatSessionsService, this.storageService, workspace, false, undefined);
+		const defaultTypeAndReason = getDefaultNewChatSessionTypeAndReasonFromServices(this.configurationService, undefined, this.storageService, workspace, false, undefined);
 		if (defaultTypeAndReason.sessionType === localChatSessionType) {
 			return { modelRef: this.chatService.startNewLocalSession(ChatAgentLocation.Chat, { debugOwner: 'ChatViewPane#acquireDefaultNewSession', sessionTypeSelectionReason: localFallbackSelectionReason ?? defaultTypeAndReason.selectionReason }) };
 		}
@@ -1305,7 +1290,7 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 
 	private shouldSkipRestoredLocalSession(sessionResource: URI, model: IChatModel): boolean {
 		const workspace = this.workspaceContextService.getWorkspace();
-		const defaultType = getDefaultNewChatSessionType(this.configurationService, this.chatSessionsService, this.storageService, workspace, false, undefined);
+		const defaultType = getDefaultNewChatSessionType(this.configurationService, undefined, this.storageService, workspace, false, undefined);
 		return defaultType !== localChatSessionType
 			&& getChatSessionType(sessionResource) === localChatSessionType
 			&& !model.hasRequests;

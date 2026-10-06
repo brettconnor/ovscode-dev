@@ -27,7 +27,6 @@ import { ICellEditOperation } from '../../../notebook/common/notebookCommon.js';
 import { IWorkspaceSymbol } from '../../../search/common/search.js';
 import { IChatRequestVariableEntry } from '../attachments/chatVariableEntries.js';
 import { IChatRequestVariableValue } from '../attachments/chatVariables.js';
-import { ReadonlyChatSessionOptionsMap } from '../chatSessionsService.js';
 import { ChatAgentLocation, SessionTypeSelectionReason, ChatModeKind } from '../constants.js';
 import { IChatEditingSession } from '../editing/chatEditingService.js';
 import { IChatModel, IChatRequestModeInfo, IChatRequestModel, IChatRequestVariableData, IChatResponseModel, IExportableChatData, ISerializableChatData } from '../model/chatModel.js';
@@ -2232,7 +2231,6 @@ export interface IChatService {
 }
 
 export interface IChatSessionContext {
-	readonly initialSessionOptions?: ReadonlyChatSessionOptionsMap;
 }
 
 export const KEYWORD_ACTIVIATION_SETTING_ID = 'accessibility.voice.keywordActivation';

@@ -19,7 +19,6 @@ import { IContextKeyService } from '../../../../../../platform/contextkey/common
 import { IKeybindingService } from '../../../../../../platform/keybinding/common/keybinding.js';
 import { ITelemetryService } from '../../../../../../platform/telemetry/common/telemetry.js';
 import { ChatConfiguration, ChatPermissionLevel } from '../../../common/constants.js';
-import { IChatSessionProviderOptionItem, SessionType } from '../../../common/chatSessionsService.js';
 import { MenuItemAction } from '../../../../../../platform/actions/common/actions.js';
 import { IConfigurationService } from '../../../../../../platform/configuration/common/configuration.js';
 import { IDialogService } from '../../../../../../platform/dialogs/common/dialogs.js';
@@ -32,14 +31,6 @@ import { maybeConfirmElevatedPermissionLevel } from '../../../common/chatPermiss
 import { AgentSandboxEnabledSettingValue, AgentSandboxEnabledValue, AgentSandboxSettingId, isAgentSandboxEnabledValue } from '../../../../../../platform/sandbox/common/settings.js';
 import { getCompactCodicon } from '../../chatIcons.js';
 import { getPermissionLevelBadge } from '../../agentSessions/agentHost/agentHostModePickerPresentation.js';
-
-export interface IExtensionPermissionState {
-	/** Stable identifier for the contributing chat session type, used to namespace action ids. */
-	readonly sessionType: string;
-	readonly groupId: string;
-	readonly items: readonly IChatSessionProviderOptionItem[];
-	readonly selectedId: string | undefined;
-}
 
 export interface IPermissionPickerDelegate {
 	readonly currentPermissionLevel: IObservable<ChatPermissionLevel>;
@@ -57,12 +48,6 @@ export interface IPermissionPickerDelegate {
 	 * pass `chat.defaultConfiguration`.
 	 */
 	readonly defaultSettingKey?: string;
-	/**
-	 * When defined and returns a non-empty state, the picker shows the extension-contributed
-	 * items in place of the built-in {@link ChatPermissionLevel} items.
-	 */
-	readonly getExtensionPermissions?: () => IExtensionPermissionState | undefined;
-	readonly setExtensionPermission?: (groupId: string, item: IChatSessionProviderOptionItem) => void;
 	readonly getPermissionLevelHover?: (level: ChatPermissionLevel, meta: IPermissionLevelMeta) => string | undefined;
 	/**
 	 * Whether the experimental "Sandboxing for terminal" toggle may be shown.
@@ -145,11 +130,6 @@ function getPermissionLevelMeta(level: ChatPermissionLevel): IPermissionLevelMet
 	}
 }
 
-/** Sanitize a free-form id segment so it is safe to embed in a stable action identifier. */
-function sanitizeIdSegment(value: string): string {
-	return value.replace(/[^a-zA-Z0-9_-]/g, '_');
-}
-
 function getLocalSandboxEnabledSettingId(): AgentSandboxSettingId.AgentSandboxEnabled | AgentSandboxSettingId.AgentSandboxWindowsEnabled {
 	return isWindows ? AgentSandboxSettingId.AgentSandboxWindowsEnabled : AgentSandboxSettingId.AgentSandboxEnabled;
 }
@@ -180,30 +160,6 @@ export class PermissionPickerActionItem extends ChatInputPickerActionViewItem {
 		const isAutoApprovePolicyRestricted = () => configurationService.inspect<boolean>(ChatConfiguration.GlobalAutoApprove).policyValue === false;
 		const actionProvider: IActionWidgetDropdownActionProvider = {
 			getActions: () => {
-				// If the active session contributes its own permission items, surface those instead
-				// of the built-in Default/AutoApprove/Autopilot levels.
-				const ext = delegate.getExtensionPermissions?.();
-				if (ext && ext.items.length > 0) {
-					const sessionTypeSeg = sanitizeIdSegment(ext.sessionType);
-					const groupSeg = sanitizeIdSegment(ext.groupId);
-					return ext.items.map(item => ({
-						...action,
-						id: `chat.permissions.ext.${sessionTypeSeg}.${groupSeg}.${sanitizeIdSegment(item.id)}`,
-						label: item.name,
-						detail: item.description,
-						icon: item.icon,
-						checked: ext.selectedId === item.id,
-						enabled: !item.locked,
-						tooltip: item.locked ? localize('permissions.ext.locked', "This option is locked") : '',
-						hover: item.description ? { content: item.description } : undefined,
-						run: async () => {
-							delegate.setExtensionPermission?.(ext.groupId, item);
-							if (this.element) {
-								this.renderLabel(this.element);
-							}
-						},
-					} satisfies IActionWidgetDropdownAction));
-				}
 				const currentLevel = delegate.currentPermissionLevel.get();
 				const policyRestricted = isAutoApprovePolicyRestricted();
 				const sandboxToggleEnabled = this.isSandboxToggleAvailable();
@@ -304,11 +260,7 @@ export class PermissionPickerActionItem extends ChatInputPickerActionViewItem {
 				class: undefined,
 				enabled: true,
 				run: async () => {
-					const ext = delegate.getExtensionPermissions?.();
-					const url = ext?.sessionType === SessionType.AgentHostClaude
-						? 'https://code.claude.com/docs/en/permission-modes#available-modes'
-						: 'https://aka.ms/vscode/docs/permissions';
-					await openerService.open(URI.parse(url));
+					await openerService.open(URI.parse('https://aka.ms/vscode/docs/permissions'));
 				}
 			}],
 			reporter: { id: 'ChatPermissionPicker', name: 'ChatPermissionPicker', includeOptions: true },
@@ -387,29 +339,19 @@ export class PermissionPickerActionItem extends ChatInputPickerActionViewItem {
 	protected override renderLabel(element: HTMLElement): IDisposable | null {
 		this.setAriaLabelAttributes(element);
 
-		const ext = this.delegate.getExtensionPermissions?.();
 		let icon: ThemeIcon;
 		let label: string;
 		let tooltip: string;
 		let sandboxIcon = false;
 		const level = this.delegate.currentPermissionLevel.get();
-		if (ext && ext.items.length > 0) {
-			const selected = ext.items.find(i => i.id === ext.selectedId)
-				?? ext.items.find(i => i.default)
-				?? ext.items[0];
-			icon = selected.icon ?? Codicon.lock;
-			label = selected.name;
-			tooltip = selected.description ?? selected.name;
-		} else {
-			const meta = getPermissionLevelMeta(level);
-			icon = meta.icon;
-			label = meta.shortLabel;
-			tooltip = this.delegate.getPermissionLevelHover?.(level, meta) ?? meta.description;
-			if (this.isSandboxToggleAvailable() && this.isSandboxingEnabled()) {
-				sandboxIcon = this.delegate.getSandboxToggle !== undefined;
-				if (!sandboxIcon && level === ChatPermissionLevel.Default) {
-					label = localize('permissions.defaultSandboxed.label', "Default permissions (sandboxed)");
-				}
+		const meta = getPermissionLevelMeta(level);
+		icon = meta.icon;
+		label = meta.shortLabel;
+		tooltip = this.delegate.getPermissionLevelHover?.(level, meta) ?? meta.description;
+		if (this.isSandboxToggleAvailable() && this.isSandboxingEnabled()) {
+			sandboxIcon = this.delegate.getSandboxToggle !== undefined;
+			if (!sandboxIcon && level === ChatPermissionLevel.Default) {
+				label = localize('permissions.defaultSandboxed.label', "Default permissions (sandboxed)");
 			}
 		}
 

@@ -167,7 +167,6 @@ export class ChatSubmitAction extends SubmitAction {
 			ChatContextKeys.inputHasSendableContent,
 			ChatContextKeys.transcriptProgressActive.negate(),
 			ContextKeyExpr.or(whenNotInProgress, ChatContextKeys.editingRequestType.isEqualTo(ChatContextKeys.EditingRequestType.Sent)),
-			ChatContextKeys.chatSessionOptionsValid,
 		);
 
 		super({
@@ -511,71 +510,6 @@ export class OpenWorkspacePickerAction extends Action2 {
 	}
 }
 
-export class ChatSessionPrimaryPickerAction extends Action2 {
-	static readonly ID = 'workbench.action.chat.chatSessionPrimaryPicker';
-	constructor() {
-		super({
-			id: ChatSessionPrimaryPickerAction.ID,
-			title: localize2('interactive.openChatSessionPrimaryPicker.label', "Open Primary Session Picker"),
-			category: CHAT_CATEGORY,
-			f1: false,
-			precondition: ChatContextKeys.enabled,
-			menu: [
-				{
-					// Cloud sessions: keep on the primary chat input toolbar
-					id: MenuId.ChatInput,
-					order: 4,
-					group: 'navigation',
-					when:
-						ContextKeyExpr.and(
-							ChatContextKeys.chatSessionHasModels,
-							ChatContextKeys.chatSessionType.isEqualTo(AgentSessionProviders.Cloud),
-							ContextKeyExpr.or(
-								ChatContextKeys.lockedToCodingAgent,
-								ContextKeyExpr.and(
-									ChatContextKeys.inAgentSessionsWelcome,
-									ChatContextKeys.chatSessionType.notEqualsTo('local')
-								)
-							)
-						)
-				},
-				{
-					// All other coding agents (Claude, etc.): show in the secondary toolbar.
-					// In the Agents window only, hide the worktree/branch pickers for Copilot
-					// CLI sessions because their option groups are surfaced through the CLI
-					// session UI there. They remain visible in the regular VS Code workbench.
-					id: MenuId.ChatInputSecondary,
-					order: 4,
-					group: 'navigation',
-					when:
-						ContextKeyExpr.and(
-							ChatContextKeys.chatSessionHasModels,
-							ChatContextKeys.chatSessionType.notEqualsTo(AgentSessionProviders.Cloud),
-							ContextKeyExpr.or(
-								ChatContextKeys.chatSessionType.notEqualsTo(AgentSessionProviders.Background)
-							),
-							ContextKeyExpr.or(
-								ChatContextKeys.lockedToCodingAgent,
-								ContextKeyExpr.and(
-									ChatContextKeys.inAgentSessionsWelcome,
-									ChatContextKeys.chatSessionType.notEqualsTo('local')
-								)
-							)
-						)
-				},
-			]
-		});
-	}
-
-	override async run(accessor: ServicesAccessor, ...args: unknown[]): Promise<void> {
-		const widgetService = accessor.get(IChatWidgetService);
-		const widget = widgetService.lastFocusedWidget;
-		if (widget) {
-			widget.input.openChatSessionPicker();
-		}
-	}
-}
-
 export const ChangeChatModelActionId = 'workbench.action.chat.changeModel';
 class ChangeChatModelAction extends Action2 {
 	static readonly ID = ChangeChatModelActionId;
@@ -617,7 +551,6 @@ export class ChatEditingSessionSubmitAction extends SubmitAction {
 		const precondition = ContextKeyExpr.and(
 			ChatContextKeys.inputHasSendableContent,
 			notInProgressOrEditing,
-			ChatContextKeys.chatSessionOptionsValid
 		);
 
 		super({
@@ -1070,7 +1003,6 @@ export function registerChatExecuteActions(): DisposableStore {
 	store.add(registerAction2(OpenPermissionPickerAction));
 	store.add(registerAction2(OpenModePickerAction));
 	store.add(registerAction2(OpenWorkspacePickerAction));
-	store.add(registerAction2(ChatSessionPrimaryPickerAction));
 	store.add(registerAction2(ChangeChatModelAction));
 	store.add(registerAction2(CancelEdit));
 	store.add(registerAction2(GetHandoffsAction));

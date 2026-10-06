@@ -35,7 +35,7 @@ import { IMultiDiffSourceResolver, IMultiDiffSourceResolverService } from '../..
 import { NotebookTextModel } from '../../../../notebook/common/model/notebookTextModel.js';
 import { INotebookService } from '../../../../notebook/common/notebookService.js';
 import { ChatEditingService } from '../../../browser/chatEditing/chatEditingServiceImpl.js';
-import { ChatSessionsService } from '../../../browser/chatSessions/chatSessions.contribution.js';
+import { MockChatSessionsService } from '../../common/mockChatSessionsService.js';
 import { ChatAgentService, IChatAgentData, IChatAgentImplementation, IChatAgentService } from '../../../common/participants/chatAgents.js';
 import { ChatEditingSessionState, IChatEditReviewSession, IChatEditingService, IChatEditingSession, IModifiedFileEntry, ModifiedFileEntryState } from '../../../common/editing/chatEditingService.js';
 import { ChatModel, IChatResponseModel } from '../../../common/model/chatModel.js';
@@ -88,7 +88,7 @@ suite('ChatEditingService', function () {
 		collection.set(IChatVariablesService, new MockChatVariablesService());
 		collection.set(IChatSlashCommandService, new class extends mock<IChatSlashCommandService>() { });
 		collection.set(IChatTransferService, new SyncDescriptor(ChatTransferService));
-		collection.set(IChatSessionsService, new SyncDescriptor(ChatSessionsService));
+		collection.set(IChatSessionsService, new SyncDescriptor(MockChatSessionsService));
 		collection.set(IChatEditingService, new SyncDescriptor(ChatEditingService));
 		collection.set(IEditorWorkerService, new SyncDescriptor(TestWorkerService));
 		collection.set(IChatService, new SyncDescriptor(ChatService));
@@ -123,7 +123,7 @@ suite('ChatEditingService', function () {
 
 		chatService = insta.get(IChatService);
 
-		store.add(insta.get(IChatSessionsService) as ChatSessionsService); // Needs to be disposed in between test runs to clear extensionPoint contribution
+		store.add(insta.get(IChatSessionsService) as MockChatSessionsService);
 		store.add(chatService as ChatService);
 		chatService.setSaveModelsEnabled(false);
 

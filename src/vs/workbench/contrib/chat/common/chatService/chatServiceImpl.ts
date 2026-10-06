@@ -45,7 +45,7 @@ import { chatAgentLeader, ChatRequestAgentPart, ChatRequestAgentSubcommandPart, 
 import { ChatRequestParser } from '../requestParser/chatRequestParser.js';
 import { ChatMcpServersStarting, ChatPendingRequestChangeClassification, ChatPendingRequestChangeEvent, ChatPendingRequestChangeEventName, ChatRequestQueueKind, ChatSendResult, ChatSendResultQueued, ChatSendResultSent, ChatStopCancellationNoopClassification, ChatStopCancellationNoopEvent, ChatStopCancellationNoopEventName, IChatCompleteResponse, IChatDetail, IChatFollowup, IChatModelReference, IChatProgress, IChatQuestionAnswers, IChatRequestAcceptedEvent, IChatRequestSubmittedEvent, IChatSendRequestOptions, IChatSendRequestResponseState, IChatService, IChatSessionStartOptions, IChatUserActionEvent, IRemotePendingRequest, ResponseModelState } from './chatService.js';
 import { ChatRequestTelemetry, ChatServiceTelemetry } from './chatServiceTelemetry.js';
-import { IChatSessionsService, isAgentHostTarget, isTerminalCommandPrompt, localChatSessionType } from '../chatSessionsService.js';
+import { isAgentHostTarget, localChatSessionType } from '../chatSessionsService.js';
 import { ChatSessionStore, IChatSessionEntryMetadata } from '../model/chatSessionStore.js';
 import { IChatSlashCommandService } from '../participants/chatSlashCommands.js';
 import { IChatTransferService } from '../model/chatTransferService.js';
@@ -247,7 +247,6 @@ export class ChatService extends Disposable implements IChatService {
 		@IChatAgentService private readonly chatAgentService: IChatAgentService,
 		@IConfigurationService private readonly configurationService: IConfigurationService,
 		@IChatTransferService private readonly chatTransferService: IChatTransferService,
-		@IChatSessionsService private readonly chatSessionService: IChatSessionsService,
 		@IMcpService private readonly mcpService: IMcpService,
 		@IPromptsService private readonly promptsService: IPromptsService,
 		@IChatEntitlementService private readonly chatEntitlementService: IChatEntitlementService,
@@ -284,9 +283,6 @@ export class ChatService extends Disposable implements IChatService {
 			this.chatDebugService.endSession(model.sessionResource);
 			this._sessionFollowupCancelTokens.get(model.sessionResource)?.cancel();
 			this._sessionFollowupCancelTokens.deleteAndDispose(model.sessionResource);
-			// Drop the forward untitled→real mapping for this session so it stops
-			// re-targeting late sends. The inverse alias is intentionally retained.
-			this.chatSessionService.clearMaterializedSessionResource(model.sessionResource);
 			this._onDidDisposeSession.fire({ sessionResources: [model.sessionResource], reason: 'disposed' });
 		}));
 
@@ -871,7 +867,7 @@ export class ChatService extends Disposable implements IChatService {
 	 * session (the original behavior).
 	 */
 	private getAttachmentCapabilitiesForParser(chatSessionType: string, agent: IChatAgentData | undefined): IChatAgentAttachmentCapabilities | undefined {
-		return this.chatSessionService.getCapabilitiesForSessionType(chatSessionType) ?? agent?.capabilities;
+		return agent?.capabilities;
 	}
 
 	private parseChatRequest(sessionResource: URI, request: string, location: ChatAgentLocation, options: IChatSendRequestOptions | undefined): IParsedChatRequest {
@@ -920,7 +916,7 @@ export class ChatService extends Disposable implements IChatService {
 		const agentSlashCommandPart = parsedRequest.parts.find((r): r is ChatRequestAgentSubcommandPart => r instanceof ChatRequestAgentSubcommandPart);
 		const commandPart = parsedRequest.parts.find((r): r is ChatRequestSlashCommandPart => r instanceof ChatRequestSlashCommandPart);
 		const requests = model.getRequests().filter(request => request !== preservedRequest);
-		const isTerminalCommand = isTerminalCommandPrompt(parsedRequest.text, this.chatSessionService.getCapabilitiesForSessionType(getChatSessionType(sessionResource))?.terminalCommandPrefix);
+		const isTerminalCommand = false;
 		const requestTelemetry = this.instantiationService.createInstance(ChatRequestTelemetry, {
 			agent: agentPart?.agent ?? defaultAgent,
 			agentSlashCommandPart,

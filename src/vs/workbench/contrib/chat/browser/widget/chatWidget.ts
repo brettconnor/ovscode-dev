@@ -67,7 +67,7 @@ import { getDynamicVariablesForWidget, getSelectedToolAndToolSetsForWidget } fro
 import { ChatWidgetPasteTarget } from '../attachments/chatWidgetPasteTarget.js';
 import { ChatRequestQueueKind, ChatSendResult, ChatSendResultSent, IChatLocationData, IChatSendRequestOptions, IChatService } from '../../common/chatService/chatService.js';
 import { getChatSessionTelemetryContext } from '../../common/chatService/chatServiceTelemetry.js';
-import { IChatSessionsService, localChatSessionType } from '../../common/chatSessionsService.js';
+import { localChatSessionType } from '../../common/chatSessionsService.js';
 import { IChatSlashCommandService } from '../../common/participants/chatSlashCommands.js';
 import { IChatTodoListService } from '../../common/tools/chatTodoListService.js';
 import { ChatRequestVariableSet, IChatRequestTranscriptContextVariableEntry, IChatRequestVariableEntry, isPastedTextArtifact, isPromptFileVariableEntry, isPromptTextVariableEntry, isWorkspaceVariableEntry, PromptFileVariableKind, toPromptFileVariableEntry } from '../../common/attachments/chatVariableEntries.js';
@@ -601,7 +601,6 @@ export class ChatWidget extends Disposable implements IChatWidget {
 		@ILanguageModelToolsService private readonly toolsService: ILanguageModelToolsService,
 		@IChatLayoutService private readonly chatLayoutService: IChatLayoutService,
 		@IChatEntitlementService private readonly chatEntitlementService: IChatEntitlementService,
-		@IChatSessionsService private readonly chatSessionsService: IChatSessionsService,
 		@IAgentSessionsService private readonly agentSessionsService: IAgentSessionsService,
 		@IChatTodoListService private readonly chatTodoListService: IChatTodoListService,
 		@ILifecycleService private readonly lifecycleService: ILifecycleService,
@@ -855,7 +854,7 @@ export class ChatWidget extends Disposable implements IChatWidget {
 
 	private _updateAgentCapabilitiesContextKeys(agent: IChatAgentData | undefined): void {
 		// Check if the agent has capabilities defined directly
-		const capabilities = agent?.capabilities ?? (this._lockedAgent ? this.chatSessionsService.getCapabilitiesForSessionType(this._lockedAgent.id) : undefined);
+		const capabilities = agent?.capabilities;
 		this._attachmentCapabilities = capabilities ?? supportsAllAttachments;
 
 		const supportsAttachments = Object.keys(filter(this._attachmentCapabilities, (key, value) => value === true)).length > 0;
@@ -2804,16 +2803,9 @@ export class ChatWidget extends Disposable implements IChatWidget {
 			this._chatSessionSupportsRenameContextKey.set(false);
 		}));
 		this._sessionIsEmptyContextKey.set(model.getRequests().length === 0);
-		const updateSessionCapabilities = () => {
-			const supportsFork = this.chatSessionsService.sessionSupportsFork(model.sessionResource);
-			this._chatSessionSupportsForkContextKey.set(supportsFork);
-			const supportsRename = getChatSessionType(model.sessionResource) === localChatSessionType
-				|| this.chatSessionsService.sessionSupportsRename(model.sessionResource);
-			this._chatSessionSupportsRenameContextKey.set(supportsRename);
-			this.listWidget?.updateRendererOptions({ supportsFork });
-		};
-		updateSessionCapabilities();
-		this.viewModelDisposables.add(this.chatSessionsService.onDidChangeAvailability(() => updateSessionCapabilities()));
+		this._chatSessionSupportsForkContextKey.set(false);
+		this._chatSessionSupportsRenameContextKey.set(false);
+		this.listWidget?.updateRendererOptions({ supportsFork: false });
 		this._sessionHasDebugDataContextKey.set(this.chatDebugService.getEvents(model.sessionResource).length > 0);
 		let lastSteeringCount = 0;
 		const updatePendingRequestKeys = (announceSteering: boolean) => {
