@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import assert from 'assert';
-import { DeferredPromise } from '../../../../../../base/common/async.js';
 import { Emitter, Event } from '../../../../../../base/common/event.js';
 import { DisposableStore } from '../../../../../../base/common/lifecycle.js';
 import { URI } from '../../../../../../base/common/uri.js';
@@ -17,7 +16,7 @@ import { ILogService, NullLogService } from '../../../../../../platform/log/comm
 import { ITreeSitterLibraryService } from '../../../../../../editor/common/services/treeSitter/treeSitterLibraryService.js';
 import { InMemoryStorageService, IStorageService } from '../../../../../../platform/storage/common/storage.js';
 import { IChatService } from '../../../../chat/common/chatService/chatService.js';
-import { IAhpTerminalCommandSource, IChatTerminalOutputSource, IChatTerminalToolProgressPart, ITerminalInstance, ITerminalService } from '../../../../terminal/browser/terminal.js';
+import { IChatTerminalOutputSource, IChatTerminalToolProgressPart, ITerminalInstance, ITerminalService } from '../../../../terminal/browser/terminal.js';
 import { TerminalChatService } from '../../browser/terminalChatService.js';
 
 /**
@@ -168,48 +167,6 @@ suite('TerminalChatService', () => {
 			markedPartIndices: [25, 26],
 			eventSessionIds: [targetSessionId],
 		});
-	});
-
-	test('getTerminalInstanceByToolSessionId waits for pending AHP terminal creation', async () => {
-		const pendingTerminal = new DeferredPromise<ITerminalInstance>();
-		const instance = { instanceId: 3 } as ITerminalInstance;
-		store.add(service.registerAhpCommandSource(
-			'tool-session-a',
-			{ dispose() { } } as IAhpTerminalCommandSource,
-			pendingTerminal.p,
-		));
-
-		let resolved = false;
-		const lookup = service.getTerminalInstanceByToolSessionId('tool-session-a').then(instance => {
-			resolved = true;
-			return instance;
-		});
-		await Promise.resolve();
-		const resolvedBeforeCreation = resolved;
-
-		await pendingTerminal.complete(instance);
-
-		assert.deepStrictEqual({
-			resolvedBeforeCreation,
-			instance: await lookup,
-		}, {
-			resolvedBeforeCreation: false,
-			instance,
-		});
-	});
-
-	test('getTerminalInstanceByToolSessionId handles failed AHP terminal creation', async () => {
-		const pendingTerminal = new DeferredPromise<ITerminalInstance>();
-		store.add(service.registerAhpCommandSource(
-			'tool-session-a',
-			{ dispose() { } } as IAhpTerminalCommandSource,
-			pendingTerminal.p,
-		));
-
-		const lookup = service.getTerminalInstanceByToolSessionId('tool-session-a');
-		await pendingTerminal.error(new Error('terminal creation failed'));
-
-		assert.strictEqual(await lookup, undefined);
 	});
 
 	suite('getAutoApproveActions', () => {

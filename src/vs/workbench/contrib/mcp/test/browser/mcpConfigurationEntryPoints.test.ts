@@ -24,7 +24,6 @@ import { TestInstantiationService } from '../../../../../platform/instantiation/
 import { ILabelService } from '../../../../../platform/label/common/label.js';
 import { IAllowedMcpServersService, IGalleryMcpServer, IInstallableMcpServer } from '../../../../../platform/mcp/common/mcpManagement.js';
 import { IMcpResourceScannerService } from '../../../../../platform/mcp/common/mcpResourceScannerService.js';
-import { McpResourceFormat } from '../../../../../platform/mcp/common/mcpWorkspaceConfiguration.js';
 import { IMcpServerConfiguration, McpServerType, McpServerVariableType } from '../../../../../platform/mcp/common/mcpPlatformTypes.js';
 import { INotificationService } from '../../../../../platform/notification/common/notification.js';
 import { IOpenerService } from '../../../../../platform/opener/common/opener.js';
@@ -37,19 +36,14 @@ import { Workspace } from '../../../../../platform/workspace/test/common/testWor
 import { ActiveEditorContext, ResourceContextKey } from '../../../../common/contextkeys.js';
 import { IEditorService } from '../../../../services/editor/common/editorService.js';
 import { IWorkbenchEnvironmentService } from '../../../../services/environment/common/environmentService.js';
-import { IUserDataProfileService } from '../../../../services/userDataProfile/common/userDataProfile.js';
 import { IWorkbenchLocalMcpServer, IWorkbenchMcpManagementService, IWorkbencMcpServerInstallOptions, LocalMcpServerScope, WorkspaceMcpConfigKind } from '../../../../services/mcp/common/mcpWorkbenchManagementService.js';
 import { IMcpWorkspaceInstallTargetService, McpWorkspaceInstallTargetService } from '../../../../services/mcp/common/mcpWorkspaceInstallTargetService.js';
-import { IAgentHostCustomizationService } from '../../../chat/browser/agentSessions/agentHost/agentHostCustomizationService.js';
-import { IChatWidget, IChatWidgetService } from '../../../chat/browser/chat.js';
 import { ChatContextKeys } from '../../../chat/common/actions/chatContextKeys.js';
-import { SessionType } from '../../../chat/common/chatSessionsService.js';
 import { TEXT_FILE_EDITOR_ID } from '../../../files/common/files.js';
 import { AddConfigurationAction, OpenWorkspaceFolderMcpResourceCommand } from '../../browser/mcpCommands.js';
 import { McpConfigurationDestination } from '../../browser/mcpConfigurationDestination.js';
 import { getContextMenuActions, InstallAction, InstallInRemoteAction, InstallInWorkspaceAction, ShowServerJsonConfigurationAction } from '../../browser/mcpServerActions.js';
 import { mcpWorkspaceRootConfig } from '../../common/mcpConfiguration.js';
-import { IMcpCopilotGlobalConfigurationService } from '../../common/mcpCopilotGlobalConfigurationService.js';
 import { IMcpRegistry } from '../../common/mcpRegistryTypes.js';
 import { IMcpServer, IMcpService, IMcpWorkbenchService, IWorkbenchMcpServer, McpCollectionDefinition, McpConnectionState, McpServerDefinition, McpServerInstallState } from '../../common/mcpTypes.js';
 import { startServerByFilter } from '../../common/mcpTypesUtils.js';
@@ -94,13 +88,8 @@ suite('MCP configuration entry points', () => {
 	const rootFile = '.mcp.json';
 	const legacyFile = '.vscode/mcp.json';
 	const installable: IInstallableMcpServer = { name: 'same-name', config: { type: McpServerType.LOCAL, command: 'node', args: ['server.js'] } };
-	const agentHostSession = URI.from({ scheme: SessionType.AgentHostCopilot, path: '/test-session' });
 
-	function chatWidget(sessionResource?: URI): IChatWidget {
-		return upcastDeepPartial<IChatWidget>({ viewModel: sessionResource ? { sessionResource } : undefined });
-	}
-
-	function setup(enabled: boolean, existing: string[] = [], multiRoot = false, withAgentHostSession = false) {
+	function setup(enabled: boolean, existing: string[] = [], multiRoot = false, _withAgentHostSession = false) {
 		const instantiation = store.add(new TestInstantiationService());
 		const quickInput = new TestQuickInputService();
 		const folder = toWorkspaceFolder(URI.file('/project'));
@@ -112,7 +101,6 @@ suite('MCP configuration entry points', () => {
 		const errors: Parameters<INotificationService['error']>[0][] = [];
 		const existenceChecks: string[] = [];
 		const installs: { server: IInstallableMcpServer; options: IWorkbencMcpServerInstallOptions | undefined }[] = [];
-		const agentHostAdds: { session: URI; name: string; config: IMcpServerConfiguration }[] = [];
 		const servers = observableValue<readonly IMcpServer[]>('servers', []);
 		const collections = observableValue<readonly McpCollectionDefinition[]>('collections', []);
 
@@ -148,16 +136,11 @@ suite('MCP configuration entry points', () => {
 		instantiation.stub(IOpenerService, {});
 		instantiation.stub(INotificationService, { error: error => errors.push(error) });
 		instantiation.stub(ILabelService, {});
-		instantiation.stub(IAgentHostCustomizationService, { addMcpServer: (session, name, config) => agentHostAdds.push({ session, name, config }) });
-		const lastFocusedWidget = withAgentHostSession ? chatWidget(agentHostSession) : undefined;
-		instantiation.stub(IChatWidgetService, { lastFocusedWidget, getAllWidgets: () => lastFocusedWidget ? [lastFocusedWidget] : [] });
 		instantiation.stub(ITelemetryService, NullTelemetryService);
 		instantiation.stub(IMcpService, { servers });
 		instantiation.stub(IMcpRegistry, { collections });
-		instantiation.stub(IMcpCopilotGlobalConfigurationService, { getConfigurationResource: async () => undefined });
 		instantiation.stub(IMcpResourceScannerService, {});
 		instantiation.stub(IAllowedMcpServersService, { isAllowed: () => true });
-		instantiation.stub(IUserDataProfileService, upcastDeepPartial<IUserDataProfileService>({ currentProfile: { mcpResource: URI.file('/user/mcp.json') } }));
 
 		const runtimeServer = (id: string, resource: URI) => {
 			const definition = upcastPartial<McpServerDefinition>({ id, label: installable.name, presentation: { origin: { uri: resource, range: new Range(3, 1, 3, 5) } } });
@@ -193,7 +176,7 @@ suite('MCP configuration entry points', () => {
 				return upcastPartial<IWorkbenchMcpServer>({ id: local.id, name: local.name, local });
 			},
 		});
-		return { instantiation, quickInput, folder, secondFolder, workspace, opened, selections, started, errors, existenceChecks, installs, agentHostAdds, servers, runtimeServer, destination: instantiation.createInstance(McpConfigurationDestination) };
+		return { instantiation, quickInput, folder, secondFolder, workspace, opened, selections, started, errors, existenceChecks, installs, servers, runtimeServer, destination: instantiation.createInstance(McpConfigurationDestination) };
 	}
 
 	for (const enabled of [false, true]) {
@@ -325,120 +308,6 @@ suite('MCP configuration entry points', () => {
 		});
 	}
 
-	for (const enabled of [false, true]) {
-		for (const selection of ['Add to Current Agent Session', 'Global', 'Remote', 'Workspace', ...(enabled ? ['Workspace (second)'] : [])]) {
-			test(`agent-host target is shown alongside persistent targets: ${selection}, root=${enabled}`, async () => {
-				const fixture = setup(enabled, [], true, true);
-				fixture.instantiation.stub(IWorkbenchEnvironmentService, { remoteAuthority: 'ssh-remote+test' });
-				fixture.instantiation.stub(ILabelService, { getHostLabel: () => 'Test Remote' });
-				fixture.quickInput.selections.push('Command (stdio)', selection);
-				fixture.quickInput.inputs.push('node server.js', installable.name);
-				await new AddConfigurationAction().run(fixture.instantiation);
-				assert.deepStrictEqual({
-					targets: fixture.quickInput.pickLabels[1],
-					descriptions: fixture.quickInput.pickOptions[1].descriptions,
-					prompts: fixture.quickInput.prompts,
-					agentHostAdds: fixture.agentHostAdds,
-					installs: fixture.installs.map(install => install.options),
-					errors: fixture.errors,
-				}, {
-					targets: ['Add to Current Agent Session', 'Global', 'Remote', 'Workspace', ...(enabled ? [`Workspace (${fixture.folder.name})`, `Workspace (${fixture.secondFolder.name})`] : [])],
-					descriptions: [undefined, 'Available in all workspaces, runs locally', 'Available on this remote machine, runs on Test Remote', 'Available in this workspace, runs on Test Remote', ...(enabled ? ['Workspace Folder', 'Workspace Folder'] : [])],
-					prompts: ['Choose the type of MCP server to add', 'Enter Command', 'Enter Server ID', 'Select the configuration target'],
-					agentHostAdds: selection === 'Add to Current Agent Session' ? [{ session: agentHostSession, name: installable.name, config: installable.config }] : [],
-					installs: selection === 'Add to Current Agent Session' ? [] : [{
-						target: selection === 'Global' ? ConfigurationTarget.USER_LOCAL
-							: selection === 'Remote' ? ConfigurationTarget.USER_REMOTE
-								: selection === 'Workspace' ? ConfigurationTarget.WORKSPACE : fixture.secondFolder,
-						workspaceConfig: selection === 'Workspace (second)' ? WorkspaceMcpConfigKind.Root : undefined,
-					}],
-					errors: [],
-				});
-			});
-		}
-	}
-
-	const secondAgentHostSession = agentHostSession.with({ path: '/second-session' });
-	const localSession = URI.from({ scheme: SessionType.Local, path: '/local-session' });
-	for (const { name, focused, open, expected } of [
-		{ name: 'focused agent-host session wins over other open sessions', focused: agentHostSession, open: [secondAgentHostSession, agentHostSession], expected: agentHostSession },
-		{ name: 'sole open agent-host session is offered when no chat widget remains focused', focused: undefined, open: [agentHostSession], expected: agentHostSession },
-		{ name: 'sole agent-host session is offered when a non-agent-host chat is focused', focused: localSession, open: [localSession, agentHostSession], expected: agentHostSession },
-		{ name: 'widgets without view models are ignored', focused: undefined, open: [undefined, agentHostSession], expected: agentHostSession },
-		{ name: 'duplicate widgets for the same session are not ambiguous', focused: undefined, open: [agentHostSession, URI.parse(agentHostSession.toString())], expected: agentHostSession },
-		{ name: 'distinct agent-host sessions are ambiguous without focus', focused: undefined, open: [agentHostSession, secondAgentHostSession], expected: undefined },
-		{ name: 'non-agent-host focus does not resolve ambiguity', focused: localSession, open: [agentHostSession, localSession, secondAgentHostSession], expected: undefined },
-		{ name: 'non-agent-host sessions are not offered', focused: localSession, open: [localSession, undefined], expected: undefined },
-		{ name: 'no open sessions leaves only persistent targets', focused: undefined, open: [], expected: undefined },
-	]) {
-		test(name, async () => {
-			const fixture = setup(true);
-			fixture.instantiation.stub(IChatWidgetService, {
-				lastFocusedWidget: focused ? chatWidget(focused) : undefined,
-				getAllWidgets: () => open.map(session => chatWidget(session)),
-			});
-			fixture.quickInput.selections.push('Command (stdio)', expected ? 'Add to Current Agent Session' : 'Global');
-			fixture.quickInput.inputs.push('node server.js', installable.name);
-			await new AddConfigurationAction().run(fixture.instantiation);
-			assert.deepStrictEqual({
-				targets: fixture.quickInput.pickLabels[1],
-				agentHostAdds: fixture.agentHostAdds,
-				installs: fixture.installs.map(install => install.options),
-				errors: fixture.errors,
-			}, {
-				targets: [...(expected ? ['Add to Current Agent Session'] : []), 'Global', 'Workspace'],
-				agentHostAdds: expected ? [{ session: expected, name: installable.name, config: installable.config }] : [],
-				installs: expected ? [] : [{ target: ConfigurationTarget.USER_LOCAL, workspaceConfig: undefined }],
-				errors: [],
-			});
-		});
-	}
-
-	for (const withAgentHostSession of [false, true]) {
-		test(`empty window preserves destination selection: agent host=${withAgentHostSession}`, async () => {
-			const fixture = setup(true, [], false, withAgentHostSession);
-			fixture.instantiation.stub(IWorkspaceContextService, 'getWorkbenchState', () => WorkbenchState.EMPTY);
-			fixture.quickInput.selections.push('Command (stdio)', ...(withAgentHostSession ? ['Global'] : []));
-			fixture.quickInput.inputs.push('node server.js', installable.name);
-			await new AddConfigurationAction().run(fixture.instantiation);
-			assert.deepStrictEqual({
-				targets: fixture.quickInput.pickLabels.slice(1),
-				installs: fixture.installs.map(install => install.options),
-				agentHostAdds: fixture.agentHostAdds,
-			}, {
-				targets: withAgentHostSession ? [['Add to Current Agent Session', 'Global']] : [],
-				installs: [{ target: ConfigurationTarget.USER_LOCAL, workspaceConfig: undefined }],
-				agentHostAdds: [],
-			});
-		});
-	}
-
-	for (const stage of ['type', 'command', 'name', 'destination', 'file']) {
-		test(`agent-host add cancellation at ${stage} has no side effects`, async () => {
-			const fixture = setup(true, [legacyFile], false, true);
-			fixture.quickInput.selections.push(...(stage === 'type' ? [undefined] : ['Command (stdio)']));
-			if (stage === 'destination') {
-				fixture.quickInput.selections.push(undefined);
-			} else if (stage === 'file') {
-				fixture.quickInput.selections.push('Workspace', undefined);
-			}
-			if (stage !== 'type') {
-				fixture.quickInput.inputs.push(stage === 'command' ? undefined : 'node server.js');
-				if (stage !== 'command') {
-					fixture.quickInput.inputs.push(stage === 'name' ? undefined : installable.name);
-				}
-			}
-			await new AddConfigurationAction().run(fixture.instantiation);
-			assert.deepStrictEqual({
-				agentHostAdds: fixture.agentHostAdds, installs: fixture.installs, opened: fixture.opened, started: fixture.started, errors: fixture.errors,
-				remainingPicks: fixture.quickInput.selections, remainingInputs: fixture.quickInput.inputs,
-			}, {
-				agentHostAdds: [], installs: [], opened: [], started: [], errors: [],
-				remainingPicks: [], remainingInputs: [],
-			});
-		});
-	}
-
 	for (const folderCount of [0, 1, 2]) {
 		for (const enabled of [false, true]) {
 			test(`manual add excludes unsupported aggregate workspace: folders=${folderCount}, root=${enabled}`, async () => {
@@ -470,10 +339,8 @@ suite('MCP configuration entry points', () => {
 		await new AddConfigurationAction().run(fixture.instantiation);
 		assert.deepStrictEqual({
 			targets: fixture.quickInput.pickLabels[1],
-			installs: fixture.installs, agentHostAdds: fixture.agentHostAdds, opened: fixture.opened, started: fixture.started, errors: fixture.errors,
 		}, {
-			targets: ['Add to Current Agent Session', 'Global', `Workspace (${fixture.folder.name})`, `Workspace (${fixture.secondFolder.name})`],
-			installs: [], agentHostAdds: [], opened: [], started: [], errors: [],
+			targets: ['Global', `Workspace (${fixture.folder.name})`, `Workspace (${fixture.secondFolder.name})`],
 		});
 	});
 
@@ -527,12 +394,10 @@ suite('MCP configuration entry points', () => {
 			assert.deepStrictEqual({
 				pickerCount: fixture.quickInput.pickLabels.length,
 				options: fixture.installs.map(install => install.options),
-				agentHostAdds: fixture.agentHostAdds,
 				errors: fixture.errors,
 			}, {
 				pickerCount: 1,
 				options: [{ target: fixture.folder, workspaceConfig: file === rootFile ? WorkspaceMcpConfigKind.Root : WorkspaceMcpConfigKind.LegacyVscode }],
-				agentHostAdds: [],
 				errors: [],
 			});
 		});
@@ -550,7 +415,6 @@ suite('MCP configuration entry points', () => {
 				selections: fixture.selections,
 				started: fixture.started,
 				errors: fixture.errors,
-				agentHostAdds: fixture.agentHostAdds,
 			}, {
 				pickerCount: 1,
 				kind: file === rootFile ? WorkspaceMcpConfigKind.Root : WorkspaceMcpConfigKind.LegacyVscode,
@@ -558,7 +422,6 @@ suite('MCP configuration entry points', () => {
 				selections: [new Range(3, 1, 3, 5)],
 				started: [`installed:${resource.path}`],
 				errors: [],
-				agentHostAdds: [],
 			});
 		});
 	}
@@ -636,147 +499,6 @@ suite('MCP configuration entry points', () => {
 			});
 		});
 	}
-
-	suite('manual Copilot Global', () => {
-		function setupGlobal(resource: URI | undefined = URI.file('/home/me/.copilot/mcp-config.json')) {
-			const fixture = setup(true);
-			const writes: { servers: IInstallableMcpServer[]; resource: URI; format: McpResourceFormat | undefined }[] = [];
-			const notifications: Parameters<INotificationService['info']>[0][] = [];
-			let lookups = 0;
-			fixture.instantiation.stub(IMcpCopilotGlobalConfigurationService, {
-				getConfigurationResource: async () => { lookups++; return resource; },
-			});
-			fixture.instantiation.stub(IMcpResourceScannerService, {
-				addMcpServers: async (servers, resource, _target, format) => { writes.push({ servers, resource, format }); },
-			});
-			fixture.instantiation.stub(ILabelService, { getUriLabel: uri => uri.toString(true), getHostLabel: () => 'test-host' });
-			fixture.instantiation.stub(INotificationService, 'info', (message: Parameters<INotificationService['info']>[0]) => { notifications.push(message); });
-			return { ...fixture, writes, notifications, get lookups() { return lookups; } };
-		}
-
-		for (const remote of [false, true]) {
-			for (const http of [false, true]) {
-				test(`writes manual ${http ? 'HTTP' : 'stdio'} to ${remote ? 'remote' : 'local'} Copilot Global`, async () => {
-					const resource = remote ? URI.parse('vscode-remote://ssh-remote+test/home/me/custom/mcp-config.json') : URI.file('/home/me/.copilot/mcp-config.json');
-					const fixture = setupGlobal(resource);
-					if (remote) {
-						fixture.instantiation.stub(IWorkbenchEnvironmentService, { remoteAuthority: 'ssh-remote+test' });
-					}
-					fixture.quickInput.selections.push(http ? 'HTTP (HTTP or Server-Sent Events)' : 'Command (stdio)', 'Global', 'Copilot Global');
-					fixture.quickInput.inputs.push(http ? 'https://example.com/mcp' : 'node server.js', installable.name);
-					await new AddConfigurationAction().run(fixture.instantiation);
-					assert.deepStrictEqual({
-						writes: fixture.writes,
-						opened: fixture.opened,
-						installs: fixture.installs,
-						started: fixture.started,
-						pickers: fixture.quickInput.pickLabels.slice(1),
-						globalDescriptions: fixture.quickInput.pickOptions.at(-1)?.descriptions,
-						globalDetails: fixture.quickInput.pickOptions.at(-1)?.details,
-						questions: fixture.quickInput.questionOrder,
-						notified: fixture.notifications.length === 1 && String(fixture.notifications[0]).includes('environment variables on the agent-host machine'),
-					}, {
-						writes: [{ servers: [{ ...(http ? { name: installable.name, config: { type: McpServerType.REMOTE, url: 'https://example.com/mcp' } } : installable), inputs: undefined }], resource, format: McpResourceFormat.CopilotGlobal }],
-						opened: [resource],
-						installs: [], started: [],
-						pickers: [remote ? ['Global', 'Remote', 'Workspace'] : ['Global', 'Workspace'], ['Copilot Global', 'User Configuration (deprecated)']],
-						globalDescriptions: [resource.toString(true), URI.file('/user/mcp.json').toString(true)],
-						globalDetails: [undefined, undefined],
-						questions: ['pick', 'input', 'input', 'pick', 'pick'],
-						notified: true,
-					});
-				});
-			}
-		}
-
-		for (const choice of ['User Configuration (deprecated)', undefined]) {
-			test(`global choice ${choice ?? 'cancellation'} preserves legacy behavior`, async () => {
-				const fixture = setupGlobal();
-				fixture.quickInput.selections.push('Command (stdio)', 'Global', choice);
-				fixture.quickInput.inputs.push('node server.js', installable.name);
-				await new AddConfigurationAction().run(fixture.instantiation);
-				assert.deepStrictEqual({ writes: fixture.writes, targets: fixture.installs.map(install => install.options?.target), notifications: fixture.notifications },
-					{ writes: [], targets: choice ? [ConfigurationTarget.USER_LOCAL] : [], notifications: [] });
-			});
-		}
-
-		test('shows the active VS Code profile destination rather than the default profile', async () => {
-			const fixture = setupGlobal();
-			const profileResource = URI.file('/user/profiles/custom/mcp.json');
-			fixture.instantiation.stub(IUserDataProfileService, upcastDeepPartial<IUserDataProfileService>({ currentProfile: { mcpResource: profileResource } }));
-			fixture.quickInput.selections.push('Command (stdio)', 'Global', undefined);
-			fixture.quickInput.inputs.push('node server.js', installable.name);
-			await new AddConfigurationAction().run(fixture.instantiation);
-			assert.deepStrictEqual(fixture.quickInput.pickOptions.at(-1)?.descriptions, [
-				URI.file('/home/me/.copilot/mcp-config.json').toString(true),
-				profileResource.toString(true),
-			]);
-		});
-
-		test('unavailable host falls back to VS Code user configuration', async () => {
-			const fixture = setupGlobal();
-			fixture.instantiation.stub(IMcpCopilotGlobalConfigurationService, { getConfigurationResource: async () => undefined });
-			fixture.quickInput.selections.push('Command (stdio)', 'Global');
-			fixture.quickInput.inputs.push('node server.js', installable.name);
-			await new AddConfigurationAction().run(fixture.instantiation);
-			assert.deepStrictEqual({ targets: fixture.installs.map(install => install.options?.target), writes: fixture.writes, pickers: fixture.quickInput.pickLabels.length },
-				{ targets: [ConfigurationTarget.USER_LOCAL], writes: [], pickers: 2 });
-		});
-
-		for (const failure of ['policy', 'write']) {
-			test(`${failure} failure is surfaced without opening a file or reporting success`, async () => {
-				const fixture = setupGlobal();
-				if (failure === 'policy') {
-					fixture.instantiation.stub(IAllowedMcpServersService, { isAllowed: () => new MarkdownString('Blocked by policy') });
-				} else {
-					fixture.instantiation.stub(IMcpResourceScannerService, { addMcpServers: async () => { throw new Error('Concurrent edit'); } });
-				}
-				fixture.quickInput.selections.push('Command (stdio)', 'Global', 'Copilot Global');
-				fixture.quickInput.inputs.push('node server.js', installable.name);
-				await new AddConfigurationAction().run(fixture.instantiation);
-				assert.deepStrictEqual({ errors: fixture.errors.map(String), writes: fixture.writes, opened: fixture.opened, notifications: fixture.notifications },
-					{ errors: [failure === 'policy' ? 'Error: Blocked by policy' : 'Error: Concurrent edit'], writes: [], opened: [], notifications: [] });
-			});
-		}
-
-		test('explicit file additions never resolve or offer Copilot Global', async () => {
-			const fixture = setupGlobal();
-			fixture.quickInput.selections.push('Command (stdio)');
-			fixture.quickInput.inputs.push('node server.js', installable.name);
-			await new AddConfigurationAction().run(fixture.instantiation, fixture.folder.toResource(legacyFile));
-			assert.deepStrictEqual({ lookups: fixture.lookups, writes: fixture.writes, pickers: fixture.quickInput.pickLabels.length, installs: fixture.installs.length },
-				{ lookups: 0, writes: [], pickers: 1, installs: 1 });
-		});
-
-		test('package-assisted additions retain the original global destination without host lookup', async () => {
-			const fixture = setupGlobal();
-			fixture.instantiation.stub(ICommandService, 'executeCommand', async (command: string) => {
-				switch (command) {
-					case 'github.copilot.chat.mcp.setup.check': return true;
-					case 'github.copilot.chat.mcp.setup.validatePackage': return { state: 'ok', publisher: 'test' };
-					case 'github.copilot.chat.mcp.setup.flow': return { server: { command: 'node', args: ['server.js'] } };
-				}
-				throw new Error(`Unexpected command: ${command}`);
-			});
-			fixture.instantiation.stub(IQuickInputService, 'createQuickPick', <T extends IQuickPickItem>() => {
-				const accepted = store.add(new Emitter<IQuickPickDidAcceptEvent>());
-				let items: readonly T[] = [];
-				return upcastPartial<IQuickPick<T>>({
-					set items(value: readonly T[]) { items = value; queueMicrotask(() => accepted.fire({ inBackground: false })); },
-					get selectedItems() { return items.slice(0, 1); },
-					onDidAccept: accepted.event,
-					onDidHide: Event.None,
-					show: () => { },
-					dispose: () => accepted.dispose(),
-				});
-			});
-			fixture.quickInput.selections.push('NPM Package', 'Global');
-			fixture.quickInput.inputs.push('test-package', installable.name);
-			await new AddConfigurationAction().run(fixture.instantiation);
-			assert.deepStrictEqual({ lookups: fixture.lookups, writes: fixture.writes, pickers: fixture.quickInput.pickLabels.slice(1), targets: fixture.installs.map(install => install.options?.target), errors: fixture.errors },
-				{ lookups: 0, writes: [], pickers: [['Global', 'Workspace']], targets: [ConfigurationTarget.USER_LOCAL], errors: [] });
-		});
-	});
 
 	test('editor menu retains AI gates and only offers root additions when enabled', () => {
 		const menu = new AddConfigurationAction().desc.menu;

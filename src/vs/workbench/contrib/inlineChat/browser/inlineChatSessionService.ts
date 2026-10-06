@@ -16,7 +16,6 @@ import { IChatEditReviewSession } from '../../chat/common/editing/chatEditingSer
 import { IChatModel, IChatModelInputState, IChatRequestModel } from '../../chat/common/model/chatModel.js';
 import { IChatService } from '../../chat/common/chatService/chatService.js';
 import { ChatAgentLocation, ChatModeKind } from '../../chat/common/constants.js';
-import { ResolvedChatSessionsExtensionPoint } from '../../chat/common/chatSessionsService.js';
 
 
 export const IInlineChatSessionService = createDecorator<IInlineChatSessionService>('IInlineChatSessionService');
@@ -29,7 +28,6 @@ export interface IInlineChatSession {
 	readonly uri: URI;
 	readonly chatModel: IChatModel;
 	readonly editingSession: IChatEditReviewSession;
-	readonly lockToAgent: ResolvedChatSessionsExtensionPoint | undefined;
 	readonly terminationState: IObservable<InlineChatSessionTerminationState | undefined>;
 	setTerminationState(state: InlineChatSessionTerminationState | undefined): void;
 	dispose(): void;
