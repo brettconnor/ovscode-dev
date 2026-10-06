@@ -45,7 +45,6 @@ import { IExtensionsWorkbenchService } from '../../../extensions/common/extensio
 import { LANGUAGE_MODEL_CHAT_PROVIDER_EXTENSION_TAG } from '../../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IDialogService } from '../../../../../platform/dialogs/common/dialogs.js';
 import { IProductService } from '../../../../../platform/product/common/productService.js';
-import { IWorkbenchEnvironmentService } from '../../../../services/environment/common/environmentService.js';
 import Severity from '../../../../../base/common/severity.js';
 import { IJSONSchema } from '../../../../../base/common/jsonSchema.js';
 import { formatTokenCount } from '../../../../../base/common/numbers.js';
@@ -535,7 +534,6 @@ class ModelNameColumnRenderer extends ModelsTableColumnRenderer<IModelNameColumn
 		@IHoverService private readonly hoverService: IHoverService,
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
 		@IProductService private readonly productService: IProductService,
-		@IWorkbenchEnvironmentService private readonly environmentService: IWorkbenchEnvironmentService
 	) {
 		super();
 	}
@@ -1166,7 +1164,6 @@ export class ChatModelsWidget extends Disposable {
 		@IContextKeyService private readonly contextKeyService: IContextKeyService,
 		@IDialogService private readonly dialogService: IDialogService,
 		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
-		@IWorkbenchEnvironmentService private readonly environmentService: IWorkbenchEnvironmentService,
 		@IDefaultAccountService private readonly defaultAccountService: IDefaultAccountService,
 	) {
 		super();

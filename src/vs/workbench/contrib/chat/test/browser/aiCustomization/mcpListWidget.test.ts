@@ -29,7 +29,6 @@ import { IAuthenticationService } from '../../../../../services/authentication/c
 import { IWorkbenchLocalMcpServer, LocalMcpServerScope } from '../../../../../services/mcp/common/mcpWorkbenchManagementService.js';
 import { IMcpWorkspaceInstallTargetService, McpWorkspaceInstallTargetService } from '../../../../../services/mcp/common/mcpWorkspaceInstallTargetService.js';
 import { IMcpRegistry } from '../../../../mcp/common/mcpRegistryTypes.js';
-import { IAICustomizationWorkspaceService } from '../../../common/aiCustomizationWorkspaceService.js';
 import { ICustomizationHarnessService } from '../../../common/customizationHarnessService.js';
 import { IAgentHostCustomizationService } from '../../../browser/agentSessions/agentHost/agentHostCustomizationService.js';
 import { IAgentPluginService } from '../../../common/plugins/agentPluginService.js';
@@ -1151,7 +1150,6 @@ suite('mcpListWidget', () => {
 				renderManagementActions,
 				() => undefined,
 				plugin => openedPlugins.push(plugin.label),
-				{} as unknown as IAICustomizationWorkspaceService,
 				agentPluginService,
 				hoverService,
 				agentHostCustomizationService,

@@ -119,7 +119,6 @@ import {
 	type ICustomizationMigrationDashboardActivity,
 	type ICustomizationMigrationDashboardCategory,
 } from './customizationMigrationDashboard.js';
-import { IViewsService } from '../../../../services/views/common/viewsService.js';
 import { IEditorService } from '../../../../services/editor/common/editorService.js';
 import { ILabelService } from '../../../../../platform/label/common/label.js';
 import { showNoFoldersDialog } from '../promptSyntax/pickers/askForPromptSourceFolder.js';
@@ -686,7 +685,6 @@ export class AICustomizationManagementEditor extends EditorPane {
 		@IDialogService private readonly dialogService: IDialogService,
 		@IContextMenuService private readonly contextMenuService: IContextMenuService,
 		@ICustomizationHarnessService private readonly harnessService: ICustomizationHarnessService,
-		@IViewsService private readonly viewsService: IViewsService,
 		@ILabelService private readonly labelService: ILabelService,
 		@IAICustomizationItemsModel private readonly itemsModel: IAICustomizationItemsModel,
 		@IMcpService private readonly mcpService: IMcpService,

@@ -26,7 +26,6 @@ import { IInstantiationService } from '../../../../../../platform/instantiation/
 import { IConfigurationService } from '../../../../../../platform/configuration/common/configuration.js';
 import { IContextKeyService } from '../../../../../../platform/contextkey/common/contextkey.js';
 import { IMarkdownRenderer } from '../../../../../../platform/markdown/browser/markdownRenderer.js';
-import { IWorkbenchEnvironmentService } from '../../../../../services/environment/common/environmentService.js';
 import { CHAT_OPEN_AGENT_HOST_CHAT_COMMAND_ID, ChatConfiguration } from '../../../common/constants.js';
 import { isAgentHostTarget } from '../../../common/chatSessionsService.js';
 import { formatCopilotCreditsLabel, getSubagentIsActive, IChatHookPart, IChatMarkdownContent, IChatToolInvocation, IChatToolInvocationSerialized, isLegacyChatTerminalToolInvocationData, ToolConfirmKind } from '../../../common/chatService/chatService.js';
@@ -447,7 +446,6 @@ export class ChatSubagentContentPart extends ChatThinkingStyleContentPart implem
 		@IActionViewItemService private readonly actionViewItemService: IActionViewItemService,
 		@IMenuService private readonly menuService: IMenuService,
 		@IContextKeyService private readonly contextKeyService: IContextKeyService,
-		@IWorkbenchEnvironmentService private readonly environmentService: IWorkbenchEnvironmentService,
 	) {
 		// Extract subagent metadata from the tool invocation
 		const { description, isDefaultDescription, agentDisplayName, agentName, prompt, modelName, credits } = ChatSubagentContentPart.extractSubagentInfo(toolInvocation);

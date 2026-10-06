@@ -7,7 +7,6 @@ import { RunOnceScheduler } from '../../../../../base/common/async.js';
 import { Disposable } from '../../../../../base/common/lifecycle.js';
 import { ITelemetryService } from '../../../../../platform/telemetry/common/telemetry.js';
 import { IWorkbenchContribution, WorkbenchPhase, registerWorkbenchContribution2 } from '../../../../common/contributions.js';
-import { IWorkbenchEnvironmentService } from '../../../../services/environment/common/environmentService.js';
 import { IEditorGroupsService } from '../../../../services/editor/common/editorGroupsService.js';
 import { IEditorService } from '../../../../services/editor/common/editorService.js';
 import { ChatEditorInput } from '../widgetHosts/editor/chatEditorInput.js';

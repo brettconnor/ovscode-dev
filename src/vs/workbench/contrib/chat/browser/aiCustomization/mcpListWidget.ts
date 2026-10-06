@@ -249,7 +249,6 @@ export class McpServerItemRenderer extends Disposable implements IListRenderer<I
 		private readonly _renderManagementActions: (getEntry: () => IMcpInstalledEntry | undefined, actions: HTMLElement, disposables: DisposableStore, updateTabbability: () => void) => void,
 		private readonly _getCompatibilityKind: (entry: IMcpInstalledEntry, reader?: IReader) => CustomizationMcpServerCompatibilityKind | undefined,
 		private readonly _openPlugin: (plugin: IAgentPlugin) => void,
-		@IAICustomizationWorkspaceService private readonly workspaceService: IAICustomizationWorkspaceService,
 		@IAgentPluginService private readonly agentPluginService: IAgentPluginService,
 		@IHoverService private readonly hoverService: IHoverService,
 		@IAgentHostCustomizationService private readonly agentHostCustomizationService: IAgentHostCustomizationService,

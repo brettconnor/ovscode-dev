@@ -11,19 +11,16 @@ import { AgentSessionStatus, getAgentChangesSummary } from '../../chat/browser/a
 import { IAgentTitleBarStatusService } from '../../chat/browser/agentSessions/experiments/agentTitleBarStatusService.js';
 import { IVoicePlaybackService } from '../../chat/common/voicePlaybackService.js';
 import { IVoiceSessionController } from '../../chat/browser/voiceClient/voiceSessionController.js';
-import { IWorkbenchEnvironmentService } from '../../../services/environment/common/environmentService.js';
 import { IChatService } from '../../chat/common/chatService/chatService.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { AgentsVoiceWidget } from './agentsVoiceWidget.js';
-import { getRepositoryName } from '../../chat/browser/agentSessions/agentSessionsViewer.js';
-import type { SessionGroupData, SessionRowData } from './components/sessionListComponent.js';
+import type { SessionRowData } from './components/sessionListComponent.js';
 
 export interface IWidgetBindingServices {
 	readonly voiceSessionController: IVoiceSessionController;
 	readonly agentSessionsService: IAgentSessionsService;
 	readonly agentTitleBarStatusService: IAgentTitleBarStatusService;
 	readonly voicePlaybackService: IVoicePlaybackService;
-	readonly environmentService: IWorkbenchEnvironmentService;
 	readonly chatService?: IChatService;
 	readonly configurationService?: IConfigurationService;
 }
@@ -40,7 +37,6 @@ export function bindWidgetToController(widget: AgentsVoiceWidget, services: IWid
 		agentSessionsService,
 		agentTitleBarStatusService,
 		voicePlaybackService,
-		environmentService,
 		configurationService,
 	} = services;
 
@@ -140,7 +136,7 @@ function _updateStatusCounts(widget: AgentsVoiceWidget, { agentSessionsService }
 }
 
 function _updateSessionData(widget: AgentsVoiceWidget, services: IWidgetBindingServices): void {
-	const { agentSessionsService, voiceSessionController, voicePlaybackService, environmentService, chatService } = services;
+	const { agentSessionsService, voiceSessionController, voicePlaybackService, chatService } = services;
 
 	// Show all non-archived sessions so the user can target any for transcription.
 	const sessions = agentSessionsService.model.sessions.filter(s => !s.isArchived());

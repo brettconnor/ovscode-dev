@@ -260,7 +260,6 @@ export class AgentsVoiceWindowService extends Disposable implements IAgentsVoice
 			agentSessionsService: this.agentSessionsService,
 			agentTitleBarStatusService: this.agentTitleBarStatusService,
 			voicePlaybackService: this.voicePlaybackService,
-			environmentService: this.environmentService,
 			chatService: this.chatService,
 			configurationService: this.configurationService,
 		}));

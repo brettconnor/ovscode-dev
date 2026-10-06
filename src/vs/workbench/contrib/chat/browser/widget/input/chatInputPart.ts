@@ -83,7 +83,6 @@ import { IWorkspaceContextService, WorkbenchState } from '../../../../../../plat
 import { ResourceLabels } from '../../../../../browser/labels.js';
 import { IChatEntitlementService } from '../../../../../services/chat/common/chatEntitlementService.js';
 import { ACTIVE_GROUP, IEditorService, SIDE_GROUP } from '../../../../../services/editor/common/editorService.js';
-import { IWorkbenchEnvironmentService } from '../../../../../services/environment/common/environmentService.js';
 import { AccessibilityVerbositySettingId } from '../../../../accessibility/browser/accessibilityConfiguration.js';
 import { AccessibilityCommandId } from '../../../../accessibility/common/accessibilityCommands.js';
 import { getSimpleCodeEditorWidgetOptions, getSimpleEditorOptions, setupSimpleEditorSelectionStyling } from '../../../../codeEditor/browser/simpleEditorOptions.js';
@@ -959,7 +958,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 		@IChatWidgetService private readonly chatWidgetService: IChatWidgetService,
 		@IVoiceSessionController private readonly voiceSessionController: IVoiceSessionController,
 		@IChatService private readonly chatService: IChatService,
-		@IWorkbenchEnvironmentService private readonly environmentService: IWorkbenchEnvironmentService,
 		@IChatPetService private readonly chatPetService: IChatPetService,
 		@IActionViewItemService private readonly actionViewItemService: IActionViewItemService,
 	) {

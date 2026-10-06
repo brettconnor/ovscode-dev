@@ -58,7 +58,7 @@ class AgentHostProfileService extends Disposable implements IAgentHostProfileSer
 	constructor(
 		@IAgentHostService private readonly agentHostService: IAgentHostService,
 		@IV8InspectProfilingService private readonly profilingService: IV8InspectProfilingService,
-		@IContextKeyService private readonly contextKeyService: IContextKeyService,
+		@IContextKeyService contextKeyService: IContextKeyService,
 		@IStatusbarService private readonly statusbarService: IStatusbarService,
 		@IFileDialogService private readonly fileDialogService: IFileDialogService,
 		@IFileService private readonly fileService: IFileService,

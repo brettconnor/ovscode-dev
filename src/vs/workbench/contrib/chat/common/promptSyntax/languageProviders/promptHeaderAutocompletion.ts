@@ -21,7 +21,6 @@ import { localize } from '../../../../../../nls.js';
 import { formatArrayValue, getQuotePreference } from '../utils/promptEditHelper.js';
 import { HOOKS_BY_TARGET, HOOK_METADATA } from '../hookTypes.js';
 import { HOOK_COMMAND_FIELD_DESCRIPTIONS } from '../hookSchema.js';
-import { IWorkbenchEnvironmentService } from '../../../../../services/environment/common/environmentService.js';
 
 export class PromptHeaderAutocompletion implements CompletionItemProvider {
 	/**
@@ -39,7 +38,6 @@ export class PromptHeaderAutocompletion implements CompletionItemProvider {
 		@ILanguageModelsService private readonly languageModelsService: ILanguageModelsService,
 		@ILanguageModelToolsService private readonly languageModelToolsService: ILanguageModelToolsService,
 		@IChatModeService private readonly chatModeService: IChatModeService,
-		@IWorkbenchEnvironmentService private readonly environmentService: IWorkbenchEnvironmentService,
 	) {
 	}
 

@@ -9,7 +9,6 @@ import { Disposable, DisposableStore, IDisposable, toDisposable } from '../../..
 import { autorun } from '../../../../../base/common/observable.js';
 import { IConfigurationService } from '../../../../../platform/configuration/common/configuration.js';
 import { IInstantiationService } from '../../../../../platform/instantiation/common/instantiation.js';
-import { IWorkbenchEnvironmentService } from '../../../../services/environment/common/environmentService.js';
 import { IChatWidget } from '../chat.js';
 import { IChatWidgetContrib, ChatWidget } from '../widget/chatWidget.js';
 import { ChatAgentLocation, ChatConfiguration } from '../../common/constants.js';
@@ -71,7 +70,6 @@ export class PromptTimelineWidgetContrib extends Disposable implements IChatWidg
 		private readonly widget: IChatWidget,
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
 		@IConfigurationService private readonly configurationService: IConfigurationService,
-		@IWorkbenchEnvironmentService private readonly environmentService: IWorkbenchEnvironmentService,
 	) {
 		super();
 

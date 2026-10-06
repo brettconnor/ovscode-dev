@@ -10,7 +10,6 @@ import { retry, timeout } from '../../../../../../base/common/async.js';
 import { Event } from '../../../../../../base/common/event.js';
 import { MarkdownString } from '../../../../../../base/common/htmlContent.js';
 import { DisposableStore, toDisposable } from '../../../../../../base/common/lifecycle.js';
-import { constObservable } from '../../../../../../base/common/observable.js';
 import { URI } from '../../../../../../base/common/uri.js';
 import { upcastPartial } from '../../../../../../base/test/common/mock.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../../base/test/common/utils.js';
@@ -266,7 +265,7 @@ suite('ChatListWidget', () => {
 		const { disposables, model, viewModel, container, widget } = createWidget({}, configurationService => {
 			configurationService.setUserConfiguration(PROMPT_TIMELINE_STICKY_SCROLL_SETTING, true);
 			configurationService.setUserConfiguration(ChatConfiguration.ExperimentalStickyScrollEnabled, true);
-		}, true);
+		});
 		container.classList.add('interactive-list');
 		container.style.setProperty('--vscode-spacing-size80', '8px');
 		const firstRequest = model.addRequest({
@@ -591,7 +590,7 @@ suite('ChatListWidget', () => {
 			configurationService.setUserConfiguration('chat.editRequests', 'inline');
 			configurationService.setUserConfiguration('workbench.tree.enableStickyScroll', false);
 			configurationService.setUserConfiguration('workbench.tree.stickyScrollMaxItemCount', 1);
-		}, true);
+		});
 		container.classList.add('interactive-list');
 		container.style.width = '500.5px';
 		container.style.height = '600px';
@@ -1145,7 +1144,7 @@ suite('ChatListWidget', () => {
 		}, configurationService => {
 			configurationService.setUserConfiguration(PROMPT_TIMELINE_STICKY_SCROLL_SETTING, true);
 			configurationService.setUserConfiguration(ChatConfiguration.ExperimentalStickyScrollEnabled, true);
-		}, true);
+		});
 		container.classList.add('interactive-list');
 		container.style.setProperty('--vscode-spacing-size80', '8px');
 		const text = editingValue;
@@ -1271,7 +1270,7 @@ suite('ChatListWidget', () => {
 			configurationService.setUserConfiguration(ChatConfiguration.PersistentProgress, ChatProgressAnimation.Draw);
 			configurationService.setUserConfiguration(ChatConfiguration.PersistentProgressVerbosity, ChatProgressVerbosity.Compact);
 			configurationService.setUserConfiguration('chat.editRequests', 'input');
-		}, true);
+		});
 		container.classList.add('interactive-list');
 		const request = model.addRequest({
 			text,
@@ -1335,7 +1334,7 @@ suite('ChatListWidget', () => {
 				configurationService.setUserConfiguration(ChatConfiguration.IncrementalRendering, incrementalRendering);
 				configurationService.setUserConfiguration(ChatConfiguration.ExperimentalStickyScrollEnabled, stickyScroll);
 				configurationService.setUserConfiguration(PROMPT_TIMELINE_STICKY_SCROLL_SETTING, stickyScroll);
-			}, true);
+			});
 			const { model, container, widget } = context;
 			container.classList.add('interactive-list');
 			const text = 'Keep the earlier content in place';
@@ -1812,7 +1811,7 @@ suite('ChatListWidget', () => {
 			const { model, container, widget } = createWidget({ paddingBottom: 32 }, configurationService => {
 				configurationService.setUserConfiguration(ChatConfiguration.PersistentProgress, ChatProgressAnimation.Draw);
 				configurationService.setUserConfiguration(ChatConfiguration.PersistentProgressVerbosity, ChatProgressVerbosity.Verbose);
-			}, true);
+			});
 			container.classList.add('interactive-list');
 			for (let turn = 0; turn < 2; turn++) {
 				const text = `question ${turn}`;
