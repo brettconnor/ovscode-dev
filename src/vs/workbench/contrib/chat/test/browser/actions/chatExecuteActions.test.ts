@@ -19,7 +19,6 @@ import { ILogService, NullLogService } from '../../../../../../platform/log/comm
 import { type IChatAcceptInputOptions, IChatWidget, IChatWidgetService } from '../../../browser/chat.js';
 import { CancelAction, ChatEditingSessionSubmitAction, ChatSubmitAction, ExecuteHandoffActionId, GetHandoffsActionId, OpenModelPickerAction, registerChatExecuteActions } from '../../../browser/actions/chatExecuteActions.js';
 import { ChatQueueMessageAction, ChatSteerWithMessageAction } from '../../../browser/actions/chatQueueActions.js';
-import { AgentSessionProviders } from '../../../browser/agentSessions/agentSessions.js';
 import { ChatContextKeys } from '../../../common/actions/chatContextKeys.js';
 import { ChatAgentLocation, ChatModeKind } from '../../../common/constants.js';
 import { IChatMode, IChatModes, IChatModeService, ICustomAgentInfo } from '../../../common/chatModes.js';
@@ -480,7 +479,6 @@ suite('ChatSubmitAction', () => {
 				[ChatContextKeys.transcriptProgressActive.key]: true,
 				[ChatContextKeys.inputHasText.key]: true,
 				[ChatContextKeys.inputHasSendableContent.key]: true,
-				[ChatContextKeys.chatSessionOptionsValid.key]: true,
 				[ChatContextKeys.chatModeKind.key]: ChatModeKind.Agent,
 			};
 			const context = { getValue: <T extends ContextKeyValue = ContextKeyValue>(key: string) => values[key] as T };
