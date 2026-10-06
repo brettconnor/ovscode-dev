@@ -793,7 +793,6 @@ export class BackLayerWebView<T extends ICommonCellInfo> extends Themable {
 							fromWorkspace: true,
 							allowCommands: [
 								'github-issues.authNow',
-								'workbench.extensions.search',
 								'workbench.action.openSettings',
 								'_notebook.selectKernel',
 								// TODO@rebornix explore open output channel with name command

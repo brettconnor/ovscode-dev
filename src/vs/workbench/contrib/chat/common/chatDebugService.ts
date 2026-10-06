@@ -11,7 +11,6 @@ import { createDecorator } from '../../../../platform/instantiation/common/insta
 import { CancellationToken } from '../../../../base/common/cancellation.js';
 
 export const CHAT_DEBUG_HAS_ACTIVE_SESSION = new RawContextKey<boolean>('chatDebug.hasActiveSession', false);
-export const CHAT_DEBUG_ACTIVE_SESSION_IS_AGENT_HOST = new RawContextKey<boolean>('chatDebug.activeSessionIsAgentHost', false);
 
 /**
  * The severity level of a chat debug log event.

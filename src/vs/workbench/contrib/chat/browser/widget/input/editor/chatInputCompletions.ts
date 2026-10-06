@@ -523,49 +523,7 @@ class AgentCompletions extends Disposable {
 			}
 		}));
 
-		this._register(this.languageFeaturesService.completionProvider.register({ scheme: Schemas.vscodeChatInput, hasAccessToAllModels: true }, {
-			_debugDisplayName: 'installChatExtensions',
-			triggerCharacters: [chatAgentLeader],
-			provideCompletionItems: async (model: ITextModel, position: Position, _context: CompletionContext, token: CancellationToken) => {
-				if (!model.getLineContent(1).startsWith(chatAgentLeader)) {
-					return;
-				}
 
-				const widget = this.chatWidgetService.getWidgetByInputUri(model.uri);
-				if (widget?.location !== ChatAgentLocation.Chat || widget.input.currentModeKind !== ChatModeKind.Ask) {
-					return;
-				}
-
-				if (widget.lockedAgentId) {
-					return null;
-				}
-
-				const range = computeCompletionRanges(model, position, AgentOrSlashCommandWord);
-				if (!range) {
-					return;
-				}
-
-				if (!isEmptyUpToCompletionWord(model, range)) {
-					// No text allowed before the completion
-					return;
-				}
-
-				const label = localize('installLabel', "Install Chat Extensions...");
-				const item: CompletionItem = {
-					label,
-					insertText: '',
-					range,
-					kind: CompletionItemKind.Text, // The icons are disabled here anyway
-					command: { id: 'workbench.extensions.search', title: '', arguments: ['@tag:chat-participant'] },
-					filterText: chatAgentLeader + label,
-					sortText: 'zzz'
-				};
-
-				return {
-					suggestions: [item]
-				};
-			}
-		}));
 	}
 
 	private getCurrentAgentForWidget(widget: IChatWidget): { agent: IChatAgentData; command?: string } | undefined {

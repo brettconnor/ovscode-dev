@@ -5,7 +5,6 @@
 
 import { localize, localize2 } from '../../../../../nls.js';
 import { Codicon } from '../../../../../base/common/codicons.js';
-import { ICommandService } from '../../../../../platform/commands/common/commands.js';
 import { ContextKeyExpr, IContextKeyService } from '../../../../../platform/contextkey/common/contextkey.js';
 import { IDialogService } from '../../../../../platform/dialogs/common/dialogs.js';
 import { IExtensionManagementService } from '../../../../../platform/extensionManagement/common/extensionManagement.js';
@@ -45,7 +44,6 @@ export function registerTerminalVoiceActions() {
 				TerminalVoiceSession.getInstance(accessor.get(IInstantiationService)).stop(true);
 				return;
 			}
-			const commandService = accessor.get(ICommandService);
 			const dialogService = accessor.get(IDialogService);
 			const workbenchExtensionEnablementService = accessor.get(IWorkbenchExtensionEnablementService);
 			const extensionManagementService = accessor.get(IExtensionManagementService);
@@ -68,9 +66,8 @@ export function registerTerminalVoiceActions() {
 				primaryButton = localize('enableExtension', "Enable Extension");
 				run = () => workbenchExtensionEnablementService.setEnablement([extension], EnablementState.EnabledWorkspace);
 			} else {
-				message = localize('terminal.voice.installSpeechExtension', "Would you like to install 'VS Code Speech' extension from 'Microsoft'?");
-				run = () => commandService.executeCommand('workbench.extensions.installExtension', 'ms-vscode.vscode-speech');
-				primaryButton = localize('installExtension', "Install Extension");
+				await dialogService.info(localize('terminal.voice.installUnavailable', "Voice support requires the VS Code Speech extension, and Marketplace installation is disabled."));
+				return;
 			}
 			const detail = localize('terminal.voice.detail', "Microphone support requires this extension.");
 			const confirmed = await dialogService.confirm({ message, primaryButton, type: 'info', detail });

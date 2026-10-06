@@ -11,7 +11,6 @@ import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
 import { createDecorator, ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { IURLHandler, IURLService, IOpenURLOptions } from '../../../../platform/url/common/url.js';
-import { IHostService } from '../../host/browser/host.js';
 import { ActivationKind, IExtensionService } from '../common/extensions.js';
 import { ExtensionIdentifier } from '../../../../platform/extensions/common/extensions.js';
 import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
@@ -22,8 +21,6 @@ import { IsWebContext } from '../../../../platform/contextkey/common/contextkeys
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { disposableWindowInterval } from '../../../../base/browser/dom.js';
 import { mainWindow } from '../../../../base/browser/window.js';
-import { ICommandService } from '../../../../platform/commands/common/commands.js';
-import { isCancellationError } from '../../../../base/common/errors.js';
 import { INotificationService } from '../../../../platform/notification/common/notification.js';
 import { MarkdownString } from '../../../../base/common/htmlContent.js';
 import { equalsIgnoreCase } from '../../../../base/common/strings.js';
@@ -125,8 +122,6 @@ class ExtensionUrlHandler implements IExtensionUrlHandler, IURLHandler {
 		@IURLService urlService: IURLService,
 		@IExtensionService private readonly extensionService: IExtensionService,
 		@IDialogService private readonly dialogService: IDialogService,
-		@ICommandService private readonly commandService: ICommandService,
-		@IHostService private readonly hostService: IHostService,
 		@IStorageService private readonly storageService: IStorageService,
 		@IConfigurationService private readonly configurationService: IConfigurationService,
 		@INotificationService private readonly notificationService: INotificationService,
@@ -271,43 +266,8 @@ class ExtensionUrlHandler implements IExtensionUrlHandler, IURLHandler {
 		return await handler.handleURL(uri, options);
 	}
 
-	private async handleUnhandledURL(uri: URI, extensionId: string, options?: IOpenURLOptions): Promise<void> {
-		try {
-			await this.commandService.executeCommand('workbench.extensions.installExtension', extensionId, {
-				justification: {
-					reason: `${localize('installDetail', "This extension wants to open a URI:")}\n${uri.toString()}`,
-					action: localize('openUri', "Open URI")
-				},
-				enable: true,
-				installPreReleaseVersion: this.productService.quality !== 'stable'
-			});
-		} catch (error) {
-			if (!isCancellationError(error)) {
-				this.notificationService.error(error);
-			}
-			return;
-		}
-
-		const extension = await this.extensionService.getExtension(extensionId);
-
-		if (extension) {
-			await this.handleURL(uri, { ...options, trusted: true });
-		}
-
-		/* Extension cannot be added and require window reload */
-		else {
-			const result = await this.dialogService.confirm({
-				message: localize('reloadAndHandle', "Extension '{0}' is not loaded. Would you like to reload the window to load the extension and open the URL?", extensionId),
-				primaryButton: localize({ key: 'reloadAndOpen', comment: ['&& denotes a mnemonic'] }, "&&Reload Window and Open")
-			});
-
-			if (!result.confirmed) {
-				return;
-			}
-
-			this.storageService.store(URL_TO_HANDLE, JSON.stringify(uri.toJSON()), StorageScope.WORKSPACE, StorageTarget.MACHINE);
-			await this.hostService.reload();
-		}
+	private async handleUnhandledURL(_uri: URI, extensionId: string, _options?: IOpenURLOptions): Promise<void> {
+		this.notificationService.info(localize('extensionInstallUnavailable', "Extension '{0}' is not installed. Extension installation from URLs is disabled.", extensionId));
 	}
 
 	// forget about all uris buffered more than 5 minutes ago

@@ -11,7 +11,7 @@ import { Disposable, DisposableStore, IDisposable, isDisposable } from '../../..
 import { Schemas } from '../../../../base/common/network.js';
 import { isNative, isWeb } from '../../../../base/common/platform.js';
 import { PolicyCategory } from '../../../../base/common/policy.js';
-import { URI, UriComponents } from '../../../../base/common/uri.js';
+import { URI } from '../../../../base/common/uri.js';
 import { MultiCommand } from '../../../../editor/browser/editorExtensions.js';
 import { CopyAction, CutAction, PasteAction } from '../../../../editor/contrib/clipboard/browser/clipboard.js';
 import { localize, localize2 } from '../../../../nls.js';
@@ -23,8 +23,8 @@ import { ContextKeyExpr, IContextKeyService, RawContextKey } from '../../../../p
 import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
 import { ExtensionGalleryManifestStatus, ExtensionGalleryResourceType, ExtensionGalleryAuthProviderConfigKey, ExtensionGalleryServiceUrlConfigKey, getExtensionGalleryManifestResourceUri, IExtensionGalleryManifest, IExtensionGalleryManifestService } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
 import { IExtensionGalleryAccountService } from '../../../services/extensionManagement/common/extensionGalleryAccount.js';
-import { EXTENSION_INSTALL_SOURCE_CONTEXT, ExtensionInstallSource, ExtensionRequestsTimeoutConfigKey, ExtensionsLocalizedLabel, FilterType, IExtensionGalleryService, IExtensionManagementService, PreferencesLocalizedLabel, SortBy, VerifyExtensionSignatureConfigKey } from '../../../../platform/extensionManagement/common/extensionManagement.js';
-import { areSameExtensions, getIdAndVersion } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
+import { ExtensionRequestsTimeoutConfigKey, ExtensionsLocalizedLabel, FilterType, IExtensionManagementService, PreferencesLocalizedLabel, SortBy, VerifyExtensionSignatureConfigKey } from '../../../../platform/extensionManagement/common/extensionManagement.js';
+import { areSameExtensions } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { ExtensionStorageService } from '../../../../platform/extensionManagement/common/extensionStorage.js';
 import { IExtensionRecommendationNotificationService } from '../../../../platform/extensionRecommendations/common/extensionRecommendations.js';
 import { EXTENSION_CATEGORIES, ExtensionType } from '../../../../platform/extensions/common/extensions.js';
@@ -34,7 +34,6 @@ import { IInstantiationService, ServicesAccessor } from '../../../../platform/in
 import * as jsonContributionRegistry from '../../../../platform/jsonschemas/common/jsonContributionRegistry.js';
 import product from '../../../../platform/product/common/product.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
-import { ProgressLocation } from '../../../../platform/progress/common/progress.js';
 import { Extensions, IQuickAccessRegistry } from '../../../../platform/quickinput/common/quickAccess.js';
 import { IQuickInputService } from '../../../../platform/quickinput/common/quickInput.js';
 import { Registry } from '../../../../platform/registry/common/platform.js';
@@ -74,7 +73,7 @@ import { ExtensionActivationProgress } from './extensionsActivationProgress.js';
 import { ExtensionEnablementContextKeysContribution } from './extensionEnablementContext.js';
 import { ExtensionDependencyChecker } from './extensionsDependencyChecker.js';
 import { clearSearchResultsIcon, configureRecommendedIcon, extensionsViewIcon, filterIcon, installWorkspaceRecommendedIcon, refreshIcon } from './extensionsIcons.js';
-import { InstallExtensionQuickAccessProvider, ManageExtensionsQuickAccessProvider } from './extensionsQuickAccess.js';
+import { ManageExtensionsQuickAccessProvider } from './extensionsQuickAccess.js';
 import { BuiltInExtensionsContext, ExtensionsSearchValueContext, ExtensionsSortByContext, ExtensionsViewPaneContainer, MaliciousExtensionChecker, RecommendedExtensionsContext, SearchHasTextContext, SearchMarketplaceExtensionsContext } from './extensionsViewlet.js';
 import { ExtensionsWorkbenchService } from './extensionsWorkbenchService.js';
 import './media/extensionManagement.css';
@@ -426,102 +425,6 @@ CommandsRegistry.registerCommand('extension.open', async (accessor: ServicesAcce
 });
 
 CommandsRegistry.registerCommand({
-	id: 'workbench.extensions.installExtension',
-	metadata: {
-		description: localize('workbench.extensions.installExtension.description', "Install the given extension"),
-		args: [
-			{
-				name: 'extensionIdOrVSIXUri',
-				description: localize('workbench.extensions.installExtension.arg.decription', "Extension id or VSIX resource uri"),
-				constraint: (value: any) => typeof value === 'string' || value instanceof URI,
-			},
-			{
-				name: 'options',
-				description: '(optional) Options for installing the extension. Object with the following properties: ' +
-					'`installOnlyNewlyAddedFromExtensionPackVSIX`: When enabled, VS Code installs only newly added extensions from the extension pack VSIX. This option is considered only when installing VSIX. ',
-				isOptional: true,
-				schema: {
-					'type': 'object',
-					'properties': {
-						'installOnlyNewlyAddedFromExtensionPackVSIX': {
-							'type': 'boolean',
-							'description': localize('workbench.extensions.installExtension.option.installOnlyNewlyAddedFromExtensionPackVSIX', "When enabled, VS Code installs only newly added extensions from the extension pack VSIX. This option is considered only while installing a VSIX."),
-							default: false
-						},
-						'installPreReleaseVersion': {
-							'type': 'boolean',
-							'description': localize('workbench.extensions.installExtension.option.installPreReleaseVersion', "When enabled, VS Code installs the pre-release version of the extension if available."),
-							default: false
-						},
-						'donotSync': {
-							'type': 'boolean',
-							'description': localize('workbench.extensions.installExtension.option.donotSync', "When enabled, VS Code do not sync this extension when Settings Sync is on."),
-							default: false
-						},
-						'justification': {
-							'type': ['string', 'object'],
-							'description': localize('workbench.extensions.installExtension.option.justification', "Justification for installing the extension. This is a string or an object that can be used to pass any information to the installation handlers. i.e. `{reason: 'This extension wants to open a URI', action: 'Open URI'}` will show a message box with the reason and action upon install."),
-						},
-						'enable': {
-							'type': 'boolean',
-							'description': localize('workbench.extensions.installExtension.option.enable', "When enabled, the extension will be enabled if it is installed but disabled. If the extension is already enabled, this has no effect."),
-							default: false
-						}
-					}
-				}
-			}
-		]
-	},
-	handler: async (
-		accessor,
-		arg: string | UriComponents,
-		options?: {
-			installOnlyNewlyAddedFromExtensionPackVSIX?: boolean;
-			installPreReleaseVersion?: boolean;
-			donotSync?: boolean;
-			justification?: string | { reason: string; action: string };
-			enable?: boolean;
-		}) => {
-		const extensionsWorkbenchService = accessor.get(IExtensionsWorkbenchService);
-		const extensionManagementService = accessor.get(IWorkbenchExtensionManagementService);
-		const extensionGalleryService = accessor.get(IExtensionGalleryService);
-		try {
-			if (typeof arg === 'string') {
-				const [id, version] = getIdAndVersion(arg);
-				const extension = extensionsWorkbenchService.local.find(e => areSameExtensions(e.identifier, { id, uuid: version }));
-				if (extension?.enablementState === EnablementState.DisabledByExtensionKind) {
-					const [gallery] = await extensionGalleryService.getExtensions([{ id, preRelease: options?.installPreReleaseVersion }], CancellationToken.None);
-					if (!gallery) {
-						throw new Error(localize('notFound', "Extension '{0}' not found.", arg));
-					}
-					await extensionManagementService.installFromGallery(gallery, {
-						isMachineScoped: options?.donotSync ? true : undefined, /* do not allow syncing extensions automatically while installing through the command */
-						installPreReleaseVersion: options?.installPreReleaseVersion,
-						installGivenVersion: !!version,
-						context: { [EXTENSION_INSTALL_SOURCE_CONTEXT]: ExtensionInstallSource.COMMAND },
-					});
-				} else {
-					await extensionsWorkbenchService.install(id, {
-						version,
-						installPreReleaseVersion: options?.installPreReleaseVersion,
-						context: { [EXTENSION_INSTALL_SOURCE_CONTEXT]: ExtensionInstallSource.COMMAND },
-						justification: options?.justification,
-						enable: options?.enable,
-						isMachineScoped: options?.donotSync ? true : undefined, /* do not allow syncing extensions automatically while installing through the command */
-					}, ProgressLocation.Notification);
-				}
-			} else {
-				const vsix = URI.revive(arg);
-				await extensionsWorkbenchService.install(vsix, { installGivenVersion: true });
-			}
-		} catch (e) {
-			onUnexpectedError(e);
-			throw e;
-		}
-	}
-});
-
-CommandsRegistry.registerCommand({
 	id: 'workbench.extensions.uninstallExtension',
 	metadata: {
 		description: localize('workbench.extensions.uninstallExtension.description', "Uninstall the given extension"),
@@ -554,22 +457,6 @@ CommandsRegistry.registerCommand({
 			onUnexpectedError(e);
 			throw e;
 		}
-	}
-});
-
-CommandsRegistry.registerCommand({
-	id: 'workbench.extensions.search',
-	metadata: {
-		description: localize('workbench.extensions.search.description', "Search for a specific extension"),
-		args: [
-			{
-				name: localize('workbench.extensions.search.arg.name', "Query to use in search"),
-				schema: { 'type': 'string' }
-			}
-		]
-	},
-	handler: async (accessor, query: string = '') => {
-		return accessor.get(IExtensionsWorkbenchService).openSearch(query);
 	}
 });
 
@@ -657,7 +544,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 			});
 		this.registerGlobalActions();
 		this.registerContextMenuActions();
-		this.registerQuickAccessProvider();
 	}
 
 	private async updateExtensionGalleryStatusContexts(): Promise<void> {
@@ -671,20 +557,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 		CONTEXT_GALLERY_ALL_PUBLIC_REPOSITORY_SIGNED.bindTo(this.contextKeyService).set(!!extensionGalleryManifest?.capabilities?.signing?.allPublicRepositorySigned);
 		CONTEXT_GALLERY_ALL_PRIVATE_REPOSITORY_SIGNED.bindTo(this.contextKeyService).set(!!extensionGalleryManifest?.capabilities?.signing?.allPrivateRepositorySigned);
 		CONTEXT_GALLERY_HAS_EXTENSION_LINK.bindTo(this.contextKeyService).set(!!(extensionGalleryManifest && getExtensionGalleryManifestResourceUri(extensionGalleryManifest, ExtensionGalleryResourceType.ExtensionDetailsViewUri)));
-	}
-
-	private registerQuickAccessProvider(): void {
-		if (this.extensionManagementServerService.localExtensionManagementServer
-			|| this.extensionManagementServerService.remoteExtensionManagementServer
-			|| this.extensionManagementServerService.webExtensionManagementServer
-		) {
-			Registry.as<IQuickAccessRegistry>(Extensions.Quickaccess).registerQuickAccessProvider({
-				ctor: InstallExtensionQuickAccessProvider,
-				prefix: InstallExtensionQuickAccessProvider.PREFIX,
-				placeholder: localize('installExtensionQuickAccessPlaceholder', "Type the name of an extension to install or search."),
-				helpEntries: [{ description: localize('installExtensionQuickAccessHelp', "Install or Search Extensions") }]
-			});
-		}
 	}
 
 	// Global actions

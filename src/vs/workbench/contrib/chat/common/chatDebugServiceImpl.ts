@@ -11,12 +11,10 @@ import { Disposable, IDisposable, toDisposable } from '../../../../base/common/l
 import { ResourceMap } from '../../../../base/common/map.js';
 import { extUri } from '../../../../base/common/resources.js';
 import { URI } from '../../../../base/common/uri.js';
-import { CHAT_DEBUG_ACTIVE_SESSION_IS_AGENT_HOST, CHAT_DEBUG_HAS_ACTIVE_SESSION, ChatDebugLogLevel, IChatDebugEvent, IChatDebugLogProvider, IChatDebugResolvedEventContent, IChatDebugService } from './chatDebugService.js';
-import { isAgentHostTarget, localChatSessionType } from './chatSessionsService.js';
+import { CHAT_DEBUG_HAS_ACTIVE_SESSION, ChatDebugLogLevel, IChatDebugEvent, IChatDebugLogProvider, IChatDebugResolvedEventContent, IChatDebugService } from './chatDebugService.js';
+import { localChatSessionType } from './chatSessionsService.js';
 import { getChatSessionType } from './model/chatUri.js';
-import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { IContextKey, IContextKeyService } from '../../../../platform/contextkey/common/contextkey.js';
-import { AgentHostAgentDebugLogMaxEventsSettingId } from './promptSyntax/promptTypes.js';
 
 /**
  * Per-session circular buffer for debug events.
@@ -120,8 +118,7 @@ export class ChatDebugServiceImpl extends Disposable implements IChatDebugServic
 	 * Sessions whose provider events should be cleared before the next batch of
 	 * provider events is applied. The clear is deferred until the first new
 	 * provider event actually arrives so that a provider which transiently
-	 * returns nothing (e.g. an Agent Host `events.jsonl` mid-rewrite) does not
-	 * wipe the events currently shown.
+	 * returns nothing during a refresh does not wipe the events currently shown.
 	 */
 	private readonly _pendingProviderClear = new ResourceMap<boolean>();
 
@@ -142,7 +139,6 @@ export class ChatDebugServiceImpl extends Disposable implements IChatDebugServic
 	private readonly _importedSessionTitles = new ResourceMap<string>();
 
 	private readonly _hasActiveSessionContextKey: IContextKey<boolean>;
-	private readonly _activeSessionIsAgentHostContextKey: IContextKey<boolean>;
 	private _activeSessionResource: URI | undefined;
 
 	get activeSessionResource(): URI | undefined {
@@ -152,19 +148,15 @@ export class ChatDebugServiceImpl extends Disposable implements IChatDebugServic
 	set activeSessionResource(value: URI | undefined) {
 		this._activeSessionResource = value;
 		this._hasActiveSessionContextKey.set(value !== undefined);
-		this._activeSessionIsAgentHostContextKey.set(value ? isAgentHostTarget(getChatSessionType(value)) : false);
 	}
 
 	constructor(
-		@IConfigurationService private readonly _configurationService: IConfigurationService,
 		@IContextKeyService contextKeyService: IContextKeyService,
 	) {
 		super();
 		this._hasActiveSessionContextKey = CHAT_DEBUG_HAS_ACTIVE_SESSION.bindTo(contextKeyService);
-		this._activeSessionIsAgentHostContextKey = CHAT_DEBUG_ACTIVE_SESSION_IS_AGENT_HOST.bindTo(contextKeyService);
 		this._register(toDisposable(() => {
 			this._hasActiveSessionContextKey.reset();
-			this._activeSessionIsAgentHostContextKey.reset();
 		}));
 	}
 
@@ -180,35 +172,12 @@ export class ChatDebugServiceImpl extends Disposable implements IChatDebugServic
 
 	/** Session types eligible for debug logging and provider invocation. */
 	private static readonly _debugEligibleSessionTypes = new Set([
-		localChatSessionType,			// local sessions
-		'copilotcli',				// Copilot CLI background sessions
-		'agent-host-copilotcli',		// local Agent Host Copilot CLI sessions
+		localChatSessionType,
 	]);
 
 	private _isDebugEligibleSession(sessionResource: URI): boolean {
 		const sessionType = getChatSessionType(sessionResource);
-		return ChatDebugServiceImpl._debugEligibleSessionTypes.has(sessionType)
-			// Remote Agent Host Copilot CLI sessions use a dynamic
-			// `remote-<authority>-copilotcli` scheme; see copilotCliEventsUri.ts.
-			|| (sessionType.startsWith('remote-') && sessionType.endsWith('-copilotcli'))
-			|| this._importedSessions.has(sessionResource);
-	}
-
-	/**
-	 * The in-memory event capacity for a session. Agent host (Copilot CLI)
-	 * sessions honor a dedicated, configurable cap so their (potentially large)
-	 * on-disk logs can be surfaced without changing the local-session default;
-	 * all other sessions use {@link ChatDebugServiceImpl.MAX_EVENTS_PER_SESSION}.
-	 */
-	private _capacityForSession(sessionResource: URI): number {
-		if (!isAgentHostTarget(getChatSessionType(sessionResource))) {
-			return ChatDebugServiceImpl.MAX_EVENTS_PER_SESSION;
-		}
-		const configured = this._configurationService.getValue<number>(AgentHostAgentDebugLogMaxEventsSettingId);
-		if (typeof configured === 'number' && Number.isFinite(configured) && configured >= 1) {
-			return Math.floor(configured);
-		}
-		return ChatDebugServiceImpl.MAX_EVENTS_PER_SESSION;
+		return ChatDebugServiceImpl._debugEligibleSessionTypes.has(sessionType) || this._importedSessions.has(sessionResource);
 	}
 
 	log(sessionResource: URI, name: string, details?: string, level: ChatDebugLogLevel = ChatDebugLogLevel.Info, options?: { id?: string; category?: string; parentEventId?: string }): void {
@@ -229,11 +198,9 @@ export class ChatDebugServiceImpl extends Disposable implements IChatDebugServic
 	}
 
 	addEvent(event: IChatDebugEvent): void {
-		// Resolve the session's buffer (if any) once, and its capacity. New
-		// events during streaming target an existing buffer, so we reuse its
-		// capacity and avoid re-reading configuration on the hot path.
+		// Resolve the session's buffer (if any) once and reuse its capacity.
 		let buffer = this._sessionBuffers.get(event.sessionResource);
-		const capacity = buffer?.capacity ?? this._capacityForSession(event.sessionResource);
+		const capacity = buffer?.capacity ?? ChatDebugServiceImpl.MAX_EVENTS_PER_SESSION;
 
 		// Deduplicate events that share the same ID. The extension may emit
 		// both a subagentInvocation and a userMessage from the same span;
