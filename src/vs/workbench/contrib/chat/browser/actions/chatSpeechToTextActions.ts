@@ -21,7 +21,6 @@ import { IQuickInputService } from '../../../../../platform/quickinput/common/qu
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
 import { AgentsVoiceStorageKeys, AGENTS_VOICE_CONNECTED, AGENTS_VOICE_ENABLED } from '../../../agentsVoice/common/agentsVoice.js';
 import { NOTEBOOK_EDITOR_FOCUSED } from '../../../notebook/common/notebookContextKeys.js';
-import { SegmentedVoiceInputModePillInactive } from '../voiceInputMode/voiceInputModeContextKeys.js';
 import { ChatContextKeys } from '../../common/actions/chatContextKeys.js';
 import { CHAT_CATEGORY } from './chatActions.js';
 import { IChatExecuteActionContext } from './chatExecuteActions.js';
@@ -152,7 +151,7 @@ export class ToggleChatSpeechToTextAction extends Action2 {
 			menu: [{
 				id: MenuId.ChatExecute,
 				order: -11,
-				when: ContextKeyExpr.and(ChatSpeechToTextConfigured, ChatSpeechToTextButtonShown, ChatSpeechToTextPreparing.negate(), AGENTS_VOICE_CONNECTED.negate(), SegmentedVoiceInputModePillInactive),
+				when: ContextKeyExpr.and(ChatSpeechToTextConfigured, ChatSpeechToTextButtonShown, ChatSpeechToTextPreparing.negate(), AGENTS_VOICE_CONNECTED.negate()),
 				group: 'navigation',
 			}],
 			keybinding: {
@@ -208,7 +207,7 @@ export class ChatSpeechToTextPreparingAction extends Action2 {
 			menu: [{
 				id: MenuId.ChatExecute,
 				order: -11,
-				when: ContextKeyExpr.and(ChatSpeechToTextConfigured, ChatSpeechToTextButtonShown, ChatSpeechToTextPreparing, ChatSpeechToTextMaiBackend.negate(), AGENTS_VOICE_CONNECTED.negate(), SegmentedVoiceInputModePillInactive),
+				when: ContextKeyExpr.and(ChatSpeechToTextConfigured, ChatSpeechToTextButtonShown, ChatSpeechToTextPreparing, ChatSpeechToTextMaiBackend.negate(), AGENTS_VOICE_CONNECTED.negate()),
 				group: 'navigation',
 			}],
 		});
@@ -236,7 +235,7 @@ export class ChatSpeechToTextConnectingAction extends Action2 {
 			menu: [{
 				id: MenuId.ChatExecute,
 				order: -11,
-				when: ContextKeyExpr.and(ChatSpeechToTextConfigured, ChatSpeechToTextButtonShown, ChatSpeechToTextPreparing, ChatSpeechToTextMaiBackend, AGENTS_VOICE_CONNECTED.negate(), SegmentedVoiceInputModePillInactive),
+				when: ContextKeyExpr.and(ChatSpeechToTextConfigured, ChatSpeechToTextButtonShown, ChatSpeechToTextPreparing, ChatSpeechToTextMaiBackend, AGENTS_VOICE_CONNECTED.negate()),
 				group: 'navigation',
 			}],
 		});

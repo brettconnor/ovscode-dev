@@ -12,7 +12,6 @@ import { URI } from '../../../../../../base/common/uri.js';
 import { localize } from '../../../../../../nls.js';
 import { ILinkPresentation, ILinkPresentationService, ILinkPresentationStatus, ILinkPresentationWatcher, LinkPresentationKind, LinkPresentationStatusKind } from '../../../../../../platform/dataChannel/common/dataChannel.js';
 import { IHoverService } from '../../../../../../platform/hover/browser/hover.js';
-import { ISessionSummaryHoverService } from '../../agentSessions/sessionSummaryHoverService.js';
 import './media/chatRichLink.css';
 
 // Copied and adapted from @vscode/markdown-editor's src/view/content/richLink.ts.
@@ -106,7 +105,6 @@ export class ChatRichLinkDecorator extends Disposable {
 	constructor(
 		private readonly _linkPresentationService: ILinkPresentationService,
 		private readonly _hoverService: IHoverService,
-		private readonly _sessionSummaryHoverService: ISessionSummaryHoverService,
 	) {
 		super();
 	}
@@ -141,24 +139,9 @@ export class ChatRichLinkDecorator extends Disposable {
 			// A session pill gets the same rich hover the sessions list shows, when
 			// this window can resolve the session behind the link. Anything else —
 			// and any link the window does not know — keeps the plain tooltip.
-			if (kind !== 'session' && kind !== 'chat') {
-				return tooltip;
-			}
-			return {
-				element: async token => await this._createSessionHoverElement(href, token) ?? plainTooltipElement(anchor.ownerDocument, tooltip),
-			};
+			return tooltip;
 		}));
 		return true;
-	}
-
-	private async _createSessionHoverElement(href: string, token: CancellationToken): Promise<HTMLElement | undefined> {
-		let resource: URI;
-		try {
-			resource = URI.parse(href);
-		} catch {
-			return undefined;
-		}
-		return this._sessionSummaryHoverService.createHoverElement(resource, token);
 	}
 
 	private _getLinkPresentationWatcher(href: string): ILinkPresentationWatcher | undefined {

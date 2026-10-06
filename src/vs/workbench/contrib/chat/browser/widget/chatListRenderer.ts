@@ -80,7 +80,6 @@ import { ChatRestoreCheckpointActionViewItem } from './chatRestoreCheckpointActi
 import { ChatAgentHover, getChatAgentHoverOptions } from './chatAgentHover.js';
 import { ChatContentMarkdownRenderer } from './chatContentMarkdownRenderer.js';
 import { ChatAgentCommandContentPart } from './chatContentParts/chatAgentCommandContentPart.js';
-import { ChatAgentMergeContentPart, getAgentMergeRequestSummary } from './chatContentParts/chatAgentMergeContentPart.js';
 import { ChatAnonymousRateLimitedPart } from './chatContentParts/chatAnonymousRateLimitedPart.js';
 import { ChatAttachmentsContentPart } from './chatContentParts/chatAttachmentsContentPart.js';
 import { ChatAutoModeResolutionContentPart } from './chatContentParts/chatAutoModeResolutionContentPart.js';
@@ -2764,15 +2763,6 @@ export class ChatListItemRenderer extends Disposable implements ITreeRenderer<Ch
 		}
 		templateData.renderedParts = [];
 
-		// Agent Merge drives its turns with a machine-facing state block, which
-		// gets summarized instead of being shown to the user verbatim.
-		const agentMerge = getAgentMergeRequestSummary(element);
-		if (agentMerge) {
-			const agentMergePart = this.instantiationService.createInstance(ChatAgentMergeContentPart, agentMerge, element.sessionResource, this.chatContentMarkdownRenderer, element.requestTimestamp);
-			templateData.elementDisposables.add(agentMergePart);
-			templateData.value.appendChild(agentMergePart.domNode);
-			return;
-		}
 
 		const label = element.systemInitiatedLabel ?? element.messageText;
 		const notificationPart = this.instantiationService.createInstance(

@@ -18,8 +18,6 @@ import { IHoverService } from '../../../../../platform/hover/browser/hover.js';
 import { IOpenerService } from '../../../../../platform/opener/common/opener.js';
 import product from '../../../../../platform/product/common/product.js';
 import { Schemas } from '../../../../../base/common/network.js';
-import { AGENT_HOST_SCHEME } from '../../../../../platform/agentHost/common/agentHostUri.js';
-import { AGENT_HOST_SESSION_LINK_SCHEME } from '../../../../../platform/agentHost/common/openSessionLink.js';
 
 const _remoteImageDisallowed = () => false;
 
@@ -110,7 +108,7 @@ export function getChatMarkdownRenderOptions(options?: MarkdownRenderOptions): M
 				override: allowedChatMarkdownHtmlTags,
 			},
 			...options?.sanitizerConfig,
-			allowedLinkSchemes: { augment: [product.urlProtocol, 'copilot-skill', Schemas.vscodeBrowser, AGENT_HOST_SCHEME, AGENT_HOST_SESSION_LINK_SCHEME] },
+			allowedLinkSchemes: { augment: [product.urlProtocol, 'copilot-skill', Schemas.vscodeBrowser] },
 			remoteImageIsAllowed: _remoteImageDisallowed,
 		}
 	};
@@ -166,11 +164,6 @@ export class ChatContentMarkdownRenderer implements IMarkdownRenderer {
 		result.element.querySelectorAll('a').forEach((element) => {
 			if (element.title) {
 				let title = element.title;
-				if (title === element.dataset.href && title.startsWith(`${AGENT_HOST_SCHEME}:`)) {
-					const uri = URI.parse(title);
-					const label = this.labelService.getUriLabel(uri);
-					title = uri.fragment ? `${label}#${uri.fragment}` : label;
-				}
 				element.title = '';
 				store.add(this.hoverService.setupManagedHover(getDefaultHoverDelegate('element'), element, title));
 			}

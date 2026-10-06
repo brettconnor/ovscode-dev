@@ -26,7 +26,6 @@ import { ILogService } from '../../../platform/log/common/log.js';
 import { ITelemetryService } from '../../../platform/telemetry/common/telemetry.js';
 import { IUriIdentityService } from '../../../platform/uriIdentity/common/uriIdentity.js';
 import { IChatWidget, IChatWidgetService } from '../../contrib/chat/browser/chat.js';
-import { AgentSessionProviders, getAgentSessionProvider } from '../../contrib/chat/browser/agentSessions/agentSessions.js';
 import { AddDynamicVariableAction, IAddDynamicVariableContext } from '../../contrib/chat/browser/attachments/chatDynamicVariables.js';
 import { IChatAgentHistoryEntry, IChatAgentImplementation, IChatAgentRequest, IChatAgentService } from '../../contrib/chat/common/participants/chatAgents.js';
 import { IAgentSkill, IChatPromptSlashCommand, ICustomAgent, IInstructionFile, IPromptFileContext, IPromptPath, IPromptsService, PromptsStorage } from '../../contrib/chat/common/promptSyntax/service/promptsService.js';
@@ -43,6 +42,7 @@ import { IExtensionService } from '../../services/extensions/common/extensions.j
 import { Dto } from '../../services/extensions/common/proxyIdentifier.js';
 import { NotebookDto } from './mainThreadNotebookDto.js';
 import { getChatSessionType } from '../../contrib/chat/common/model/chatUri.js';
+import { localChatSessionType } from '../../contrib/chat/common/chatSessionsService.js';
 import { IAgentPlugin, IAgentPluginService } from '../../contrib/chat/common/plugins/agentPluginService.js';
 
 interface AgentData {
@@ -186,7 +186,7 @@ export class MainThreadChatAgents2 extends Disposable implements MainThreadChatA
 
 	private _acceptActiveChatSession(widget: IChatWidget | undefined): void {
 		const sessionResource = widget?.viewModel?.sessionResource;
-		const isLocal = sessionResource && getAgentSessionProvider(sessionResource) === AgentSessionProviders.Local;
+		const isLocal = sessionResource && getChatSessionType(sessionResource) === localChatSessionType;
 		this._proxy.$acceptActiveChatSession(isLocal ? sessionResource : undefined);
 	}
 

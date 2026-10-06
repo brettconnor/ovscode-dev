@@ -54,7 +54,6 @@ import { IChatEditingExplanationModelManager, IExplanationDiffInfo, IExplanation
 import { ChatEditingSessionStorage, IChatEditingSessionStop, StoredSessionState } from './chatEditingSessionStorage.js';
 import { ChatEditingTextModelContentProvider } from './chatEditingTextModelContentProviders.js';
 import { getChatSessionType } from '../../common/model/chatUri.js';
-import { AgentSessionProviders } from '../agentSessions/agentSessions.js';
 
 const enum NotExistBehavior {
 	Create,
@@ -839,10 +838,6 @@ export class ChatEditingSession extends Disposable implements IChatEditingSessio
 				// Mark as no longer being modified
 				await entry.acceptStreamingEditsEnd();
 
-				// Accept the changes for background sessions
-				if (getChatSessionType(this.chatSessionResource) === AgentSessionProviders.Background) {
-					await entry.accept();
-				}
 
 				// Clear external edit mode
 				entry.stopExternalEdit();

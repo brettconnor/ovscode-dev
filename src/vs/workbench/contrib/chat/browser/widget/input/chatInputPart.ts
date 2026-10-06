@@ -73,7 +73,6 @@ import { WorkbenchList } from '../../../../../../platform/list/browser/listServi
 import { canLog, ILogService, LogLevel } from '../../../../../../platform/log/common/log.js';
 import { ObservableMemento, observableMemento } from '../../../../../../platform/observable/common/observableMemento.js';
 import { bindContextKey } from '../../../../../../platform/observable/common/platformObservableUtils.js';
-import { IVoiceModeOnboardingService } from '../../../../agentsVoice/browser/voiceModeOnboarding.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../../platform/storage/common/storage.js';
 import { IThemeService } from '../../../../../../platform/theme/common/themeService.js';
 import { ISharedWebContentExtractorService } from '../../../../../../platform/webContentExtractor/common/webContentExtractor.js';
@@ -108,15 +107,12 @@ import { IChatAgentService } from '../../../common/participants/chatAgents.js';
 import { ILanguageModelToolsService } from '../../../common/tools/languageModelToolsService.js';
 import { ChatHistoryNavigator } from '../../../common/widget/chatWidgetHistoryService.js';
 import { ChatEditingSessionSubmitAction, ChatSubmitAction, IChatExecuteActionContext, OpenModelPickerAction, OpenModePickerAction, OpenPermissionPickerAction, OpenWorkspacePickerAction } from '../../actions/chatExecuteActions.js';
-import { ChatVoiceInputModeAction, VoiceInputModeActionViewItem } from '../../voiceInputMode/voiceInputModeActionViewItem.js';
 import { ChatSpeechToTextConnectingAction, ChatSpeechToTextPreparingAction, ToggleChatSpeechToTextAction } from '../../actions/chatSpeechToTextActions.js';
 import { DictationActionViewItem } from '../../speechToText/dictationActionViewItem.js';
 import { DictationDownloadActionViewItem } from '../../speechToText/dictationDownloadActionViewItem.js';
 import { ChatSpeechToTextState, IChatSpeechToTextService } from '../../speechToText/chatSpeechToTextService.js';
 import { IDictationOnboardingService } from '../../speechToText/dictationOnboarding.js';
 import { isDictationActiveForEditor, notifyDictationSubmitted, onDidChangeDictationEditor } from '../../speechToText/dictationSession.js';
-import { VoiceModeActionViewItem } from '../../voiceClient/voiceModeActionViewItem.js';
-import { isVoiceSessionActiveForInput, IVoiceSessionController } from '../../voiceClient/voiceSessionController.js';
 import { ChatAttachmentModel } from '../../attachments/chatAttachmentModel.js';
 import { IChatAttachmentWidgetRegistry } from '../../attachments/chatAttachmentWidgetRegistry.js';
 import { DefaultChatAttachmentWidget, ElementChatAttachmentWidget, FileAttachmentWidget, ImageAttachmentWidget, BrowserViewAttachmentWidget, NotebookCellOutputChatAttachmentWidget, PasteAttachmentWidget, PromptFileAttachmentWidget, PromptTextAttachmentWidget, SCMHistoryItemAttachmentWidget, SCMHistoryItemChangeAttachmentWidget, SCMHistoryItemChangeRangeAttachmentWidget, TerminalCommandAttachmentWidget, ToolSetOrToolItemAttachmentWidget } from '../../attachments/chatAttachmentWidgets.js';
@@ -918,9 +914,7 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 		@IChatAttachmentWidgetRegistry private readonly _chatAttachmentWidgetRegistry: IChatAttachmentWidgetRegistry,
 		@IChatInputNotificationService private readonly chatInputNotificationService: IChatInputNotificationService,
 		@IChatPhoneInputPresenter private readonly chatPhoneInputPresenter: IChatPhoneInputPresenter,
-		@IVoiceModeOnboardingService private readonly voiceModeOnboardingService: IVoiceModeOnboardingService,
 		@IChatWidgetService private readonly chatWidgetService: IChatWidgetService,
-		@IVoiceSessionController private readonly voiceSessionController: IVoiceSessionController,
 		@IChatService private readonly chatService: IChatService,
 		@IChatPetService private readonly chatPetService: IChatPetService,
 		@IActionViewItemService private readonly actionViewItemService: IActionViewItemService,
@@ -2602,7 +2596,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 					dom.h(`.chat-tool-confirmation-carousel-container.${chatInputSurfaceStackSlotClass}@chatToolConfirmationCarouselContainer`),
 					dom.h(`.${chatInputStackClass}`, [
 						dom.h(`.chat-input-notification-container.${chatInputStackSlotClass}@chatInputNotificationContainer`),
-						dom.h(`.voice-mode-onboarding-container.${chatInputStackSlotClass}@voiceModeOnboardingContainer`),
 						dom.h(`.dictation-onboarding-container.${chatInputStackSlotClass}@dictationOnboardingContainer`),
 						dom.h(`.chat-goal-banner-container.${chatInputStackSlotClass}@chatGoalBannerContainer`),
 						dom.h('.chat-todo-list-widget-container@chatInputTodoListWidgetContainer'),
@@ -2637,7 +2630,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 				dom.h(`.interactive-input-followups.${chatInputSurfaceStackSlotClass}@followupsContainer`),
 				dom.h(`.${chatInputStackClass}`, [
 					dom.h(`.chat-input-notification-container.${chatInputStackSlotClass}@chatInputNotificationContainer`),
-					dom.h(`.voice-mode-onboarding-container.${chatInputStackSlotClass}@voiceModeOnboardingContainer`),
 					dom.h(`.dictation-onboarding-container.${chatInputStackSlotClass}@dictationOnboardingContainer`),
 					dom.h(`.chat-goal-banner-container.${chatInputStackSlotClass}@chatGoalBannerContainer`),
 					dom.h('.chat-todo-list-widget-container@chatInputTodoListWidgetContainer'),
@@ -2700,10 +2692,9 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 		this.chatInputNotificationContainer = elements.chatInputNotificationContainer;
 		this._register(registerChatInputOnboardingHosts(
 			this.noticeHost,
-			{ voice: elements.voiceModeOnboardingContainer, dictation: elements.dictationOnboardingContainer },
+			{ dictation: elements.dictationOnboardingContainer },
 			this.container,
 			() => this.focus(),
-			this.voiceModeOnboardingService,
 			this.dictationOnboardingService,
 		));
 		this.chatGoalBannerContainer = elements.chatGoalBannerContainer;
@@ -2888,15 +2879,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 
 		const hoverDelegate = this._register(createInstantHoverDelegate());
 
-		const focusedWidget = observableFromEvent(this, this.chatWidgetService.onDidChangeFocusedSession, () => this.chatWidgetService.lastFocusedWidget);
-		const voiceSessionResource = observableFromEvent(this, widget.onDidChangeViewModel, () => widget.viewModel?.sessionResource);
-		const isVoiceInputActive = derived(this, reader => focusedWidget.read(reader) === widget);
-		const isVoiceSessionActive = derived(this, reader => {
-			const target = this.voiceSessionController.targetSession.read(reader);
-			const hasDraftTarget = this.voiceSessionController.hasDraftTarget.read(reader);
-			const resource = voiceSessionResource.read(reader);
-			return isVoiceSessionActiveForInput(isVoiceInputActive.read(reader), target, hasDraftTarget, resource);
-		});
 
 		const inputPickerCompactStates = new Map<string, ISettableObservable<boolean>>();
 		const inputPickerMinimalStates = new Map<string, ISettableObservable<boolean>>();
@@ -3071,13 +3053,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 			hoverDelegate,
 			hiddenItemStrategy: HiddenItemStrategy.NoHide,
 			actionViewItemProvider: (action, options) => {
-				if (action.id === ChatVoiceInputModeAction.ID) {
-					return this.instantiationService.createInstance(VoiceInputModeActionViewItem, action, {
-						isActive: isVoiceInputActive,
-						isDictationActive: isDictationInputActive,
-						isVoiceActive: isVoiceSessionActive,
-					});
-				}
 				if ((action.id === ChatSubmitAction.ID || action.id === ChatEditingSessionSubmitAction.ID) && action instanceof MenuItemAction) {
 					return this.instantiationService.createInstance(class extends MenuEntryActionViewItem {
 						override render(container: HTMLElement): void {
@@ -3091,13 +3066,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 				}
 				if (action.id === ToggleChatSpeechToTextAction.ID && action instanceof MenuItemAction) {
 					return this.instantiationService.createInstance(DictationActionViewItem, action, options, isDictationInputActive);
-				}
-				// Voice Mode mic button: add a right-click context menu (Select
-				// Microphone / Disable Voice Mode) mirroring dictation. While
-				// listening the toolbar swaps the start action for the
-				// push-to-talk stop action, so cover both so the menu stays put.
-				if ((action.id === 'agentsVoice.startVoiceInChat' || action.id === 'agentsVoice.pttStopInChat') && action instanceof MenuItemAction) {
-					return this.instantiationService.createInstance(VoiceModeActionViewItem, action, options);
 				}
 				return undefined;
 			},

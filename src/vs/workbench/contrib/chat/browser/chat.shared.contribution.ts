@@ -62,8 +62,6 @@ import { ChatModeService, IChatMode, IChatModeService, IChatModes } from '../com
 import { IChatService } from '../common/chatService/chatService.js';
 import { ChatRequestOriginService, IChatRequestOriginService } from '../common/chatRequestOrigin.js';
 import { ChatService } from '../common/chatService/chatServiceImpl.js';
-import { IAgentSessionsService, AgentSessionsService } from './agentSessions/agentSessionsService.js';
-import { LocalAgentsSessionsController } from './agentSessions/localAgentSessionsController.js';
 import { ChatSideChatService, IChatSideChatService } from '../common/chatSideChatService.js';
 import { BYOKUtilityModelDefault, ChatAIDisabledSettingId, ChatAgentLocation, ChatConfiguration, ChatClosedPromoNotification, ChatDefaultPermissionLevel, CustomizationMigrationHintMode, ChatNotificationMode, ChatPermissionLevel } from '../common/constants.js';
 import { chatProgressConfigurationProperties } from './chatProgressConfiguration.js';
@@ -140,13 +138,6 @@ import { ChatToolRiskAssessmentService, IChatToolRiskAssessmentService } from '.
 import { ClientToolSetsContribution } from './tools/clientToolSetsContribution.js';
 import { RenameToolContribution } from './tools/renameTool.js';
 import { UsagesToolContribution } from './tools/usagesTool.js';
-import './voiceClient/micCaptureService.js';
-import './voiceClient/ttsPlaybackService.js';
-import './voiceClient/voiceClientService.js';
-import './voiceClient/voiceSessionController.js';
-import './voiceClient/voiceToolDispatchService.js';
-import './voiceInputMode/voiceInputMode.js';
-import { ChatVoiceInputModeAction, ChatVoiceInputModeToggleListenAction, registerVoiceInputModeSimulateActions } from './voiceInputMode/voiceInputModeActionViewItem.js';
 
 import { ChatContextKeys } from '../common/actions/chatContextKeys.js';
 import { AICustomizationManagementCommands } from '../common/aiCustomizationWorkspaceService.js';
@@ -194,7 +185,6 @@ import { AgentPluginCommandsContribution } from './agentPluginCommands.js';
 import { AgentPluginEditor } from './agentPluginEditor/agentPluginEditor.js';
 import { AgentPluginEditorInput } from './agentPluginEditor/agentPluginEditorInput.js';
 import { AgentPluginRepositoryService } from './agentPluginRepositoryService.js';
-import { ISessionSummaryHoverService, SessionSummaryHoverService } from './agentSessions/sessionSummaryHoverService.js';
 import { ChatDynamicVariableModel } from './attachments/chatDynamicVariables.js';
 import { ChatImplicitContextContribution } from './attachments/chatImplicitContext.js';
 import { ChatPasteTargetService } from './attachments/chatPasteTargetService.js';
@@ -246,31 +236,11 @@ import './widget/input/editor/chatInputEditorContrib.js';
 import './widget/input/editor/chatInputEditorHover.js';
 import { ChatPasteProvidersFeature } from './widget/input/editor/chatPasteProviders.js';
 import { QuickChatService } from './widgetHosts/chatQuick.js';
-import { IRepositoryPickerOptions, PICK_REPOSITORY_COMMAND_ID, RepositoryPicker } from './agentSessions/repositoryPicker.js';
 
 CommandsRegistry.registerCommand('_chat.notifyQuestionCarouselAnswer', (accessor: ServicesAccessor, resolveId: string, answers?: import('../common/chatService/chatService.js').IChatQuestionAnswers) => {
 	accessor.get(IChatService).notifyQuestionCarouselAnswer('', resolveId, answers);
 });
 
-CommandsRegistry.registerCommand(PICK_REPOSITORY_COMMAND_ID, async (accessor: ServicesAccessor, repositoriesCommand: string, options?: IRepositoryPickerOptions) => {
-	if (typeof repositoriesCommand !== 'string' || !repositoriesCommand || repositoriesCommand === PICK_REPOSITORY_COMMAND_ID) {
-		throw new Error('A repository search command is required');
-	}
-	const commandService = accessor.get(ICommandService);
-	const store = new DisposableStore();
-	try {
-		const picker = store.add(accessor.get(IInstantiationService).createInstance(RepositoryPicker));
-		return await picker.pickRepository(async query => {
-			const repositories = await commandService.executeCommand<readonly string[]>(repositoriesCommand, query);
-			if (!Array.isArray(repositories) || !repositories.every(repository => typeof repository === 'string')) {
-				throw new Error('The repository search command did not return repository names');
-			}
-			return repositories;
-		}, options);
-	} finally {
-		store.dispose();
-	}
-});
 
 const toolReferenceNameEnumValues: string[] = [];
 const toolReferenceNameEnumDescriptions: string[] = [];
@@ -3236,7 +3206,6 @@ Registry.as<IEditorFactoryRegistry>(EditorExtensions.EditorFactory).registerEdit
 Registry.as<IEditorFactoryRegistry>(EditorExtensions.EditorFactory).registerEditorSerializer(ChatDebugEditorInput.ID, ChatDebugEditorInputSerializer);
 
 registerWorkbenchContribution2(CopilotTelemetryContribution.ID, CopilotTelemetryContribution, WorkbenchPhase.BlockRestore);
-registerWorkbenchContribution2(LocalAgentsSessionsController.ID, LocalAgentsSessionsController, WorkbenchPhase.AfterRestored);
 registerWorkbenchContribution2(ChatSpeechToTextInitContribution.ID, ChatSpeechToTextInitContribution, WorkbenchPhase.BlockRestore);
 registerWorkbenchContribution2(ChatResolverContribution.ID, ChatResolverContribution, WorkbenchPhase.BlockStartup);
 registerWorkbenchContribution2(ChatDebugResolverContribution.ID, ChatDebugResolverContribution, WorkbenchPhase.BlockStartup);
@@ -3304,9 +3273,6 @@ registerChatPromptNavigationActions();
 registerChatTitleActions();
 registerChatExecuteActions();
 registerChatFindActions();
-registerAction2(ChatVoiceInputModeAction);
-registerAction2(ChatVoiceInputModeToggleListenAction);
-registerVoiceInputModeSimulateActions();
 registerChatSpeechToTextActions();
 registerConfigureSpeechInstructionsActions();
 registerChatQueueActions();
@@ -3328,7 +3294,6 @@ agentPluginDiscoveryRegistry.register(new SyncDescriptor(ExtensionAgentPluginDis
 agentPluginDiscoveryRegistry.register(new SyncDescriptor(CopilotCliAgentPluginDiscovery), AgentPluginDiscoveryPriority.CopilotCli);
 
 registerSingleton(IChatResponseResourceFileSystemProvider, ChatResponseResourceFileSystemProvider, InstantiationType.Delayed);
-registerSingleton(IAgentSessionsService, AgentSessionsService, InstantiationType.Delayed);
 registerSingleton(IChatSpeechToTextService, ChatSpeechToTextService, InstantiationType.Eager);
 registerSingleton(IVoiceCodeTranscriptionClient, VoiceCodeTranscriptionClient, InstantiationType.Delayed);
 registerSingleton(IChatService, ChatService, InstantiationType.Delayed);
@@ -3384,6 +3349,5 @@ registerSingleton(IPlanReviewFeedbackService, PlanReviewFeedbackService, Instant
 registerSingleton(IChatTipService, ChatTipService, InstantiationType.Delayed);
 registerSingleton(IChatDebugService, ChatDebugServiceImpl, InstantiationType.Delayed);
 registerSingleton(IChatImageCarouselService, ChatImageCarouselService, InstantiationType.Delayed);
-registerSingleton(ISessionSummaryHoverService, SessionSummaryHoverService, InstantiationType.Delayed);
 
 ChatWidget.CONTRIBS.push(ChatDynamicVariableModel);

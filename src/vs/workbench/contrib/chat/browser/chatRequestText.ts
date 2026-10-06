@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { IChatRequestViewModel } from '../common/model/chatViewModel.js';
-import { getAgentMergeRequestLabel } from './widget/chatContentParts/chatAgentMergeContentPart.js';
 
 /**
  * Text that stands for a request wherever its row is described rather than
@@ -14,9 +13,6 @@ import { getAgentMergeRequestLabel } from './widget/chatContentParts/chatAgentMe
  * other request keeps its message text. Further kinds add a check of their own.
  */
 export function getChatRequestText(item: IChatRequestViewModel): string {
-	const agentMergeLabel = getAgentMergeRequestLabel(item);
-	if (agentMergeLabel !== undefined) {
-		return agentMergeLabel;
-	}
+
 	return item.messageText;
 }

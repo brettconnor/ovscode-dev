@@ -22,7 +22,6 @@ import { ACTION_ID_NEW_CHAT } from './actions/chatActions.js';
 import { ChatSubmitAction, OpenModePickerAction, OpenModelPickerAction } from './actions/chatExecuteActions.js';
 import { ManagePluginsAction } from './actions/chatPluginActions.js';
 import { ConfigureToolsAction } from './actions/chatToolActions.js';
-import { IAgentSessionsService } from './agentSessions/agentSessionsService.js';
 import { CONFIGURE_INSTRUCTIONS_ACTION_ID } from './promptSyntax/attachInstructionsAction.js';
 import { showConfigureHooksQuickPick } from './promptSyntax/hookActions.js';
 import { CONFIGURE_PROMPTS_ACTION_ID } from './promptSyntax/runPromptAction.js';
@@ -31,7 +30,6 @@ import { IChatWidgetService } from './chat.js';
 import { agentSlashCommandToMarkdown, agentToMarkdown } from './widget/chatContentParts/chatMarkdownDecorationsRenderer.js';
 import { ContextKeyExpr } from '../../../../platform/contextkey/common/contextkey.js';
 import { IChatPetService } from './chatPetService.js';
-import { ChatSessionArchiveActionWording, ChatSessionArchiveActionWordingSettingId, getChatSessionArchiveActionWording } from '../../../../platform/chat/common/sessionArchiveActions.js';
 
 export class ChatSlashCommandsContribution extends Disposable {
 
@@ -42,7 +40,6 @@ export class ChatSlashCommandsContribution extends Disposable {
 		@ICommandService commandService: ICommandService,
 		@IChatAgentService chatAgentService: IChatAgentService,
 		@IInstantiationService instantiationService: IInstantiationService,
-		@IAgentSessionsService agentSessionsService: IAgentSessionsService,
 		@IChatService chatService: IChatService,
 		@IConfigurationService configurationService: IConfigurationService,
 		@IChatWidgetService chatWidgetService: IChatWidgetService,
@@ -60,29 +57,16 @@ export class ChatSlashCommandsContribution extends Disposable {
 		}, async () => {
 			chatPetService.toggle();
 		}));
-		const clearCommandRegistration = this._register(new MutableDisposable());
-		const registerClearCommand = () => {
-			const wording = getChatSessionArchiveActionWording(configurationService);
-			clearCommandRegistration.clear();
-			clearCommandRegistration.value = slashCommandService.registerSlashCommand({
-				command: 'clear',
-				detail: wording === ChatSessionArchiveActionWording.MarkAsDone
-					? nls.localize('clear.markDone', "Start a new chat and mark the current one as done")
-					: nls.localize('clear.archive', "Start a new chat and archive the current one"),
-				sortText: 'z2_clear',
-				executeImmediately: true,
-				locations: [ChatAgentLocation.Chat]
-			}, async (_prompt, _progress, _history, _location, sessionResource) => {
-				agentSessionsService.getSession(sessionResource)?.setArchived(true);
-				commandService.executeCommand(ACTION_ID_NEW_CHAT);
-			});
-		};
-		registerClearCommand();
-		this._register(configurationService.onDidChangeConfiguration(event => {
-			if (event.affectsConfiguration(ChatSessionArchiveActionWordingSettingId)) {
-				registerClearCommand();
-			}
+		this._store.add(slashCommandService.registerSlashCommand({
+			command: 'clear',
+			detail: nls.localize('clear.newChat', "Start a new chat"),
+			sortText: 'z2_clear',
+			executeImmediately: true,
+			locations: [ChatAgentLocation.Chat]
+		}, async () => {
+			commandService.executeCommand(ACTION_ID_NEW_CHAT);
 		}));
+
 		this._store.add(slashCommandService.registerSlashCommand({
 			command: 'hooks',
 			detail: nls.localize('hooks', "Configure hooks"),
