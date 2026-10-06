@@ -49,7 +49,7 @@ suite('PromptsDebugContribution', () => {
 		instaService = disposables.add(new TestInstantiationService());
 
 		const contextKeyService = disposables.add(new MockContextKeyService());
-		chatDebugService = disposables.add(new ChatDebugServiceImpl(new TestConfigurationService(), contextKeyService));
+		chatDebugService = disposables.add(new ChatDebugServiceImpl(contextKeyService));
 		instaService.stub(IChatDebugService, chatDebugService);
 
 		willInvokeAgentEmitter = disposables.add(new Emitter<IChatAgentInvocationEvent>());

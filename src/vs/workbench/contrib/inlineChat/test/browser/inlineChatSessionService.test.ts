@@ -134,7 +134,7 @@ suite('InlineChatSessionService', () => {
 		collection.set(ICustomizationMigrationTelemetryService, new class extends mock<ICustomizationMigrationTelemetryService>() { });
 		collection.set(IPromptsService, new MockPromptsService());
 		collection.set(ILanguageModelsService, new SyncDescriptor(NullLanguageModelsService));
-		collection.set(IChatDebugService, store.add(new ChatDebugServiceImpl(new TestConfigurationService(), store.add(new MockContextKeyService()))));
+		collection.set(IChatDebugService, store.add(new ChatDebugServiceImpl(store.add(new MockContextKeyService()))));
 		collection.set(IMultiDiffSourceResolverService, new class extends mock<IMultiDiffSourceResolverService>() {
 			override registerResolver(_resolver: IMultiDiffSourceResolver) {
 				return Disposable.None;
