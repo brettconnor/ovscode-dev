@@ -5,7 +5,6 @@
 	"chatContext",
 	"chatInstructions",
 	"chatOutputRenderers",
-	"chatParticipants",
 	"chatPlugins",
 	"chatPromptFiles",
 	"chatSkills",
