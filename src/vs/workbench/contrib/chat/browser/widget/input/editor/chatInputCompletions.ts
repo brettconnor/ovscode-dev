@@ -423,10 +423,7 @@ class AgentCompletions extends Disposable {
 				const agents = this.chatAgentService.getAgents()
 					.filter(a => a.locations.includes(widget.location));
 
-				// Filter out chatSessions contributions for slash command completions
-				const chatSessionContributions = this.chatSessionsService.getAllChatSessionContributions();
-				const chatSessionAgentIds = new Set(chatSessionContributions.map(contribution => contribution.type));
-				const agentsForSlashCommands = agents.filter(a => !chatSessionAgentIds.has(a.id));
+				const agentsForSlashCommands = agents;
 
 				// When the input is only `/`, items are sorted by sortText.
 				// When typing, filterText is used to score and sort.
@@ -440,7 +437,6 @@ class AgentCompletions extends Disposable {
 
 				const justAgents: CompletionItem[] = agents
 					.filter(a => !a.isDefault)
-					.filter(a => !chatSessionAgentIds.has(a.id))
 					.map(agent => {
 						const { label: agentLabel, isDupe } = this.getAgentCompletionDetails(agent);
 						const detail = agent.description;
@@ -525,9 +521,7 @@ class AgentCompletions extends Disposable {
 				}
 
 				const agents = this.chatAgentService.getAgents()
-					.filter(a => a.locations.includes(widget.location) && a.modes.includes(widget.input.currentModeKind))
-					// Filter out chatSessions contributions for slash command completions
-					.filter(a => !this.chatSessionsService.getChatSessionContribution(a.id));
+					.filter(a => a.locations.includes(widget.location) && a.modes.includes(widget.input.currentModeKind));
 
 				return {
 					suggestions: coalesce(agents.flatMap(agent => agent.slashCommands.map((c, i) => {

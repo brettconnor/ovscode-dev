@@ -1393,29 +1393,7 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 	}
 
 	private async updateWidgetLockState(sessionType: string): Promise<void> {
-		if (sessionType === localChatSessionType) {
-			this._widget.unlockFromCodingAgent();
-			return;
-		}
-
-		let canResolve = false;
-		try {
-			canResolve = await this.chatSessionsService.canResolveChatSession(sessionType);
-		} catch (error) {
-			this.logService.warn(`Failed to resolve chat session type '${sessionType}' for locking`, error);
-		}
-
-		if (!canResolve) {
-			this._widget.unlockFromCodingAgent();
-			return;
-		}
-
-		const contribution = this.chatSessionsService.getChatSessionContribution(sessionType);
-		if (contribution) {
-			this._widget.lockToCodingAgent(contribution.name, contribution.displayName, sessionType);
-		} else {
-			this._widget.unlockFromCodingAgent();
-		}
+		this._widget.unlockFromCodingAgent();
 	}
 
 	private async clear(): Promise<void> {

@@ -196,23 +196,7 @@ export class ChatEditorInput extends EditorInput implements IEditorCloseHandler 
 
 	override getTitle(verbosity?: Verbosity): string {
 		const name = this.getName();
-		if (verbosity === Verbosity.LONG) { // Verbosity LONG is used for tooltips
-			const sessionTypeDisplayName = this.getSessionTypeDisplayName();
-			if (sessionTypeDisplayName) {
-				return `${name} | ${sessionTypeDisplayName}`;
-			}
-		}
 		return name;
-	}
-
-	private getSessionTypeDisplayName(): string | undefined {
-		const sessionType = this.getSessionType();
-		if (sessionType === localChatSessionType) {
-			return;
-		}
-		const contributions = this.chatSessionsService.getAllChatSessionContributions();
-		const contribution = contributions.find(c => c.type === sessionType);
-		return contribution?.displayName;
 	}
 
 	override getIcon(): ThemeIcon | URI | undefined {
@@ -228,11 +212,6 @@ export class ChatEditorInput extends EditorInput implements IEditorCloseHandler 
 
 	private resolveIcon(): ThemeIcon | URI | undefined {
 		// TODO@osortega,@rebornix double check: Chat Session Item icon is reserved for chat session list and deprecated for chat session status. thus here we use session type icon. We may want to show status for the Editor Title.
-		const sessionType = this.getSessionType();
-		if (sessionType !== localChatSessionType) {
-			return this.chatSessionsService.getChatSessionContribution(sessionType)?.icon;
-		}
-
 		return undefined;
 	}
 

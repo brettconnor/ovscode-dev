@@ -1065,7 +1065,7 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 				this._currentSessionType = newSessionType;
 				this.getVisibleOptionGroupsModeAndUpdateContextKeys(this.getCurrentSessionResource());
 				this.agentSessionTypeKey.set(newSessionType);
-				this.chatSessionSupportsDelegationKey.set(this.chatSessionsService.supportsDelegationForSessionType(newSessionType));
+				this.chatSessionSupportsDelegationKey.set(false);
 				this.updateWidgetLockStateFromSessionType(newSessionType);
 				this.checkModeInSessionPool(newSessionType);
 				this._modelSelectionController.revalidateForSessionType(() => this.initSelectedModel());
@@ -1128,7 +1128,7 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 			const initialSessionType = this.options.sessionTypePickerDelegate.getActiveSessionProvider();
 			if (initialSessionType) {
 				this.agentSessionTypeKey.set(initialSessionType);
-				this.chatSessionSupportsDelegationKey.set(this.chatSessionsService.supportsDelegationForSessionType(initialSessionType));
+				this.chatSessionSupportsDelegationKey.set(false);
 			}
 		}
 		this.chatSessionHasCustomAgentTarget = ChatContextKeys.chatSessionHasCustomAgentTarget.bindTo(contextKeyService);
@@ -2842,7 +2842,7 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 		const sessionType = delegateSessionType || (sessionResource ? getChatSessionType(sessionResource) : '');
 
 		this.agentSessionTypeKey.set(sessionType);
-		this.chatSessionSupportsDelegationKey.set(this.chatSessionsService.supportsDelegationForSessionType(sessionType));
+		this.chatSessionSupportsDelegationKey.set(false);
 	}
 
 	/**
@@ -2855,12 +2855,7 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 			return;
 		}
 
-		const contribution = this.chatSessionsService.getChatSessionContribution(sessionType);
-		if (contribution) {
-			this._widget?.lockToCodingAgent(contribution.name, contribution.displayName, contribution.type);
-		} else {
-			this._widget?.unlockFromCodingAgent();
-		}
+		this._widget?.unlockFromCodingAgent();
 	}
 
 	/**

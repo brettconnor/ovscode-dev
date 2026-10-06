@@ -232,7 +232,6 @@ export class ChatEditor extends AbstractEditorWithViewState<IChatEditorViewState
 		const inputBeforeLoad = this.widget?.getInput() ?? '';
 
 		// Show loading indicator early for non-local sessions to prevent layout shifts
-		let isContributedChatSession = false;
 		const chatSessionType = input.getSessionType();
 		if (chatSessionType !== localChatSessionType) {
 			const loadingMessage = nls.localize('chatEditor.loadingSession', "Loading...");
@@ -249,24 +248,7 @@ export class ChatEditor extends AbstractEditorWithViewState<IChatEditorViewState
 			throw new Error('ChatEditor lifecycle issue: no editor widget');
 		}
 
-		if (chatSessionType !== localChatSessionType) {
-			try {
-				await raceCancellationError(this.chatSessionsService.canResolveChatSession(chatSessionType), token);
-				const contributions = this.chatSessionsService.getAllChatSessionContributions();
-				const contribution = contributions.find(c => c.type === chatSessionType);
-				if (contribution) {
-					this.widget.lockToCodingAgent(contribution.name, contribution.displayName, contribution.type);
-					isContributedChatSession = true;
-				} else {
-					this.widget.unlockFromCodingAgent();
-				}
-			} catch (error) {
-				this.hideLoadingInChatWidget();
-				throw error;
-			}
-		} else {
-			this.widget.unlockFromCodingAgent();
-		}
+		this.widget.unlockFromCodingAgent();
 
 		try {
 			const editorModel = await raceCancellationError(input.resolve(), token);
@@ -291,9 +273,6 @@ export class ChatEditor extends AbstractEditorWithViewState<IChatEditorViewState
 				this._widget.restoreViewState(viewState);
 			}
 
-			if (isContributedChatSession && options?.title?.preferred && input.sessionResource) {
-				this.chatService.setChatSessionTitle(input.sessionResource, options.title.preferred);
-			}
 		} catch (error) {
 			this.hideLoadingInChatWidget();
 			throw error;

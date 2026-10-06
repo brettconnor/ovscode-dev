@@ -1658,25 +1658,14 @@ export class ChatWidget extends Disposable implements IChatWidget {
 
 	private getWelcomeViewContent(additionalMessage: string | IMarkdownString | undefined): IChatViewWelcomeContent {
 		if (this.isLockedToCodingAgent) {
-			// Check for provider-specific customizations from chat sessions service
-			const contribution = this._lockedAgent ? this.chatSessionsService.getChatSessionContribution(this._lockedAgent.id) : undefined;
-			const providerIcon = contribution?.icon;
-			const providerTitle = contribution?.welcomeTitle;
-			const providerMessage = contribution?.welcomeMessage;
-
-			// Fallback to default messages if provider doesn't specify
-			const message = providerMessage
-				? new MarkdownString(providerMessage)
-				: (this._lockedAgent?.prefix === '@copilot '
-					? new MarkdownString(localize('copilotCodingAgentMessage', "This chat session will be forwarded to the {0} [coding agent]({1}) where work is completed in the background. ", this._lockedAgent.prefix, 'https://aka.ms/coding-agent-docs') + DISCLAIMER, { isTrusted: true })
-					: new MarkdownString(localize('genericCodingAgentMessage', "This chat session will be forwarded to the {0} coding agent where work is completed in the background. ", this._lockedAgent?.prefix) + DISCLAIMER));
+			const message = new MarkdownString(localize('genericCodingAgentMessage', "This chat session will be forwarded to the {0} coding agent where work is completed in the background. ", this._lockedAgent?.prefix) + DISCLAIMER);
 
 			return {
-				title: providerTitle ?? localize('codingAgentTitle', "Delegate to {0}", this._lockedAgent?.prefix),
+				title: localize('codingAgentTitle', "Delegate to {0}", this._lockedAgent?.prefix),
 				message,
-				icon: providerIcon ?? Codicon.sendToRemoteAgent,
+				icon: Codicon.sendToRemoteAgent,
 				additionalMessage,
-				useLargeIcon: !!providerIcon,
+				useLargeIcon: false,
 			};
 		}
 
@@ -1888,19 +1877,8 @@ export class ChatWidget extends Disposable implements IChatWidget {
 			return false;
 		}
 
-		const contribution = this.chatSessionsService.getChatSessionContribution(targetAgent.id);
-		if (!contribution) {
-			this.logService.debug(`[Delegation] _shouldExitAfterDelegation: false (no contribution found for targetAgent.id=${targetAgent.id})`);
-			return false;
-		}
-
-		if (contribution.canDelegate !== true) {
-			this.logService.debug(`[Delegation] _shouldExitAfterDelegation: false (contribution.canDelegate=${contribution.canDelegate}, expected true)`);
-			return false;
-		}
-
-		this.logService.debug('[Delegation] _shouldExitAfterDelegation: true');
-		return true;
+		this.logService.debug('[Delegation] _shouldExitAfterDelegation: false (Chat session providers are removed)');
+		return false;
 	}
 
 	/**
@@ -2785,10 +2763,7 @@ export class ChatWidget extends Disposable implements IChatWidget {
 		this._pendingFirstRenderSessionResource = model.sessionResource;
 
 		if (this._lockedAgent) {
-			let placeholder = this.chatSessionsService.getChatSessionContribution(this._lockedAgent.id)?.inputPlaceholder;
-			if (!placeholder) {
-				placeholder = localize('chat.input.placeholder.lockedToAgent', "Chat with {0}", this._lockedAgent.displayName || this._lockedAgent.name);
-			}
+			const placeholder = localize('chat.input.placeholder.lockedToAgent', "Chat with {0}", this._lockedAgent.displayName || this._lockedAgent.name);
 			this.viewModel.setInputPlaceholder(placeholder);
 			this.inputEditor.updateOptions({ placeholder });
 		} else if (this.viewModel.inputPlaceholder) {
@@ -3483,10 +3458,7 @@ export class ChatWidget extends Disposable implements IChatWidget {
 		]);
 		const submittedSessionResource = this.viewModel.sessionResource;
 
-		// For contributed session types, only collect automatic instructions when
-		// the contribution explicitly opts in via autoAttachReferences.
-		const contribution = this._lockedAgent ? this.chatSessionsService.getChatSessionContribution(this._lockedAgent.id) : undefined;
-		const autoAttachEnabled = contribution ? contribution.autoAttachReferences === true : true;
+		const autoAttachEnabled = true;
 
 		const modeKind = resolveEditedRequestSelection(editedModeKind, this.input.currentModeKind);
 		const modeInfo = resolveEditedRequestSelection(editedModeInfo, this.input.currentModeInfo);
