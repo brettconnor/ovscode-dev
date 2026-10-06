@@ -69,7 +69,6 @@ import { ComponentFixtureContext, createEditorServices, createTextModel, defineC
 import { InlineChatZoneWidget } from '../../../../contrib/inlineChat/browser/inlineChatZoneWidget.js';
 import { ChatModel } from '../../../../contrib/chat/common/model/chatModel.js';
 import { IChatEditingService } from '../../../../contrib/chat/common/editing/chatEditingService.js';
-import { Target } from '../../../../contrib/chat/common/promptSyntax/promptTypes.js';
 import { ICustomizationHarnessService } from '../../../../contrib/chat/common/customizationHarnessService.js';
 
 // Side-effect import: registers InputEditorDecorations into ChatWidget.CONTRIBS

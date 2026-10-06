@@ -24,12 +24,11 @@ import { IEditorGroup } from '../../../../../../services/editor/common/editorGro
 import { ChatEditorInput, ChatEditorInputSerializer } from '../../../../browser/widgetHosts/editor/chatEditorInput.js';
 import { IChatEditorOptions } from '../../../../browser/widgetHosts/editor/chatEditor.js';
 import { IChatService, IChatSessionStartOptions } from '../../../../common/chatService/chatService.js';
-import { IChatSessionsService, localChatSessionType } from '../../../../common/chatSessionsService.js';
+import { localChatSessionType } from '../../../../common/chatSessionsService.js';
 import { ChatAgentLocation, SessionTypeSelectionReason } from '../../../../common/constants.js';
 import { IChatEditingSession, IModifiedFileEntry, ModifiedFileEntryState } from '../../../../common/editing/chatEditingService.js';
 import { IChatModel } from '../../../../common/model/chatModel.js';
 import { getChatSessionType, LocalChatSessionUri } from '../../../../common/model/chatUri.js';
-import { MockChatSessionsService } from '../../../common/mockChatSessionsService.js';
 import { TestContextService, TestStorageService } from '../../../../../../test/common/workbenchTestServices.js';
 
 suite('ChatEditorInput', () => {
@@ -55,7 +54,6 @@ suite('ChatEditorInput', () => {
 			upcastPartial<IChatService>({ acquireExistingSession: () => ({ object: model, dispose() { } }) }),
 			upcastPartial<IDialogService>({ prompt }),
 			upcastPartial<IConfigurationService>({}),
-			upcastPartial<IChatSessionsService>({}),
 			upcastPartial<IInstantiationService>({}),
 			upcastPartial<IStorageService>({}),
 			new NullLogService(),
@@ -142,7 +140,6 @@ suite('ChatEditorInput', () => {
 			chatService,
 			{} as IDialogService,
 			{} as IConfigurationService,
-			{} as IChatSessionsService,
 			{} as IInstantiationService,
 			{} as IStorageService,
 			new NullLogService(),
@@ -199,7 +196,6 @@ suite('ChatEditorInput', () => {
 			chatService,
 			{} as IDialogService,
 			{} as IConfigurationService,
-			{} as IChatSessionsService,
 			{} as IInstantiationService,
 			{} as IStorageService,
 			new NullLogService(),
@@ -254,7 +250,6 @@ suite('ChatEditorInput', () => {
 			chatService,
 			{} as IDialogService,
 			{} as IConfigurationService,
-			{} as IChatSessionsService,
 			{} as IInstantiationService,
 			{} as IStorageService,
 			new NullLogService(),
@@ -283,7 +278,6 @@ suite('ChatEditorInput', () => {
 		instantiationService.stub(IChatService, {});
 		instantiationService.stub(IDialogService, {});
 		instantiationService.set(IConfigurationService, new TestConfigurationService());
-		instantiationService.set(IChatSessionsService, new MockChatSessionsService());
 		instantiationService.set(IStorageService, store.add(new TestStorageService()));
 		instantiationService.set(ILogService, new NullLogService());
 		instantiationService.set(IWorkspaceContextService, new TestContextService());

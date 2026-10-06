@@ -30,7 +30,6 @@ import { ChatAttachmentWidgetRegistry, IChatAttachmentWidgetRegistry } from '../
 import { computeScrollDownState, getAnchoredScrollTop, AutoScrollHolds, UserToggleResizeState, ChatListWidget, IChatListWidgetOptions, getChatContextMenuTargetContext, isChatBackgroundContextMenuTarget, shouldShowChatLinkOpenWith } from '../../../browser/widget/chatListWidget.js';
 import { ChatEditorOptions } from '../../../browser/widget/chatOptions.js';
 import { IChatService } from '../../../common/chatService/chatService.js';
-import { IChatSessionsService } from '../../../common/chatSessionsService.js';
 import { ChatAgentLocation, ChatConfiguration, ChatModeKind, ChatProgressAnimation, ChatProgressVerbosity, ThinkingDisplayMode } from '../../../common/constants.js';
 import { ChatModel } from '../../../common/model/chatModel.js';
 import { ChatToolInvocation } from '../../../common/model/chatProgressTypes/chatToolInvocation.js';
@@ -39,7 +38,6 @@ import { ChatAgentService, IChatAgentService } from '../../../common/participant
 import { ChatRequestTextPart } from '../../../common/requestParser/chatParserTypes.js';
 import { ILanguageModelToolsService, ToolDataSource, ToolInvocationPresentation } from '../../../common/tools/languageModelToolsService.js';
 import { MockChatService } from '../../common/chatService/mockChatService.js';
-import { MockChatSessionsService } from '../../common/mockChatSessionsService.js';
 import { MockLanguageModelToolsService } from '../../common/tools/mockLanguageModelToolsService.js';
 import { IChatModelFeedbackSurveyService } from '../../../browser/feedbackSurvey/chatModelFeedbackSurveyService.js';
 import { MockChatModelFeedbackSurveyService } from '../feedbackSurvey/mockChatModelFeedbackSurveyService.js';
@@ -220,7 +218,6 @@ suite('ChatListWidget', () => {
 		instantiationService.stub(IConfigurationService, configurationService);
 		instantiationService.stub(IChatService, new MockChatService());
 		instantiationService.stub(ILanguageModelToolsService, disposables.add(new MockLanguageModelToolsService()));
-		instantiationService.stub(IChatSessionsService, new MockChatSessionsService());
 		if (contextMenuService) {
 			instantiationService.stub(IContextMenuService, contextMenuService);
 		}

@@ -16,7 +16,6 @@ import { InMemoryStorageService, IStorageService } from '../../../../../../platf
 import { ITelemetryService, TelemetryLevel } from '../../../../../../platform/telemetry/common/telemetry.js';
 import { IAssignmentFilter, IWorkbenchAssignmentService } from '../../../../../services/assignment/common/assignmentService.js';
 import { ChatModelFeedbackSurveyService, ChatModelFeedbackSurveyStatus } from '../../../browser/feedbackSurvey/chatModelFeedbackSurveyService.js';
-import { IChatSessionsService } from '../../../common/chatSessionsService.js';
 import { IChatService } from '../../../common/chatService/chatService.js';
 import { CHAT_MODEL_FEEDBACK_SURVEY_CONFIG_VERSION } from '../../../common/feedbackSurvey/chatModelFeedbackSurveyConfig.js';
 import { IChatModelFeedbackSurveyTelemetryEvent } from '../../../common/feedbackSurvey/chatModelFeedbackSurveyTelemetry.js';
@@ -94,7 +93,6 @@ suite('ChatModelFeedbackSurveyService', () => {
 			executeCommand: async (_id: string, event: IChatModelFeedbackSurveyTelemetryEvent) => { events.push(event); },
 		} as unknown as ICommandService);
 		instantiationService.stub(ILanguageModelsService, { lookupLanguageModel: () => undefined } as unknown as ILanguageModelsService);
-		instantiationService.stub(IChatSessionsService, { getChatSessionContribution: () => undefined } as unknown as IChatSessionsService);
 		const disposeSession = disposables.add(new Emitter<{ readonly sessionResources: readonly URI[]; readonly reason: 'cleared' | 'disposed' }>());
 		instantiationService.stub(IChatService, { onDidDisposeSession: disposeSession.event } as unknown as IChatService);
 		instantiationService.stub(ILogService, new NullLogService());

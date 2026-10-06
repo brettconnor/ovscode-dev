@@ -245,7 +245,6 @@ import { ChatFindAccessibilityHelp } from './widget/chatFind/chatFindAccessibili
 import { ChatWidget } from './widget/chatWidget.js';
 import { ChatWidgetService } from './widget/chatWidgetService.js';
 import { ChatQueuePickerRendering } from './widget/input/chatQueuePickerActionItem.js';
-import './widget/input/editor/agentHostInputCompletions.js';
 import './widget/input/editor/chatInputCommandArgumentHint.js';
 import './widget/input/editor/chatInputCompletions.js';
 import './widget/input/editor/chatInputEditorContrib.js';

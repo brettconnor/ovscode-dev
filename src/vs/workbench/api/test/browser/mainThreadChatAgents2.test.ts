@@ -19,7 +19,6 @@ import { IUriIdentityService } from '../../../../platform/uriIdentity/common/uri
 import { ILanguageFeaturesService } from '../../../../editor/common/services/languageFeatures.js';
 import { IChatWidgetService } from '../../../contrib/chat/browser/chat.js';
 import { IChatProgress, IChatService } from '../../../contrib/chat/common/chatService/chatService.js';
-import { IChatSessionsService } from '../../../contrib/chat/common/chatSessionsService.js';
 import { ChatAgentLocation } from '../../../contrib/chat/common/constants.js';
 import { IChatModel } from '../../../contrib/chat/common/model/chatModel.js';
 import { IChatAgentImplementation, IChatAgentData, IChatAgentRequest, IChatAgentService } from '../../../contrib/chat/common/participants/chatAgents.js';
@@ -28,7 +27,6 @@ import { IPromptsService } from '../../../contrib/chat/common/promptSyntax/servi
 import { ICustomizationHarnessService } from '../../../contrib/chat/common/customizationHarnessService.js';
 import { ILanguageModelToolsService } from '../../../contrib/chat/common/tools/languageModelToolsService.js';
 import { MockChatService } from '../../../contrib/chat/test/common/chatService/mockChatService.js';
-import { MockChatSessionsService } from '../../../contrib/chat/test/common/mockChatSessionsService.js';
 import { IWorkbenchEnvironmentService } from '../../../services/environment/common/environmentService.js';
 import { IExtHostContext } from '../../../services/extensions/common/extHostCustomers.js';
 import { ExtensionHostKind } from '../../../services/extensions/common/extensionHostKind.js';
@@ -85,7 +83,6 @@ suite('MainThreadChatAgents2', function () {
 		mockChatService = new MockChatService();
 
 		instantiationService.stub(IChatAgentService, chatAgentService);
-		instantiationService.stub(IChatSessionsService, new MockChatSessionsService());
 		instantiationService.stub(IChatService, mockChatService);
 		instantiationService.stub(ILanguageFeaturesService, new class extends mock<ILanguageFeaturesService>() { });
 		instantiationService.stub(IChatWidgetService, new class extends mock<IChatWidgetService>() {

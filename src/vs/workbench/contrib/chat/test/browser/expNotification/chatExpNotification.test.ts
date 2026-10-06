@@ -15,7 +15,6 @@ import { IAssignmentFilter, IWorkbenchAssignmentService } from '../../../../../s
 import { CHAT_EXP_NOTIFICATION_VERSION, IChatExpNotificationMatchContext, matchesChatExpNotification, parseChatExpNotifications } from '../../../browser/expNotification/chatExpNotificationConfig.js';
 import { ChatExpNotificationContribution } from '../../../browser/expNotification/chatExpNotificationContribution.js';
 import { IChatEntitlementService } from '../../../../../services/chat/common/chatEntitlementService.js';
-import { IChatSessionsService } from '../../../common/chatSessionsService.js';
 import { ChatInputNotificationActionKind, ChatInputNotificationSeverity, IChatInputNotification, IChatInputNotificationContext, IChatInputNotificationService } from '../../../browser/widget/input/chatInputNotificationService.js';
 import { getChatSessionType, LocalChatSessionUri } from '../../../common/model/chatUri.js';
 import { Schemas } from '../../../../../../base/common/network.js';
@@ -222,7 +221,6 @@ suite('ChatExpNotification', () => {
 					getTreatment: async <T extends string | number | boolean>() => (treatments.length > 1 ? treatments.shift() : treatments[0]) as T,
 				} satisfies IWorkbenchAssignmentService,
 				notificationService,
-				{ getChatSessionContribution: (type: string) => type === 'agent-host-copilotcli' ? { agentHostProviderId: 'copilotcli' } : undefined } as IChatSessionsService,
 				configurationService,
 				{ sentiment: entitlementSentiment, onDidChangeSentiment: onDidChangeSentiment.event } as IChatEntitlementService,
 				store.add(new InMemoryStorageService()),

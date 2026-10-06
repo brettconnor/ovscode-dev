@@ -35,13 +35,11 @@ import { IMultiDiffSourceResolver, IMultiDiffSourceResolverService } from '../..
 import { NotebookTextModel } from '../../../../notebook/common/model/notebookTextModel.js';
 import { INotebookService } from '../../../../notebook/common/notebookService.js';
 import { ChatEditingService } from '../../../browser/chatEditing/chatEditingServiceImpl.js';
-import { MockChatSessionsService } from '../../common/mockChatSessionsService.js';
 import { ChatAgentService, IChatAgentData, IChatAgentImplementation, IChatAgentService } from '../../../common/participants/chatAgents.js';
 import { ChatEditingSessionState, IChatEditReviewSession, IChatEditingService, IChatEditingSession, IModifiedFileEntry, ModifiedFileEntryState } from '../../../common/editing/chatEditingService.js';
 import { ChatModel, IChatResponseModel } from '../../../common/model/chatModel.js';
 import { IChatService } from '../../../common/chatService/chatService.js';
 import { ChatService } from '../../../common/chatService/chatServiceImpl.js';
-import { IChatSessionsService } from '../../../common/chatSessionsService.js';
 import { IChatSlashCommandService } from '../../../common/participants/chatSlashCommands.js';
 import { ChatTransferService, IChatTransferService } from '../../../common/model/chatTransferService.js';
 import { IChatVariablesService } from '../../../common/attachments/chatVariables.js';
@@ -88,7 +86,6 @@ suite('ChatEditingService', function () {
 		collection.set(IChatVariablesService, new MockChatVariablesService());
 		collection.set(IChatSlashCommandService, new class extends mock<IChatSlashCommandService>() { });
 		collection.set(IChatTransferService, new SyncDescriptor(ChatTransferService));
-		collection.set(IChatSessionsService, new SyncDescriptor(MockChatSessionsService));
 		collection.set(IChatEditingService, new SyncDescriptor(ChatEditingService));
 		collection.set(IEditorWorkerService, new SyncDescriptor(TestWorkerService));
 		collection.set(IChatService, new SyncDescriptor(ChatService));
@@ -123,7 +120,6 @@ suite('ChatEditingService', function () {
 
 		chatService = insta.get(IChatService);
 
-		store.add(insta.get(IChatSessionsService) as MockChatSessionsService);
 		store.add(chatService as ChatService);
 		chatService.setSaveModelsEnabled(false);
 

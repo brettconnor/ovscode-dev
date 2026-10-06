@@ -35,12 +35,10 @@ import { IChatOutputRendererService, type RenderedOutputPart } from '../../../..
 import { IChatOutputPartStateCache, IOutputPartState } from '../../../../browser/widget/chatContentParts/chatOutputPartStateCache.js';
 import { IChatResponseViewModel } from '../../../../common/model/chatViewModel.js';
 import { IChatContentInlineReference } from '../../../../common/chatService/chatService.js';
-import { IChatSessionsService } from '../../../../common/chatSessionsService.js';
 import { ChatConfiguration } from '../../../../common/constants.js';
 import { IAiEditTelemetryService } from '../../../../../editTelemetry/browser/telemetry/aiEditTelemetry/aiEditTelemetryService.js';
 import { IViewDescriptorService } from '../../../../../../common/views.js';
 import { IDisposableReference } from '../../../../browser/widget/chatContentParts/chatCollections.js';
-import { MockChatSessionsService } from '../../../common/mockChatSessionsService.js';
 
 suite('ChatMarkdownContentPart', () => {
 	const store = ensureNoDisposablesAreLeakedInTestSuite();
@@ -49,7 +47,6 @@ suite('ChatMarkdownContentPart', () => {
 	let instantiationService: ReturnType<typeof workbenchInstantiationService>;
 	let editorPool: EditorPool;
 	let renderer: IMarkdownRenderer;
-	let chatSessionsService: MockChatSessionsService;
 
 	/** Data captured from each CodeBlockPart.render() call */
 	const renderedCodeBlocks: ICodeBlockData[] = [];
@@ -149,8 +146,6 @@ suite('ChatMarkdownContentPart', () => {
 	setup(() => {
 		disposables = store.add(new DisposableStore());
 		instantiationService = workbenchInstantiationService(undefined, disposables);
-		chatSessionsService = new MockChatSessionsService();
-		instantiationService.stub(IChatSessionsService, chatSessionsService);
 		instantiationService.stub(IChatMarkdownAnchorService, disposables.add(new ChatMarkdownAnchorService()));
 		instantiationService.stub(IChatPetService, new class extends mock<IChatPetService>() {
 			override unlockAchievement(): boolean { return false; }

@@ -19,7 +19,6 @@ import { TestInstantiationService } from '../../../../../../../../platform/insta
 import { IConfigurationService } from '../../../../../../../../platform/configuration/common/configuration.js';
 import { ILogService } from '../../../../../../../../platform/log/common/log.js';
 import { IChatPasteTarget, IChatPasteTargetService } from '../../../../../browser/chat.js';
-import { IChatSessionsService } from '../../../../../common/chatSessionsService.js';
 import { CHAT_ATTACHMENT_MIME_TYPE, createPastedTextArtifact, getGitHubIssueOrPullRequestAttachments, pastedTextArtifactDefaultMinLength, PasteTextProvider } from '../../../../../browser/widget/input/editor/chatPasteProviders.js';
 import { ChatPasteAttachmentMetadata, IChatRequestVariableEntry } from '../../../../../common/attachments/chatVariableEntries.js';
 import { isSupportedChatFileScheme } from '../../../../../common/constants.js';
@@ -32,9 +31,6 @@ suite('Chat Paste Providers', () => {
 		// Opening an artifact makes it the active editor; offering it as context
 		// would re-attach text the attachment already carries.
 		const instantiationService = store.add(new TestInstantiationService());
-		instantiationService.stub(IChatSessionsService, new class extends mock<IChatSessionsService>() {
-			override getContentProviderSchemes(): string[] { return []; }
-		});
 
 		assert.strictEqual(
 			instantiationService.invokeFunction(accessor => isSupportedChatFileScheme(accessor, ChatResponseResource.scheme)),
