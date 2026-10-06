@@ -24,7 +24,6 @@ import { ICommandService } from '../../../../platform/commands/common/commands.j
 import { IKeybindingService } from '../../../../platform/keybinding/common/keybinding.js';
 import { IChatService } from '../../chat/common/chatService/chatService.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
-import { IWorkbenchEnvironmentService } from '../../../services/environment/common/environmentService.js';
 import { IThemeService } from '../../../../platform/theme/common/themeService.js';
 import { isDark } from '../../../../platform/theme/common/theme.js';
 import { IAccessibilityService } from '../../../../platform/accessibility/common/accessibility.js';
@@ -75,7 +74,6 @@ export class AgentsVoiceWindowService extends Disposable implements IAgentsVoice
 		@ICommandService private readonly commandService: ICommandService,
 		@IChatService private readonly chatService: IChatService,
 		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
-		@IWorkbenchEnvironmentService private readonly environmentService: IWorkbenchEnvironmentService,
 		@IThemeService private readonly themeService: IThemeService,
 		@IAccessibilityService private readonly accessibilityService: IAccessibilityService,
 		@IKeybindingService private readonly keybindingService: IKeybindingService,
