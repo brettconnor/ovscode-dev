@@ -15,7 +15,6 @@ import { IPreparedToolInvocation, IStreamedToolInvocation, isToolInvocationConte
 import { computeCombinationKey } from '../../contrib/chat/common/tools/languageModelToolsConfirmationService.js';
 import { ExtensionEditToolId, InternalEditToolId } from '../../contrib/chat/common/tools/builtinTools/editFileTool.js';
 import { InternalFetchWebPageToolId } from '../../contrib/chat/common/tools/builtinTools/tools.js';
-import { SearchExtensionsToolId } from '../../contrib/extensions/common/searchExtensionsTool.js';
 import { checkProposedApiEnabled, isProposedApiEnabled } from '../../services/extensions/common/extensions.js';
 import { Dto, SerializableObjectWithBuffers } from '../../services/extensions/common/proxyIdentifier.js';
 import { ExtHostLanguageModelToolsShape, IMainContext, IToolDataDto, IToolDefinitionDto, MainContext, MainThreadLanguageModelToolsShape } from './extHost.protocol.js';
@@ -171,7 +170,6 @@ export class ExtHostLanguageModelTools implements ExtHostLanguageModelToolsShape
 					case InternalEditToolId:
 					case ExtensionEditToolId:
 					case InternalFetchWebPageToolId:
-					case SearchExtensionsToolId:
 						return isProposedApiEnabled(extension, 'chatParticipantPrivate');
 					default:
 						return true;

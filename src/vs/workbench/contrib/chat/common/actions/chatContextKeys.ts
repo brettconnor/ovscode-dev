@@ -87,18 +87,6 @@ export namespace ChatContextKeys {
 	 */
 	export const readOnly = new RawContextKey<boolean>('chatIsReadonly', false, { type: 'boolean', description: localize('chatIsReadonly', "True when the chat shown in the widget is read-only (non-interactive).") });
 	/**
-	 * Widget-scoped: true when this chat widget is locked to an Agent Host-backed chat session.
-	 */
-	export const chatIsAgentHostSession = new RawContextKey<boolean>('chatIsAgentHostSession', false, { type: 'boolean', description: localize('chatIsAgentHostSession', "True when the chat widget is locked to an Agent Host session.") });
-	/**
-	 * Widget-scoped: logical Agent Host provider ID for this chat widget, e.g. `copilotcli`, `claude`, or `codex`.
-	 */
-	export const chatAgentHostProviderId = new RawContextKey<string>('chatAgentHostProviderId', '', { type: 'string', description: localize('chatAgentHostProviderId', "The Agent Host provider ID when the chat widget is locked to an Agent Host session.") });
-	/** Widget-scoped: whether the locked Agent Host provider pins an immutable primary working directory. */
-	export const chatAgentHostHasImmutablePrimaryWorkingDirectory = new RawContextKey<boolean>('chatAgentHostHasImmutablePrimaryWorkingDirectory', false, { type: 'boolean', description: localize('chatAgentHostHasImmutablePrimaryWorkingDirectory', "True when the locked Agent Host provider pins an immutable primary working directory.") });
-	/** Widget-scoped: whether the multi-root Folder picker should be shown for this session. Defaults to hidden; the harness decision reveals it, so the chip never flashes visible-then-hidden. */
-	export const chatAgentHostFolderPickerVisible = new RawContextKey<boolean>('chatAgentHostFolderPickerVisible', false, { type: 'boolean', description: localize('chatAgentHostFolderPickerVisible', "True when the multi-root Folder picker should be shown for this Agent Host session (revealed by the harness decision).") });
-	/**
 	 * True when the chat session has a customAgentTarget defined in its contribution,
 	 * which means the mode picker should be shown with filtered custom agents.
 	 */
@@ -206,19 +194,4 @@ export namespace ChatContextKeyExprs {
 		ChatContextKeys.chatModeKind.isEqualTo(ChatModeKind.Agent),
 	);
 
-	/**
-	 * True when the locked coding agent is an Agent Host session.
-	 * These sessions use {@link AgentHostSnapshotController} which supports checkpoint-based restore.
-	 */
-	export const isAgentHostSession = ChatContextKeys.chatIsAgentHostSession.isEqualTo(true);
-
-	/**
-	 * True when an agent session item (e.g. in the sessions viewer) is an agent
-	 * host session (agent-host-* or remote-*). Keyed on {@link ChatContextKeys.agentSessionType}
-	 * rather than the locked coding agent, for use in session item menus and keybindings.
-	 */
-	export const isAgentHostSessionItem = ContextKeyExpr.or(
-		ContextKeyExpr.regex(ChatContextKeys.agentSessionType.key, /^agent-host-/),
-		ContextKeyExpr.regex(ChatContextKeys.agentSessionType.key, /^remote-/),
-	);
 }
