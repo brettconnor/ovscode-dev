@@ -614,7 +614,6 @@ suite('aiCustomizationListWidget', () => {
 				activeProjectLabel: observableValue('test', undefined),
 				getActiveProjectRoot: () => undefined,
 				managementSections: [AICustomizationManagementSection.Agents],
-				isSessionsWindow: false,
 				welcomePageFeatures: { showGettingStartedBanner: false },
 				getSkillUIIntegrations: () => new Map(),
 				hasOverrideProjectRoot: observableValue('test', false),
@@ -833,11 +832,9 @@ suite('aiCustomizationListWidget', () => {
 			);
 		});
 
-		for (const isSessionsWindow of [false, true]) {
-			test(`keyboard-focused skill rows expose validation diagnostics in the ${isSessionsWindow ? 'Agents' : 'editor'} window`, async () => {
+		test('keyboard-focused skill rows expose validation diagnostics', async () => {
 				const listService = disposables.add(new ListService());
 				instaService.stub(IListService, listService);
-				instaService.stub(IAICustomizationWorkspaceService, 'isSessionsWindow', isSessionsWindow);
 				const items = observableValue<readonly IAICustomizationListItem[]>('test', [{
 					id: 'dreaming',
 					uri: URI.file('/workspace/.codex/skills/dreaming/SKILL.md'),
@@ -885,8 +882,7 @@ suite('aiCustomizationListWidget', () => {
 					activeDescendant: focusedRow?.id,
 					label: 'dreaming. SKILL.md. Error. missing field `description`, disabled',
 				});
-			});
-		}
+		});
 
 		test('async section rerenders update the selected group tree', async () => {
 			const items = observableValue<readonly IAICustomizationListItem[]>('test', []);

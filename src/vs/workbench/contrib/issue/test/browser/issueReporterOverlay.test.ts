@@ -69,7 +69,6 @@ suite('IssueReporterOverlay', () => {
 			enabledExtensions: [],
 			restrictedMode: false,
 			isInstallationPure: true,
-			isSessionsWindow: false,
 			githubAccessToken: '',
 		}, false, container, new TestContextViewService()));
 		overlay.show();
@@ -137,7 +136,6 @@ suite('IssueReporterOverlay', () => {
 				enabledExtensions: [],
 				restrictedMode: false,
 				isInstallationPure: true,
-				isSessionsWindow: false,
 				githubAccessToken: '',
 				issueType: IssueType.Bug,
 				issueSource: IssueSource.VSCode,

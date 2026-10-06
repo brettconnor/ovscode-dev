@@ -342,7 +342,7 @@ suite('Editor cloud sandbox discovery', () => {
 
 	test('does not install a second sandbox adapter in the Agents Window', () => {
 		const instantiationService = store.add(new TestInstantiationService());
-		instantiationService.stub(IWorkbenchEnvironmentService, { isSessionsWindow: true });
+		instantiationService.stub(IWorkbenchEnvironmentService, {});
 		assert.doesNotThrow(() => store.add(instantiationService.createInstance(EditorCloudSandboxContribution)));
 	});
 

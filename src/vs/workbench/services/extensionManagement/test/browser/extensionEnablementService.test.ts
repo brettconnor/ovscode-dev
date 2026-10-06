@@ -1245,7 +1245,7 @@ suite('ExtensionEnablementService Test', () => {
 	});
 
 	test('test extensions are disabled in sessions window unless they only contribute themes', () => {
-		instantiationService.stub(IWorkbenchEnvironmentService, { isSessionsWindow: true });
+		instantiationService.stub(IWorkbenchEnvironmentService, {});
 		testObject = disposableStore.add(new TestExtensionEnablementService(instantiationService));
 
 		const themeOnly = aLocalExtension2('pub.themeOnly', { contributes: aContributes('themes') });
@@ -1280,7 +1280,7 @@ suite('ExtensionEnablementService Test', () => {
 
 	test('test configured extensions are enabled in sessions window', async () => {
 		await (instantiationService.get(IConfigurationService) as TestConfigurationService).setUserConfiguration(EXTENSIONS_SUPPORT_AGENTS_WINDOW, { 'pub.withMain': true, 'pub.nonThemeContrib': true });
-		instantiationService.stub(IWorkbenchEnvironmentService, { isSessionsWindow: true });
+		instantiationService.stub(IWorkbenchEnvironmentService, {});
 		testObject = disposableStore.add(new TestExtensionEnablementService(instantiationService));
 
 		const withMain = aLocalExtension2('pub.withMain', { main: 'main.js', contributes: aContributes('themes') });
@@ -1296,7 +1296,7 @@ suite('ExtensionEnablementService Test', () => {
 
 	test('test extensions declaring agents window support are enabled in sessions window', async () => {
 		await (instantiationService.get(IConfigurationService) as TestConfigurationService).setUserConfiguration(EXTENSIONS_ENABLE_AGENTS_WINDOW_CAPABILITY, true);
-		instantiationService.stub(IWorkbenchEnvironmentService, { isSessionsWindow: true });
+		instantiationService.stub(IWorkbenchEnvironmentService, {});
 		testObject = disposableStore.add(new TestExtensionEnablementService(instantiationService));
 
 		const supported = aLocalExtension2('pub.supported', { main: 'main.js', enabledApiProposals: ['agentsWindowActivation'], capabilities: { agentsWindow: { supported: true } } });

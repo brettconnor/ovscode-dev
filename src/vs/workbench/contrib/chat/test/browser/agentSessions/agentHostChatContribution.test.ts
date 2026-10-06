@@ -90,7 +90,6 @@ import { ILabelService } from '../../../../../../platform/label/common/label.js'
 import { MockLabelService } from '../../../../../services/label/test/common/mockLabelService.js';
 import { IAgentHostFileSystemService } from '../../../../../services/agentHost/common/agentHostFileSystemService.js';
 import { IRemoteAgentHostService } from '../../../../../../platform/agentHost/common/remoteAgentHostService.js';
-import { IWorkbenchEnvironmentService } from '../../../../../services/environment/common/environmentService.js';
 import { IWorkingCopyService } from '../../../../../services/workingCopy/common/workingCopyService.js';
 import { IWorkbenchAssignmentService } from '../../../../../services/assignment/common/assignmentService.js';
 import { NullWorkbenchAssignmentService } from '../../../../../services/assignment/test/common/nullAssignmentService.js';
@@ -717,7 +716,7 @@ class MockWorkingCopyService extends mock<IWorkingCopyService>() {
 
 // ---- Helpers ----------------------------------------------------------------
 
-function createTestServices(disposables: DisposableStore, workingDirectoryResolver?: { resolve(sessionResource: URI): URI | undefined; isNewSession?: (sessionResource: URI) => boolean }, authServiceOverride?: Partial<IAuthenticationService>, languageModels?: ReadonlyMap<string, ILanguageModelChatMetadata>, provisionalServiceOverride?: Partial<IAgentHostUntitledProvisionalSessionService>, isSessionsWindow = false, languageModelToolsServiceOverride?: Partial<ILanguageModelToolsService>, configOverrides?: Record<string, unknown>, chatSessionsServiceOverride?: Partial<IChatSessionsService>, chatDebugServiceOverride?: Partial<IChatDebugService>, remoteAgentHostServiceOverride?: Partial<IRemoteAgentHostService>, customizationServiceOverride?: IAgentHostCustomizationService, agentHostTerminalServiceOverride?: Partial<IAgentHostTerminalService>, languageModelsServiceOverride?: Partial<ILanguageModelsService>, workspaceFolders: readonly URI[] = []) {
+function createTestServices(disposables: DisposableStore, workingDirectoryResolver?: { resolve(sessionResource: URI): URI | undefined; isNewSession?: (sessionResource: URI) => boolean }, authServiceOverride?: Partial<IAuthenticationService>, languageModels?: ReadonlyMap<string, ILanguageModelChatMetadata>, provisionalServiceOverride?: Partial<IAgentHostUntitledProvisionalSessionService>, _isSessionsWindow = false, languageModelToolsServiceOverride?: Partial<ILanguageModelToolsService>, configOverrides?: Record<string, unknown>, chatSessionsServiceOverride?: Partial<IChatSessionsService>, chatDebugServiceOverride?: Partial<IChatDebugService>, remoteAgentHostServiceOverride?: Partial<IRemoteAgentHostService>, customizationServiceOverride?: IAgentHostCustomizationService, agentHostTerminalServiceOverride?: Partial<IAgentHostTerminalService>, languageModelsServiceOverride?: Partial<ILanguageModelsService>, workspaceFolders: readonly URI[] = []) {
 	const instantiationService = disposables.add(new TestInstantiationService());
 
 	const agentHostService = new MockAgentHostService();
@@ -959,7 +958,6 @@ function createTestServices(disposables: DisposableStore, workingDirectoryResolv
 		register: () => toDisposable(() => { }),
 		reconcile: async () => { },
 	});
-	instantiationService.stub(IWorkbenchEnvironmentService, { isSessionsWindow } as Partial<IWorkbenchEnvironmentService>);
 	instantiationService.stub(IWorkbenchAssignmentService, new NullWorkbenchAssignmentService());
 	instantiationService.stub(IChatInputNotificationService, {
 		_serviceBrand: undefined,
@@ -4188,16 +4186,14 @@ suite('AgentHostChatContribution', () => {
 			};
 
 			assert.deepStrictEqual({
-				multiRootEditor: evalWhen({ ...agentHost, workspaceFolderCount: 2, isSessionsWindow: false }),
-				singleFolder: evalWhen({ ...agentHost, workspaceFolderCount: 1, isSessionsWindow: false }),
-				sessionsWindow: evalWhen({ ...agentHost, workspaceFolderCount: 2, isSessionsWindow: true }),
-				nonAgentHost: evalWhen({ [ChatContextKeys.lockedCodingAgentId.key]: 'copilot', [ChatContextKeys.chatIsAgentHostSession.key]: false, workspaceFolderCount: 2, isSessionsWindow: false }),
-				noImmutablePrimary: evalWhen({ ...agentHost, [ChatContextKeys.chatAgentHostHasImmutablePrimaryWorkingDirectory.key]: false, workspaceFolderCount: 2, isSessionsWindow: false }),
-				notRevealed: evalWhen({ ...agentHost, [ChatContextKeys.chatAgentHostFolderPickerVisible.key]: false, workspaceFolderCount: 2, isSessionsWindow: false }),
+				multiRootEditor: evalWhen({ ...agentHost, workspaceFolderCount: 2 }),
+				singleFolder: evalWhen({ ...agentHost, workspaceFolderCount: 1 }),
+				nonAgentHost: evalWhen({ [ChatContextKeys.lockedCodingAgentId.key]: 'copilot', [ChatContextKeys.chatIsAgentHostSession.key]: false, workspaceFolderCount: 2 }),
+				noImmutablePrimary: evalWhen({ ...agentHost, [ChatContextKeys.chatAgentHostHasImmutablePrimaryWorkingDirectory.key]: false, workspaceFolderCount: 2 }),
+				notRevealed: evalWhen({ ...agentHost, [ChatContextKeys.chatAgentHostFolderPickerVisible.key]: false, workspaceFolderCount: 2 }),
 			}, {
 				multiRootEditor: true,
 				singleFolder: false,
-				sessionsWindow: false,
 				nonAgentHost: false,
 				noImmutablePrimary: false,
 				notRevealed: false,

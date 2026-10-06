@@ -307,7 +307,7 @@ suite('ChatInputNotificationWidget', () => {
 		const deferredNotificationsEnabled = observableValue('deferredNotificationsEnabled', true);
 		let hasSessions = false;
 		const harness = {
-			environmentService: { isSessionsWindow: false },
+			environmentService: {},
 			chatService: { hasSessions: () => hasSessions },
 			_deferredNotificationsEnabled: deferredNotificationsEnabled,
 			_isFirstWorkbenchSession: undefined as boolean | undefined,
@@ -341,7 +341,7 @@ suite('ChatInputNotificationWidget', () => {
 	test('Agents window bypasses the workbench first-session gate', () => {
 		const deferredNotificationsEnabled = observableValue('deferredNotificationsEnabled', false);
 		const harness = {
-			environmentService: { isSessionsWindow: true },
+			environmentService: {},
 			chatService: { hasSessions: () => false },
 			_deferredNotificationsEnabled: deferredNotificationsEnabled,
 			_isFirstWorkbenchSession: undefined as boolean | undefined,

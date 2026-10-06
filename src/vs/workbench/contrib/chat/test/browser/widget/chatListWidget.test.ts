@@ -25,7 +25,6 @@ import { IFileService } from '../../../../../../platform/files/common/files.js';
 import { WorkbenchListSupportsFind } from '../../../../../../platform/list/browser/listService.js';
 import { scrollbarShadow } from '../../../../../../platform/theme/common/colorRegistry.js';
 import { IEditorResolverService, RegisteredEditorPriority } from '../../../../../services/editor/common/editorResolverService.js';
-import { IWorkbenchEnvironmentService } from '../../../../../services/environment/common/environmentService.js';
 import { workbenchInstantiationService } from '../../../../../test/browser/workbenchTestServices.js';
 import { IChatAccessibilityService, isChatContextMenuActionContext } from '../../../browser/chat.js';
 import { ChatAttachmentWidgetRegistry, IChatAttachmentWidgetRegistry } from '../../../browser/attachments/chatAttachmentWidgetRegistry.js';
@@ -33,7 +32,6 @@ import { computeScrollDownState, getAnchoredScrollTop, AutoScrollHolds, UserTogg
 import { ChatEditorOptions } from '../../../browser/widget/chatOptions.js';
 import { IChatService } from '../../../common/chatService/chatService.js';
 import { IChatSessionsService } from '../../../common/chatSessionsService.js';
-import { IChatSideChatService } from '../../../common/chatSideChatService.js';
 import { ChatAgentLocation, ChatConfiguration, ChatModeKind, ChatProgressAnimation, ChatProgressVerbosity, ThinkingDisplayMode } from '../../../common/constants.js';
 import { ChatModel } from '../../../common/model/chatModel.js';
 import { ChatToolInvocation } from '../../../common/model/chatProgressTypes/chatToolInvocation.js';
@@ -150,7 +148,7 @@ suite('ChatListWidget', () => {
 				},
 			}],
 		});
-		const { model, container, widget } = createWidget({}, undefined, false, contextMenuService, editorResolverService);
+		const { model, container, widget } = createWidget({}, undefined, contextMenuService, editorResolverService);
 		const requestText = 'Show documentation';
 		const request = model.addRequest({
 			text: requestText,
@@ -210,7 +208,7 @@ suite('ChatListWidget', () => {
 		});
 	});
 
-	function createWidget(options: IChatListWidgetOptions = {}, configure?: (configurationService: TestConfigurationService) => void, isSessionsWindow = false, contextMenuService?: IContextMenuService, editorResolverService?: IEditorResolverService) {
+	function createWidget(options: IChatListWidgetOptions = {}, configure?: (configurationService: TestConfigurationService) => void, contextMenuService?: IContextMenuService, editorResolverService?: IEditorResolverService) {
 		const disposables = store.add(new DisposableStore());
 		const instantiationService = workbenchInstantiationService(undefined, disposables);
 		const configurationService = new TestConfigurationService();
@@ -240,13 +238,6 @@ suite('ChatListWidget', () => {
 			acceptResponse: () => { },
 			acceptElicitation: () => { },
 		});
-		if (isSessionsWindow) {
-			instantiationService.stub(IWorkbenchEnvironmentService, { isSessionsWindow: true } as Partial<IWorkbenchEnvironmentService>);
-			instantiationService.stub(IChatSideChatService, {
-				observeSideChatOrigin: () => constObservable(undefined),
-				revealSideChatSource: async () => { },
-			} as Partial<IChatSideChatService>);
-		}
 
 		const model = disposables.add(instantiationService.createInstance(ChatModel, undefined, { initialLocation: ChatAgentLocation.Chat, canUseTools: true }));
 		const viewModel = disposables.add(instantiationService.createInstance(ChatViewModel, model, undefined));
@@ -257,15 +248,7 @@ suite('ChatListWidget', () => {
 		container.style.width = '500px';
 		container.style.height = '300px';
 		container.classList.add('monaco-reduce-motion');
-		if (isSessionsWindow) {
-			const sessionContainer = mainWindow.document.createElement('div');
-			sessionContainer.classList.add('interactive-session');
-			sessionContainer.appendChild(container);
-			mainWindow.document.body.appendChild(sessionContainer);
-			disposables.add(toDisposable(() => sessionContainer.remove()));
-		} else {
-			mainWindow.document.body.appendChild(container);
-		}
+		mainWindow.document.body.appendChild(container);
 		disposables.add(toDisposable(() => container.remove()));
 
 		const widget = disposables.add(instantiationService.createInstance(ChatListWidget, container, {

@@ -11,13 +11,11 @@ import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../../base/
 import { upcastPartial } from '../../../../../../base/test/common/mock.js';
 import { CommandsRegistry } from '../../../../../../platform/commands/common/commands.js';
 import { IMenuItem, isIMenuItem, MenuId, MenuRegistry } from '../../../../../../platform/actions/common/actions.js';
-import { AgentHostAllowSignedOutWhenUsableSettingId } from '../../../../../../platform/agentHost/common/agentService.js';
 import { ContextKeyValue } from '../../../../../../platform/contextkey/common/contextkey.js';
 import { TestInstantiationService } from '../../../../../../platform/instantiation/test/common/instantiationServiceMock.js';
 import { ITelemetryService } from '../../../../../../platform/telemetry/common/telemetry.js';
 import { NullTelemetryService } from '../../../../../../platform/telemetry/common/telemetryUtils.js';
 import { ILogService, NullLogService } from '../../../../../../platform/log/common/log.js';
-import { IsSessionsWindowContext } from '../../../../../common/contextkeys.js';
 import { type IChatAcceptInputOptions, IChatWidget, IChatWidgetService } from '../../../browser/chat.js';
 import { CancelAction, ChatEditingSessionSubmitAction, ChatSubmitAction, ExecuteHandoffActionId, GetHandoffsActionId, OpenModelPickerAction, registerChatExecuteActions } from '../../../browser/actions/chatExecuteActions.js';
 import { ChatQueueMessageAction, ChatSteerWithMessageAction } from '../../../browser/actions/chatQueueActions.js';
@@ -63,7 +61,7 @@ suite('GetHandoffsAction', () => {
 		chatExecuteActions = registerChatExecuteActions();
 	});
 
-	test('shows Copilot Agent Host models in the signed-out Agents welcome view', () => {
+	test('does not expose unavailable provider models in the session welcome view', () => {
 		const item = MenuRegistry.getMenuItems(MenuId.ChatInput)
 			.find((candidate): candidate is IMenuItem => isIMenuItem(candidate) && candidate.command.id === OpenModelPickerAction.ID);
 		assert.ok(item?.when);
@@ -75,18 +73,13 @@ suite('GetHandoffsAction', () => {
 			[ChatContextKeys.location.key]: ChatAgentLocation.Chat,
 			[ChatContextKeys.inAgentSessionsWelcome.key]: true,
 			[ChatContextKeys.agentSessionType.key]: AgentSessionProviders.AgentHostCopilot,
-			[IsSessionsWindowContext.key]: true,
 		};
 
 		assert.deepStrictEqual({
-			enabled: evaluate({ ...context, [`config.${AgentHostAllowSignedOutWhenUsableSettingId}`]: true }),
-			disabled: evaluate({ ...context, [`config.${AgentHostAllowSignedOutWhenUsableSettingId}`]: false }),
-			editorWindow: evaluate({ ...context, [IsSessionsWindowContext.key]: false, [`config.${AgentHostAllowSignedOutWhenUsableSettingId}`]: true }),
-			claude: evaluate({ ...context, [ChatContextKeys.agentSessionType.key]: AgentSessionProviders.AgentHostClaude, [`config.${AgentHostAllowSignedOutWhenUsableSettingId}`]: true }),
+			copilot: evaluate(context),
+			claude: evaluate({ ...context, [ChatContextKeys.agentSessionType.key]: AgentSessionProviders.AgentHostClaude }),
 		}, {
-			enabled: true,
-			disabled: false,
-			editorWindow: false,
+			copilot: false,
 			claude: false,
 		});
 	});

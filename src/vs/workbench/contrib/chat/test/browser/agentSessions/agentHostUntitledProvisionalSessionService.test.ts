@@ -22,7 +22,6 @@ import { AMBIENT_AGENT_HOST_AUTHORITY, IAgentHostConnectionsService, IAgentHostS
 import { ActionType } from '../../../../../../platform/agentHost/common/state/protocol/actions.js';
 import type { ResolveSessionConfigResult } from '../../../../../../platform/agentHost/common/state/protocol/commands.js';
 import { CustomizationType, type ClientPluginCustomization, type ConfigSchema, type SessionActiveClient } from '../../../../../../platform/agentHost/common/state/protocol/state.js';
-import { IWorkbenchEnvironmentService } from '../../../../../services/environment/common/environmentService.js';
 import { IWorkspaceContextService, IWorkspace, IWorkspaceFolder, IWorkspaceFoldersChangeEvent, WorkbenchState } from '../../../../../../platform/workspace/common/workspace.js';
 import { IAgentSubscription } from '../../../../../../platform/agentHost/common/state/agentSubscription.js';
 import { MessageKind, TurnState, type AgentInfo, type RootState, type Turn } from '../../../../../../platform/agentHost/common/state/sessionState.js';
@@ -196,7 +195,6 @@ suite('AgentHostUntitledProvisionalSessionService', () => {
 	let workspaceConfiguration: URI | null;
 	let workspaceName: string | undefined;
 	let workbenchState: WorkbenchState;
-	let isSessionsWindow: boolean;
 	let customizations: ReturnType<typeof observableValue<readonly ClientPluginCustomization[]>>;
 	let onDidChangeWorkspaceFolders: Emitter<IWorkspaceFoldersChangeEvent>;
 	let acquiredScopeRoots: string[][];
@@ -212,7 +210,6 @@ suite('AgentHostUntitledProvisionalSessionService', () => {
 		workspaceConfiguration = null;
 		workspaceName = undefined;
 		workbenchState = WorkbenchState.EMPTY;
-		isSessionsWindow = false;
 		acquiredScopeRoots = [];
 		onDidChangeWorkspaceFolders = ds.add(new Emitter<IWorkspaceFoldersChangeEvent>());
 		const insta = ds.add(new TestInstantiationService());
@@ -232,7 +229,6 @@ suite('AgentHostUntitledProvisionalSessionService', () => {
 		}());
 		insta.stub(IChatService, new MockChatService());
 		insta.stub(IConfigurationService, new TestConfigurationService());
-		insta.stub(IWorkbenchEnvironmentService, { get isSessionsWindow() { return isSessionsWindow; } } as Partial<IWorkbenchEnvironmentService>);
 		insta.stub(IWorkspaceContextService, new class extends mock<IWorkspaceContextService>() {
 			override readonly onDidChangeWorkspaceFolders = onDidChangeWorkspaceFolders.event;
 			override getWorkspace(): IWorkspace {
@@ -824,17 +820,6 @@ suite('AgentHostUntitledProvisionalSessionService', () => {
 		workbenchState = WorkbenchState.WORKSPACE;
 
 		await provisional.getOrCreate(untitledChatUri('multi-root-no-config'), 'copilot', workspaceFolders[0]);
-
-		assert.strictEqual(agentHost.createCalls[0]._meta, undefined);
-	});
-
-	test('getOrCreate omits multi-root metadata in the Agents window', async () => {
-		workspaceFolders = [URI.file('/workspace/one'), URI.file('/workspace/two')];
-		workspaceConfiguration = URI.file('/workspace/demo.code-workspace');
-		workbenchState = WorkbenchState.WORKSPACE;
-		isSessionsWindow = true;
-
-		await provisional.getOrCreate(untitledChatUri('agents-window'), 'copilot', workspaceFolders[0]);
 
 		assert.strictEqual(agentHost.createCalls[0]._meta, undefined);
 	});

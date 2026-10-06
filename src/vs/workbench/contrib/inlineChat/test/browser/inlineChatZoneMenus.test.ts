@@ -66,7 +66,7 @@ suite('Inline chat zone widget — menu contributions', function () {
 		// NOT locked to coding agent
 		'lockedToCodingAgent': false,
 		// NOT in sessions window
-		'isSessionsWindow': false,
+
 		// chat is enabled
 		'chatIsEnabled': true,
 		// mode is 'ask'

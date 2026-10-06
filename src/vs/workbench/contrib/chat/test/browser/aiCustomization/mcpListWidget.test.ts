@@ -1073,7 +1073,7 @@ suite('mcpListWidget', () => {
 		// replaced between mousedown and mouseup never receives the click.
 		type Entry = Parameters<McpServerItemRenderer['renderElement']>[0];
 
-		function createRenderer(server: AgentHostMcpServer, isSessionsWindow = true, useRealManagementActions = false, authenticate = () => Promise.resolve(true)) {
+		function createRenderer(server: AgentHostMcpServer, _isSessionsWindow = true, useRealManagementActions = false, authenticate = () => Promise.resolve(true)) {
 			const store = new DisposableStore();
 			const onDidChangeCustomizations = store.add(new Emitter<void>());
 			const sessionResource = URI.parse('vscode-agent-session:///session-1');
@@ -1151,7 +1151,7 @@ suite('mcpListWidget', () => {
 				renderManagementActions,
 				() => undefined,
 				plugin => openedPlugins.push(plugin.label),
-				{ isSessionsWindow } as IAICustomizationWorkspaceService,
+				{} as unknown as IAICustomizationWorkspaceService,
 				agentPluginService,
 				hoverService,
 				agentHostCustomizationService,
@@ -1179,7 +1179,7 @@ suite('mcpListWidget', () => {
 				extensionsWorkbenchService,
 				customizationHarnessService,
 				mcpService: { servers: runtimeServers },
-				workspaceService: { isSessionsWindow },
+				workspaceService: {},
 				labelService,
 				agentHostCustomizationsChanged: observableSignalFromEvent('customizationsChanged', onDidChangeCustomizations.event),
 				mcpServerCompatibility: observableValue<ReadonlyMap<string, never>>(widget, new Map<string, never>()),
@@ -1228,7 +1228,7 @@ suite('mcpListWidget', () => {
 					Object.assign(widget, {
 						instantiationService, mcpService, mcpWorkbenchService, agentPluginService,
 						commandService: { executeCommand: async () => undefined },
-						workspaceService: { isSessionsWindow, getActiveProjectRoot: () => undefined },
+						workspaceService: { getActiveProjectRoot: () => undefined },
 						outputService: { showChannel: async () => { } },
 					});
 					return widget.getMcpServerActions(entry, store);
@@ -2057,7 +2057,7 @@ suite('mcpListWidget', () => {
 				customizationHarnessService: {
 					activeSessionResource: observableValue('activeSessionResource', URI.parse('vscode-agent-session:///session-1')),
 				},
-				workspaceService: { isSessionsWindow: true },
+				workspaceService: {},
 				notificationService: { error: () => undefined },
 			});
 			const appendInstalledServerSignIn = Reflect.get(McpListWidget.prototype, 'appendInstalledServerSignIn') as (this: object, parent: HTMLElement, getEntry: () => typeof entry) => { readonly element: HTMLElement; update(): void };

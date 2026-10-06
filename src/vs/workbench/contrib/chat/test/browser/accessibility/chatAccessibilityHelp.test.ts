@@ -34,8 +34,7 @@ suite('Chat Accessibility Help', () => {
 				preserve: help.includes('An existing draft in the Agents Window is kept'),
 				ignore: help.includes('Ignore turns off future invitations'),
 				dismiss: help.includes('only hides the invitation for this chat until the window reloads'),
-				hiddenInAgents: !getAccessibilityHelpText(type, new MockKeybindingService(), false, true).includes('chat may show an invitation'),
-			}, { agentHostOnly: true, copy: true, singleOwner: true, preserve: true, ignore: true, dismiss: true, hiddenInAgents: true });
+			}, { agentHostOnly: true, copy: true, singleOwner: true, preserve: true, ignore: true, dismiss: true });
 		});
 	}
 
@@ -55,21 +54,6 @@ suite('Chat Accessibility Help', () => {
 			subagentTail: help.includes('omitted when subagent pills are the last visible content'),
 			parentTail: help.includes('appears after other content while the response remains in progress'),
 		}, { finished: true, subagentTail: true, parentTail: true });
-	});
-
-	test('describes the single Test App action and remembered retesting only in the Agents Window', () => {
-		const keybindings = new MockKeybindingService();
-		const sessionsHelp = getAccessibilityHelpText('agentView', keybindings, true, true);
-		const editorHelp = getAccessibilityHelpText('agentView', keybindings, true, false);
-		assert.deepStrictEqual([
-			sessionsHelp.includes('Test App appears to the right of the status pills above the chat input'),
-			sessionsHelp.includes('Retest App whenever it reappears, including after restarting VS Code in the same profile'),
-			sessionsHelp.includes('testing was requested, not that tests passed'),
-			sessionsHelp.includes('App Testing Options'),
-			sessionsHelp.includes('Subagent'),
-			editorHelp.includes('Test App'),
-			editorHelp.includes('Retest App'),
-		], [true, true, true, false, false, false, false]);
 	});
 
 	test('documents collapsing the model controls when Auto is enabled', () => {
@@ -127,7 +111,7 @@ suite('Chat Accessibility Help', () => {
 
 	test('documents the archive suggestion only while it is shown', () => {
 		const keybindingService = new MockKeybindingService();
-		const shown = getAccessibilityHelpText('agentView', keybindingService, true, false, false, true, true);
+		const shown = getAccessibilityHelpText('agentView', keybindingService, true, false, true, true);
 		const hidden = getAccessibilityHelpText('agentView', keybindingService, true);
 
 		assert.deepStrictEqual({
@@ -169,7 +153,7 @@ suite('Chat Accessibility Help', () => {
 	});
 
 	test('uses the configured Mark as Done wording for nudge help', () => {
-		const help = getAccessibilityHelpText('agentView', new MockKeybindingService(), true, false, false, true, true, ChatSessionArchiveActionWording.MarkAsDone);
+		const help = getAccessibilityHelpText('agentView', new MockKeybindingService(), true, false, true, true, ChatSessionArchiveActionWording.MarkAsDone);
 		assert.deepStrictEqual({
 			keyboard: help.includes('Tab or Shift+Tab to reach Mark as Done, Configure Automatic Cleanup, or Dismiss Mark as Done Suggestion'),
 			cleanupSettings: help.includes('Configure Automatic Cleanup opens the settings for automatically archiving inactive merged sessions and permanently deleting automatically archived merged sessions'),
@@ -240,26 +224,12 @@ suite('Chat Accessibility Help', () => {
 		});
 	});
 
-	test('only describes the selection side chat affordance in the sessions window', () => {
-		const keybindingService = {
-			lookupKeybindings: () => [],
-		} as unknown as IKeybindingService;
-
-		assert.deepStrictEqual({
-			sessionsWindow: getAccessibilityHelpText('agentView', keybindingService, true, true).includes('Ask Question'),
-			regularWindow: getAccessibilityHelpText('agentView', keybindingService, true, false).includes('Ask Question'),
-		}, {
-			sessionsWindow: true,
-			regularWindow: false,
-		});
-	});
-
 	test('only describes the sticky prompt header when it is shown', () => {
 		const keybindingService = {
 			lookupKeybindings: () => [],
 		} as unknown as IKeybindingService;
-		const shownHelp = getAccessibilityHelpText('agentView', keybindingService, true, false, true);
-		const hiddenHelp = getAccessibilityHelpText('agentView', keybindingService, true, false, false);
+		const shownHelp = getAccessibilityHelpText('agentView', keybindingService, true, true);
+		const hiddenHelp = getAccessibilityHelpText('agentView', keybindingService, true, false);
 
 		assert.deepStrictEqual({
 			shown: shownHelp.includes('pinned to the top of the transcript'),
@@ -327,7 +297,7 @@ suite('Chat Accessibility Help', () => {
 			pullRequestFilter: getAccessibilityHelpText('agentView', keybindingService, true).includes('Pull Requests Options'),
 			filterPersistence: getAccessibilityHelpText('agentView', keybindingService, true).includes('remembered across sessions'),
 			filterRecovery: getAccessibilityHelpText('agentView', keybindingService, true).includes('any other pill\'s context menu or the toolbar context menu'),
-			agentQuickChat: getAccessibilityHelpText('agentView', keybindingService, true, false, false, false).includes('session status pills'),
+			agentQuickChat: getAccessibilityHelpText('agentView', keybindingService, true, false, false).includes('session status pills'),
 			quickChat: getAccessibilityHelpText('quickChat', keybindingService, true).includes('session status pills'),
 			inlineChat: getAccessibilityHelpText('inlineChat', keybindingService, true).includes('session status pills'),
 		}, {
@@ -375,7 +345,6 @@ suite('Chat Accessibility Help', () => {
 			afterFirstRequest: getAccessibilityHelpText('agentView', keybindingService, true).includes('Agent Host sessions can be renamed after sending the first request'),
 			quickChat: getAccessibilityHelpText('quickChat', keybindingService, true).includes(keybinding),
 			inlineChat: getAccessibilityHelpText('inlineChat', keybindingService, true).includes(keybinding),
-			sessionsWindow: getAccessibilityHelpText('agentView', keybindingService, true, true).includes(keybinding),
 		}, {
 			panelChat: true,
 			agentView: true,

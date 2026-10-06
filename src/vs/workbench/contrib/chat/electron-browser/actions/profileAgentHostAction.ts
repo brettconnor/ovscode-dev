@@ -6,7 +6,7 @@
 import { VSBuffer } from '../../../../../base/common/buffer.js';
 import { Codicon } from '../../../../../base/common/codicons.js';
 import { getErrorMessage } from '../../../../../base/common/errors.js';
-import { Disposable, IDisposable, MutableDisposable, toDisposable } from '../../../../../base/common/lifecycle.js';
+import { Disposable, MutableDisposable, toDisposable } from '../../../../../base/common/lifecycle.js';
 import { Schemas } from '../../../../../base/common/network.js';
 import { joinPath } from '../../../../../base/common/resources.js';
 import { URI } from '../../../../../base/common/uri.js';
@@ -21,7 +21,7 @@ import { IFileService } from '../../../../../platform/files/common/files.js';
 import { createDecorator, ServicesAccessor } from '../../../../../platform/instantiation/common/instantiation.js';
 import { InstantiationType, registerSingleton } from '../../../../../platform/instantiation/common/extensions.js';
 import { ILogService } from '../../../../../platform/log/common/log.js';
-import { INotificationService, Severity } from '../../../../../platform/notification/common/notification.js';
+import { INotificationService } from '../../../../../platform/notification/common/notification.js';
 import { IV8InspectProfilingService, IV8Profile, Utils } from '../../../../../platform/profiling/common/profiling.js';
 import { IStatusbarEntryAccessor, IStatusbarService, StatusbarAlignment } from '../../../../services/statusbar/browser/statusbar.js';
 import { IEditorService, SIDE_GROUP } from '../../../../services/editor/common/editorService.js';
@@ -51,7 +51,6 @@ class AgentHostProfileService extends Disposable implements IAgentHostProfileSer
 
 	private readonly profileState: IContextKey<AgentHostProfileState>;
 	private readonly statusbarEntry = this._register(new MutableDisposable<IStatusbarEntryAccessor>());
-	private readonly profilingNotification = this._register(new MutableDisposable<IDisposable>());
 	private sessionId: string | undefined;
 	private startPromise: Promise<void> | undefined;
 	private isDisposed = false;
@@ -133,7 +132,6 @@ class AgentHostProfileService extends Disposable implements IAgentHostProfileSer
 			const sessionId = this.sessionId;
 			this.sessionId = undefined;
 			this.statusbarEntry.clear();
-			this.profilingNotification.clear();
 			if (sessionId) {
 				try {
 					await this.profilingService.stopProfiling(sessionId);
@@ -159,7 +157,6 @@ class AgentHostProfileService extends Disposable implements IAgentHostProfileSer
 		this.sessionId = undefined;
 		this.profileState.set(AgentHostProfileState.Stopping);
 		this.statusbarEntry.clear();
-		this.profilingNotification.clear();
 
 		let profile: IV8Profile;
 		try {

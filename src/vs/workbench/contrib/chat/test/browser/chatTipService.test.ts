@@ -26,7 +26,6 @@ import { ChatTipService, CREATE_AGENT_INSTRUCTIONS_TRACKING_COMMAND, CREATE_AGEN
 import { IChatMode, IChatModes } from '../../common/chatModes.js';
 import { AgentInstructionFileType, IPromptPath, IPromptsService, IAgentInstructionFile, PromptsStorage } from '../../common/promptSyntax/service/promptsService.js';
 import { URI } from '../../../../../base/common/uri.js';
-import { IsSessionsWindowContext } from '../../../../common/contextkeys.js';
 import { ChatContextKeys } from '../../common/actions/chatContextKeys.js';
 import { storeSelectedModel } from '../../common/chatSelectedModel.js';
 import { ChatAgentLocation, ChatConfiguration, ChatModeKind } from '../../common/constants.js';
@@ -238,12 +237,11 @@ suite('ChatTipService', () => {
 		}
 	});
 
-	test('btw tip is controlled by its experiment setting and limited to active side-chat sessions in the Agents window', () => {
+	test('btw tip is controlled by its experiment setting and limited to active side-chat sessions', () => {
 		const tip = TIP_CATALOG.find(tip => tip.id === 'tip.btw');
 		assert.ok(tip?.when);
 
 		const isEnabled = contextKeyService.createKey<boolean>(`config.${ChatConfiguration.BtwTipEnabled}`, false);
-		const isSessionsWindow = contextKeyService.createKey<boolean>(IsSessionsWindowContext.key, true);
 		const isCreated = contextKeyService.createKey<boolean>('sessionIsCreated', true);
 		const isArchived = contextKeyService.createKey<boolean>('sessionIsArchived', false);
 		const supportsSideChat = contextKeyService.createKey<boolean>('sessionSupportsSideChat', true);
@@ -251,9 +249,6 @@ suite('ChatTipService', () => {
 
 		isEnabled.set(true);
 		eligibility.push(contextKeyService.contextMatchesRules(tip.when));
-		isSessionsWindow.set(false);
-		eligibility.push(contextKeyService.contextMatchesRules(tip.when));
-		isSessionsWindow.set(true);
 		isCreated.set(false);
 		eligibility.push(contextKeyService.contextMatchesRules(tip.when));
 		isCreated.set(true);
@@ -464,7 +459,6 @@ suite('ChatTipService', () => {
 	test('removes btw tip from rotation after the slash command is used', () => {
 		const service = createService();
 		contextKeyService.createKey<boolean>(`config.${ChatConfiguration.BtwTipEnabled}`, true);
-		contextKeyService.createKey<boolean>(IsSessionsWindowContext.key, true);
 		contextKeyService.createKey<boolean>('sessionIsCreated', true);
 		contextKeyService.createKey<boolean>('sessionIsArchived', false);
 		contextKeyService.createKey<boolean>('sessionSupportsSideChat', true);
@@ -640,15 +634,6 @@ suite('ChatTipService', () => {
 
 		const tip = service.getWelcomeTip(contextKeyService);
 		assert.strictEqual(tip, undefined, 'Should not return a tip when no foreground chat sessions are visible');
-	});
-
-	test('returns a tip for the Agents new-session composer when foreground session count is zero', () => {
-		const service = createService();
-		contextKeyService.createKey(ChatContextKeys.foregroundSessionCount.key, 0);
-		contextKeyService.createKey(IsSessionsWindowContext.key, true);
-
-		const tip = service.getWelcomeTip(contextKeyService);
-		assert.ok(tip, 'Should return a tip for the Agents new-session composer');
 	});
 
 	test('returns undefined when foreground session count is greater than one', () => {
@@ -1673,23 +1658,21 @@ suite('ChatTipService', () => {
 		'tip.autoAcceptDelay',
 		'tip.codeActions',
 	]) {
-		test(`excludes ${tipId} in the Agents window`, async () => {
+		test(`excludes ${tipId} when its eligibility conditions are false`, async () => {
 			const service = createService();
 			contextKeyService.createKey(ChatContextKeys.chatModeKind.key, ChatModeKind.Agent);
-			contextKeyService.createKey(IsSessionsWindowContext.key, true);
 			await new Promise<void>(r => queueMicrotask(r));
 
 			assertTipNeverShown(service, tipId);
 		});
 
-		test(`shows ${tipId} outside the Agents window`, async () => {
+		test(`shows ${tipId} when its eligibility conditions are true`, async () => {
 			const service = createService();
 			contextKeyService.createKey(ChatContextKeys.chatModeKind.key, ChatModeKind.Agent);
-			contextKeyService.createKey(IsSessionsWindowContext.key, false);
 			await new Promise<void>(r => queueMicrotask(r));
 
 			const tip = findTipById(service, tipId);
-			assert.ok(tip, `Should show ${tipId} outside the Agents window`);
+			assert.ok(tip, `Should show ${tipId} when eligible`);
 		});
 	}
 

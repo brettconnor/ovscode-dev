@@ -66,7 +66,7 @@ import { getChatSessionType } from '../../common/model/chatUri.js';
 import { getExplicitFileOrImageAttachmentSummary, IChatRequestVariableEntry, isExplicitFileOrImageVariableEntry, isPasteVariableEntry } from '../../common/attachments/chatVariableEntries.js';
 import { getStickyScrollTargetItem, IChatChangesSummaryPart, IChatCodeCitations, IChatErrorDetailsPart, IChatReferences, IChatRendererContent, IChatRequestViewModel, IChatResponseViewModel, IChatViewModel, IChatWorkingProgress, isRequestVM, isResponseVM, IChatPendingDividerViewModel, isPendingDividerVM, IChatTurnPillsPart } from '../../common/model/chatViewModel.js';
 import { getNWords } from '../../common/model/chatWordCounter.js';
-import { CHAT_OPEN_AGENT_HOST_CHAT_COMMAND_ID, ChatAgentLocation, ChatConfiguration, ChatModeKind, ChatProgressAnimation, ChatProgressVerbosity, CollapsedToolsDisplayMode, ThinkingDisplayMode } from '../../common/constants.js';
+import { ChatAgentLocation, ChatConfiguration, ChatModeKind, ChatProgressAnimation, ChatProgressVerbosity, CollapsedToolsDisplayMode, ThinkingDisplayMode } from '../../common/constants.js';
 import { getConfiguredProgressAnimation } from './chatWorkingLogo.js';
 import { formatChatRequestTimestamp, formatChatResponseDetails, formatChatResponseElapsedTime } from '../../common/chatProgressFormatting.js';
 import { ClickAnimation } from '../../../../../base/browser/ui/animations/animations.js';

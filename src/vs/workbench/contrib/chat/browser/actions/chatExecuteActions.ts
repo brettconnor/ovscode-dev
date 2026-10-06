@@ -403,8 +403,7 @@ export class OpenModelPickerAction extends Action2 {
 						ContextKeyExpr.or(
 							ChatContextKeys.inAgentSessionsWelcome.negate(),
 							ChatContextKeys.chatSessionHasTargetedModels,
-							ChatContextKeys.agentSessionType.isEqualTo(AgentSessionProviders.Local),
-							ChatContextKeys.agentSessionType.isEqualTo(AgentSessionProviders.AgentHostCopilot))
+							ChatContextKeys.agentSessionType.isEqualTo(AgentSessionProviders.Local))
 					)
 			}
 		});

@@ -92,10 +92,8 @@ export interface ChatInputFixtureOptions {
 	/**
 	 * Renders the input the way the Agents (sessions) window does: the
 	 * `.interactive-input-part` is wrapped in the sessions DOM ancestry and the
-	 * `isSessionsWindow` layout path is exercised. The caller is responsible for
 	 * loading the sessions stylesheet so the 32px horizontal padding applies.
 	 */
-	readonly isSessionsWindow?: boolean;
 	/** Seeds the input editor with this text. */
 	readonly value?: string;
 	/** Selects this range after seeding the text, to exercise selection rendering (e.g. reverse-rounded corners). */
@@ -126,7 +124,7 @@ export interface ChatInputFixtureOptions {
 
 export async function renderChatInput(context: ComponentFixtureContext, fixtureOptions: ChatInputFixtureOptions = {}): Promise<void> {
 	const { container, disposableStore } = context;
-	const { artifacts = [], editingSession, todos = [], isSessionsWindow = false, value, selection, sandboxingEnabled = false, width = 500, resizeWidths = [], models = [], agentHostSessionConfig, combinedModePermissionsPicker = false, voiceControl, notification, pet = false, secondaryPickerLabels = ['Local', 'Default permissions'] } = fixtureOptions;
+	const { artifacts = [], editingSession, todos = [], value, selection, sandboxingEnabled = false, width = 500, resizeWidths = [], models = [], agentHostSessionConfig, combinedModePermissionsPicker = false, voiceControl, notification, pet = false, secondaryPickerLabels = ['Local', 'Default permissions'] } = fixtureOptions;
 	const artifactGroups: IArtifactSourceGroup[] = artifacts.length > 0 ? [{ source: { kind: 'agent' as const }, artifacts }] : [];
 	const artifactsObs = observableValue<readonly IArtifactSourceGroup[]>('artifactGroups', artifactGroups);
 	const sessionResource = agentHostSessionConfig ? getNewChatSessionResource(SessionType.AgentHostCopilot) : undefined;
@@ -232,7 +230,6 @@ export async function renderChatInput(context: ComponentFixtureContext, fixtureO
 		menus: { executeToolbar: MenuId.ChatExecute, telemetrySource: 'fixture' },
 		widgetViewKindTag: 'view',
 		inputEditorMinLines: 2,
-		isSessionsWindow,
 		// The sandbox toggle is specific to the local harness, so present the
 		// input as the local session type when exercising the sandboxed state.
 		sessionTypePickerDelegate: agentHostSessionConfig

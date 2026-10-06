@@ -1350,7 +1350,6 @@ suite('DefaultAccountProvider', () => {
 		instantiationService.stub(ILogService, new NullLogService());
 		instantiationService.stub(IWorkbenchEnvironmentService, {
 			remoteAuthority: isWeb ? 'test-remote' : undefined,
-			isSessionsWindow: false,
 		});
 		instantiationService.stub(IProductService, {
 			...TestProductService,
@@ -1464,7 +1463,7 @@ suite('DefaultAccountProvider sign in scopes', () => {
 		instantiationService.stub(IExtensionService, {});
 		instantiationService.stub(IRequestService, new TestRequestService(async () => jsonResponse({})));
 		instantiationService.stub(ILogService, new NullLogService());
-		instantiationService.stub(IWorkbenchEnvironmentService, { remoteAuthority: undefined, isSessionsWindow: false });
+		instantiationService.stub(IWorkbenchEnvironmentService, { remoteAuthority: undefined });
 		instantiationService.stub(IProductService, TestProductService);
 		instantiationService.stub(IContextKeyService, new MockContextKeyService());
 		instantiationService.stub(IStorageService, disposables.add(new InMemoryStorageService()));

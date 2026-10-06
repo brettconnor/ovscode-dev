@@ -35,7 +35,7 @@ suite('SettingsTree ExP assignments', () => {
 		instantiationService.stub(ILanguageService, { isRegisteredLanguageId: () => true });
 		instantiationService.stub(IUserDataProfileService, new TestUserDataProfileService());
 		instantiationService.stub(IProductService, TestProductService);
-		instantiationService.stub(IWorkbenchEnvironmentService, { isSessionsWindow: false });
+		instantiationService.stub(IWorkbenchEnvironmentService, {});
 		instantiationService.stub(IExperimentalSettingsService, assignments);
 		const viewState: ISettingsEditorViewState = { settingsTarget: ConfigurationTarget.USER_LOCAL, tagFilters: new Set([EXP_ASSIGNMENT_SETTING_TAG]) };
 		const model = store.add(instantiationService.createInstance(SearchResultModel, viewState, null, true));

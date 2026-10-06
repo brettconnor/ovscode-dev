@@ -78,7 +78,7 @@ suite('ConfigurationDefaultOverridesContribution', () => {
 		workbenchAssignmentService: {
 			getTreatmentWithAssignment<T extends string | number | boolean>(name: string): Promise<ITreatmentWithAssignment<T>>;
 		};
-		environmentService: { isSessionsWindow: boolean };
+		environmentService: Record<string, never>;
 		processExperimentalSettings(properties: Iterable<string>, autoRefetch: boolean): Promise<void>;
 	};
 
@@ -101,7 +101,7 @@ suite('ConfigurationDefaultOverridesContribution', () => {
 				hasAssignment: Promise.resolve(treatments[name] !== undefined),
 			}),
 		};
-		contribution.environmentService = { isSessionsWindow: false };
+		contribution.environmentService = {};
 		return contribution;
 	}
 

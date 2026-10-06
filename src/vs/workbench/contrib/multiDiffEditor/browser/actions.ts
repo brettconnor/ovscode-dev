@@ -22,10 +22,9 @@ import { resolveCommandsContext } from '../../../browser/parts/editor/editorComm
 import { MultiDiffEditor } from './multiDiffEditor.js';
 import { MultiDiffEditorInput } from './multiDiffEditorInput.js';
 import { IEditorGroupsService } from '../../../services/editor/common/editorGroupsService.js';
-import { AUX_WINDOW_GROUP, IEditorService, SIDE_GROUP } from '../../../services/editor/common/editorService.js';
+import { IEditorService, SIDE_GROUP } from '../../../services/editor/common/editorService.js';
 import { ActiveEditorContext } from '../../../common/contextkeys.js';
 import { createMultiDiffEditorLayoutDebugModel, isMultiDiffEditorLayoutDebugStateProvider } from './multiDiffEditorLayoutDebug.js';
-import { IWorkbenchEnvironmentService } from '../../../services/environment/common/environmentService.js';
 
 MenuRegistry.appendMenuItem(MenuId.EditorTitle, {
 	submenu: MenuId.DiffEditorViewSubmenu,

@@ -127,7 +127,7 @@ suite('AgentHostShellInitSynchronizer', () => {
 				configurationService,
 				environmentService,
 				workspaceService,
-				{ isSessionsWindow: options?.sessionsWindow === true, remoteAuthority: options?.remoteAuthority } as IWorkbenchEnvironmentService,
+				{ remoteAuthority: options?.remoteAuthority } as IWorkbenchEnvironmentService,
 			)),
 		};
 	}

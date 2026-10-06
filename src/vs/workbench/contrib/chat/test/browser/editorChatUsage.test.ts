@@ -13,7 +13,6 @@ import { runWithFakedTimers } from '../../../../../base/test/common/timeTravelSc
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import { NullLogService } from '../../../../../platform/log/common/log.js';
 import { InMemoryStorageService } from '../../../../../platform/storage/common/storage.js';
-import { IWorkbenchEnvironmentService } from '../../../../services/environment/common/environmentService.js';
 import { TestLifecycleService } from '../../../../test/common/workbenchTestServices.js';
 import { IAgentSessionsService } from '../../browser/agentSessions/agentSessionsService.js';
 import { IAgentSession } from '../../browser/agentSessions/agentSessionsModel.js';
@@ -95,10 +94,9 @@ suite('EditorChatUsageTracker', () => {
 		});
 	});
 
-	test('Agents windows do not register a submission listener or contribute running sessions', () => {
+	test('does not report editor messages before a request', () => {
 		const storage = disposables.add(new InMemoryStorageService());
 		disposables.add(new EditorChatUsageContribution(
-			new class extends mock<IWorkbenchEnvironmentService>() { override readonly isSessionsWindow = true; }(),
 			new class extends mock<IChatService>() { }(),
 			new class extends mock<IAgentSessionsService>() { }(),
 			storage, disposables.add(new TestLifecycleService()), new NullLogService(),
