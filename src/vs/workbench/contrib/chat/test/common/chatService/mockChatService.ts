@@ -177,12 +177,6 @@ export class MockChatService implements IChatService {
 		return false;
 	}
 
-	getChatStorageFolder(): URI {
-		return URI.file('/tmp');
-	}
-
-	logChatIndex(): void { }
-
 	activateDefaultAgent(_location: ChatAgentLocation): Promise<void> {
 		return Promise.resolve();
 	}

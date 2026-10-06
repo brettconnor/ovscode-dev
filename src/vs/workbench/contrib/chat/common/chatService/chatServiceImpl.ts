@@ -13,7 +13,6 @@ import { Codicon } from '../../../../../base/common/codicons.js';
 import { createMarkdownCommandLink, MarkdownString } from '../../../../../base/common/htmlContent.js';
 import { Iterable } from '../../../../../base/common/iterator.js';
 import { Disposable, DisposableResourceMap, DisposableStore, IDisposable, MutableDisposable } from '../../../../../base/common/lifecycle.js';
-import { revive } from '../../../../../base/common/marshalling.js';
 import { equals } from '../../../../../base/common/objects.js';
 import { autorun, derived, IObservable, ISettableObservable, observableValue } from '../../../../../base/common/observable.js';
 import { isEqual } from '../../../../../base/common/resources.js';
@@ -39,14 +38,13 @@ import { awaitStatsForSession } from '../chat.js';
 import { ChatPerfMark, clearChatMarks, markChat } from '../chatPerf.js';
 import { IChatAgentAttachmentCapabilities, IChatAgentCommand, IChatAgentData, IChatAgentHistoryEntry, IChatAgentRequest, IChatAgentResult, IChatAgentService } from '../participants/chatAgents.js';
 import { chatEditingSessionIsReady } from '../editing/chatEditingService.js';
-import { ChatModel, ChatRequestModel, ChatRequestRemovalReason, getRestoredChatRequestSource, IChatModel, IChatPendingRequest, IChatRequestModel, IChatRequestVariableData, IChatResponseModel, IExportableChatData, ISerializableChatData, ISerializableChatDataIn, ISerializableChatsData, ISerializedChatDataReference, normalizeSerializableChatData, toChatHistoryContent, updateRanges, ISerializableChatModelInputState, logChangesToStateModel } from '../model/chatModel.js';
+import { ChatModel, ChatRequestModel, ChatRequestRemovalReason, getRestoredChatRequestSource, IChatModel, IChatPendingRequest, IChatRequestModel, IChatRequestVariableData, IChatResponseModel, IExportableChatData, ISerializableChatData, toChatHistoryContent, updateRanges, ISerializableChatModelInputState } from '../model/chatModel.js';
 import { ChatModelStore, IStartSessionProps } from '../model/chatModelStore.js';
 import { chatAgentLeader, ChatRequestAgentPart, ChatRequestAgentSubcommandPart, ChatRequestSlashCommandPart, chatSubcommandLeader, getPromptText, IParsedChatRequest } from '../requestParser/chatParserTypes.js';
 import { ChatRequestParser } from '../requestParser/chatRequestParser.js';
 import { ChatMcpServersStarting, ChatPendingRequestChangeClassification, ChatPendingRequestChangeEvent, ChatPendingRequestChangeEventName, ChatRequestQueueKind, ChatSendResult, ChatSendResultQueued, ChatSendResultSent, ChatStopCancellationNoopClassification, ChatStopCancellationNoopEvent, ChatStopCancellationNoopEventName, IChatCompleteResponse, IChatDetail, IChatFollowup, IChatModelReference, IChatProgress, IChatQuestionAnswers, IChatRequestAcceptedEvent, IChatRequestSubmittedEvent, IChatSendRequestOptions, IChatSendRequestResponseState, IChatService, IChatSessionStartOptions, IChatUserActionEvent, IRemotePendingRequest, ResponseModelState } from './chatService.js';
 import { ChatRequestTelemetry, ChatServiceTelemetry } from './chatServiceTelemetry.js';
 import { isAgentHostTarget } from '../chatSessionsService.js';
-import { ChatSessionStore, IChatSessionEntryMetadata } from '../model/chatSessionStore.js';
 import { IChatSlashCommandService } from '../participants/chatSlashCommands.js';
 import { IChatTransferService } from '../model/chatTransferService.js';
 import { chatSessionResourceToId, getChatSessionType, LocalChatSessionUri } from '../model/chatUri.js';
@@ -64,24 +62,7 @@ import { ICustomizationMigrationHint, ICustomizationMigrationService } from '../
 import { ICustomizationMigrationTelemetryService } from '../promptSyntax/service/customizationMigrationTelemetryService.js';
 import { AICustomizationManagementCommands, getCustomizationMigrationHintDismissedStorageKey } from '../aiCustomizationWorkspaceService.js';
 
-const serializedChatKey = 'interactive.sessions';
 const customizationMigrationHintShownStateKey = 'customizationMigrationHintShown';
-
-/**
- * True when the user has typed text or attached non-trivial context to the input
- * but not yet sent it. Used to decide whether an external session needs metadata
- * persisted on dispose so the draft survives switching sessions.
- */
-function hasDraftInput(model: ChatModel): boolean {
-	const state = model.inputModel.state.get();
-	if (!state) {
-		return false;
-	}
-	if (state.inputText.trim().length > 0) {
-		return true;
-	}
-	return state.attachments.length > 0;
-}
 
 class CancellableRequest implements IDisposable {
 	private readonly _yieldRequested: ISettableObservable<boolean> = observableValue(this, false);
@@ -205,7 +186,6 @@ export class ChatService extends Disposable implements IChatService {
 
 	private readonly _sessionFollowupCancelTokens = this._register(new DisposableResourceMap<CancellationTokenSource>());
 	private readonly _chatServiceTelemetry: ChatServiceTelemetry;
-	private readonly _chatSessionStore: ChatSessionStore;
 	readonly requestInProgressObs: IObservable<boolean>;
 
 	readonly chatModels: IObservable<Iterable<IChatModel>>;
@@ -222,11 +202,6 @@ export class ChatService extends Disposable implements IChatService {
 	 */
 	waitForModelDisposals(): Promise<void> {
 		return this._sessionModels.waitForModelDisposals();
-	}
-
-	private get isEmptyWindow(): boolean {
-		const workspace = this.workspaceContextService.getWorkspace();
-		return !workspace.configuration && workspace.folders.length === 0;
 	}
 
 	constructor(
@@ -252,24 +227,7 @@ export class ChatService extends Disposable implements IChatService {
 
 		this._sessionModels = this._register(instantiationService.createInstance(ChatModelStore, {
 			createModel: (props: IStartSessionProps) => this._startSession(props),
-			willDisposeModel: async (model: ChatModel) => {
-				const localSessionId = LocalChatSessionUri.parseLocalSessionId(model.sessionResource);
-				if (localSessionId && this.shouldStoreSession(model)) {
-					// Always preserve sessions that have custom titles, even if empty
-					if (model.getRequests().length === 0 && !model.customTitle) {
-						logChangesToStateModel(model.inputModel, `disposing session ${model.sessionResource} (${localSessionId}) without title, deleting from storage`, undefined, undefined, this.logService);
-						await this._chatSessionStore.deleteSession(localSessionId);
-					} else if (this._saveModelsEnabled) {
-						logChangesToStateModel(model.inputModel, `disposing session ${model.sessionResource} (${localSessionId}) with title, storing to storage`, undefined, undefined, this.logService);
-						await this._chatSessionStore.storeSessions([model]);
-					}
-				} else if (!localSessionId && this.shouldStoreExternalSession(model) && (model.getRequests().length > 0 || hasDraftInput(model))) {
-					logChangesToStateModel(model.inputModel, `disposing external session ${model.sessionResource} with requests or draft input, storing metadata to storage`, undefined, undefined, this.logService);
-					// External sessions: persist metadata when there are requests, OR when the
-					// user has typed/attached unsent input we need to restore on next open.
-					await this._chatSessionStore.storeSessionsMetadataOnly([model]);
-				}
-			}
+			willDisposeModel: async (_model: ChatModel) => { }
 		}));
 		this._register(this._sessionModels.onDidDisposeModel(model => {
 			clearChatMarks(model.sessionResource);
@@ -280,16 +238,6 @@ export class ChatService extends Disposable implements IChatService {
 		}));
 
 		this._chatServiceTelemetry = this.instantiationService.createInstance(ChatServiceTelemetry);
-		this._chatSessionStore = this._register(this.instantiationService.createInstance(ChatSessionStore));
-		this._chatSessionStore.migrateDataIfNeeded(() => this.migrateData());
-
-		const transferredData = this._chatSessionStore.getTransferredSessionData();
-		if (transferredData) {
-			this.trace('constructor', `Transferred session ${transferredData}`);
-			this._transferredSessionResource = transferredData;
-		}
-
-		this._register(storageService.onWillSaveState(() => this.saveState()));
 
 		this.chatModels = derived(this, reader => [...this._sessionModels.observable.read(reader).values()]);
 
@@ -317,70 +265,6 @@ export class ChatService extends Disposable implements IChatService {
 		return this.chatAgentService.getContributedDefaultAgent(location) !== undefined;
 	}
 
-	private migrateData(): ISerializableChatsData | undefined {
-		const sessionData = this.storageService.get(serializedChatKey, this.isEmptyWindow ? StorageScope.APPLICATION : StorageScope.WORKSPACE, '');
-		if (sessionData) {
-			const persistedSessions = this.deserializeChats(sessionData);
-			const countsForLog = Object.keys(persistedSessions).length;
-			if (countsForLog > 0) {
-				this.info('migrateData', `Restored ${countsForLog} persisted sessions`);
-			}
-
-			return persistedSessions;
-		}
-
-		return;
-	}
-
-	private saveState(): void {
-		if (!this._saveModelsEnabled) {
-			return;
-		}
-
-		const liveLocalChats = Array.from(this._sessionModels.values())
-			.filter(session => this.shouldStoreSession(session));
-
-		const liveNonLocalChats = Array.from(this._sessionModels.values())
-			.filter(session => this.shouldStoreExternalSession(session));
-
-		// Synchronously update the index for all live sessions and flush it to
-		// storage. This is critical because `onWillSaveState` is synchronous —
-		// after this handler returns the storage service flushes its databases.
-		// The async file-write work kicked off below may complete after the
-		// flush, but the index must be up-to-date before the flush happens so
-		// that sessions are discoverable after a reload.
-		this._chatSessionStore.updateAndFlushIndexSync(liveLocalChats, liveNonLocalChats);
-
-		// Kick off async file writes for session data.
-		this._chatSessionStore.storeSessions(liveLocalChats);
-		this._chatSessionStore.storeSessionsMetadataOnly(liveNonLocalChats);
-	}
-
-	/**
-	 * Only persist local sessions from chat that are not imported.
-	 */
-	private shouldStoreSession(session: ChatModel): boolean {
-		if (session.isDeleted) {
-			return false;
-		}
-		if (!LocalChatSessionUri.parseLocalSessionId(session.sessionResource)) {
-			return false;
-		}
-		return session.initialLocation === ChatAgentLocation.Chat && !session.isImported;
-	}
-
-	/**
-	 * Only persist external (provider-backed) sessions that belong to chat.
-	 * Transient surfaces such as inline chat and terminal chat create throwaway
-	 * sessions that must never show up in chat history.
-	 */
-	private shouldStoreExternalSession(session: ChatModel): boolean {
-		if (LocalChatSessionUri.parseLocalSessionId(session.sessionResource)) {
-			return false;
-		}
-		return session.initialLocation === ChatAgentLocation.Chat;
-	}
-
 	notifyUserAction(action: IChatUserActionEvent): void {
 		this._chatServiceTelemetry.notifyUserAction(action);
 		this._onDidPerformUserAction.fire(action);
@@ -402,13 +286,6 @@ export class ChatService extends Disposable implements IChatService {
 			model.setCustomTitle(title);
 		}
 
-		// Update the title in the file storage
-		const localSessionId = LocalChatSessionUri.parseLocalSessionId(sessionResource);
-		if (localSessionId) {
-			await this._chatSessionStore.setSessionTitle(localSessionId, title);
-			// Trigger immediate save to ensure consistency
-			this.saveState();
-		}
 	}
 
 	private trace(method: string, message?: string): void {
@@ -429,38 +306,6 @@ export class ChatService extends Disposable implements IChatService {
 
 	private error(method: string, message: string): void {
 		this.logService.error(`ChatService#${method} ${message}`);
-	}
-
-	private deserializeChats(sessionData: string): ISerializableChatsData {
-		try {
-			const arrayOfSessions: ISerializableChatDataIn[] = revive(JSON.parse(sessionData)); // Revive serialized URIs in session data
-			if (!Array.isArray(arrayOfSessions)) {
-				throw new Error('Expected array');
-			}
-
-			const sessions = arrayOfSessions.reduce<ISerializableChatsData>((acc, session) => {
-				// Revive serialized markdown strings in response data
-				for (const request of session.requests) {
-					if (Array.isArray(request.response)) {
-						request.response = request.response.map((response) => {
-							if (typeof response === 'string') {
-								return new MarkdownString(response);
-							}
-							return response;
-						});
-					} else if (typeof request.response === 'string') {
-						request.response = [new MarkdownString(request.response)];
-					}
-				}
-
-				acc[session.sessionId] = normalizeSerializableChatData(session);
-				return acc;
-			}, {});
-			return sessions;
-		} catch (err) {
-			this.error('deserializeChats', `Malformed session data: ${err}. [${sessionData.substring(0, 20)}${sessionData.length > 20 ? '...' : ''}]`);
-			return {};
-		}
 	}
 
 	/**
@@ -490,36 +335,11 @@ export class ChatService extends Disposable implements IChatService {
 	 * Returns an array of chat details for all local chat sessions in history (not currently loaded).
 	 */
 	async getHistorySessionItems(): Promise<IChatDetail[]> {
-		const index = await this._chatSessionStore.getIndex();
-		return Object.values(index)
-			.filter(entry => !entry.isExternal)
-			.filter(entry => !this._sessionModels.has(LocalChatSessionUri.forSession(entry.sessionId)) && entry.initialLocation === ChatAgentLocation.Chat && !entry.isEmpty)
-			.map((entry): IChatDetail => {
-				const sessionResource = LocalChatSessionUri.forSession(entry.sessionId);
-				const { workingDirectory: workingDirectoryStr, ...rest } = entry;
-				return ({
-					...rest,
-					sessionResource,
-					isActive: this._sessionModels.has(sessionResource),
-					workingDirectory: workingDirectoryStr ? URI.parse(workingDirectoryStr) : undefined,
-				});
-			});
+		return [];
 	}
 
 	async getMetadataForSession(sessionResource: URI): Promise<IChatDetail | undefined> {
-		const index = await this._chatSessionStore.getIndex();
-		const metadata: IChatSessionEntryMetadata | undefined = index[sessionResource.toString()];
-		if (metadata) {
-			const { workingDirectory: workingDirectoryStr, ...rest } = metadata;
-			return {
-				...rest,
-				sessionResource,
-				isActive: this._sessionModels.has(sessionResource),
-				workingDirectory: workingDirectoryStr ? URI.parse(workingDirectoryStr) : undefined,
-			};
-		}
-
-		return undefined;
+		return this._sessionModels.get(sessionResource) ? chatModelToChatDetail(this._sessionModels.get(sessionResource)!) : undefined;
 	}
 
 	private shouldBeInHistory(entry: ChatModel): boolean {
@@ -527,7 +347,6 @@ export class ChatService extends Disposable implements IChatService {
 	}
 
 	async removeHistoryEntry(sessionResource: URI): Promise<void> {
-		await this._chatSessionStore.deleteSession(this.toLocalSessionId(sessionResource));
 		const model = this._sessionModels.get(sessionResource);
 		if (model) {
 			model.markDeleted();
@@ -536,7 +355,11 @@ export class ChatService extends Disposable implements IChatService {
 	}
 
 	async clearAllHistoryEntries(): Promise<void> {
-		await this._chatSessionStore.clearAllSessions();
+		for (const session of this._sessionModels.values()) {
+			if (LocalChatSessionUri.isLocalSession(session.sessionResource)) {
+				session.markDeleted();
+			}
+		}
 	}
 
 	startNewLocalSession(location: ChatAgentLocation, options?: IChatSessionStartOptions): IChatModelReference {
@@ -616,29 +439,7 @@ export class ChatService extends Disposable implements IChatService {
 			return existingRef;
 		}
 
-		let sessionData: ISerializedChatDataReference | undefined;
-		if (isEqual(this.transferredSessionResource, sessionResource)) {
-			this._transferredSessionResource = undefined;
-			sessionData = await this._chatSessionStore.readTransferredSession(sessionResource);
-		} else {
-			const localSessionId = LocalChatSessionUri.parseLocalSessionId(sessionResource);
-			if (localSessionId) {
-				sessionData = await this._chatSessionStore.readSession(localSessionId);
-			}
-		}
-
-		if (!sessionData) {
-			return undefined;
-		}
-
-		const sessionRef = this._sessionModels.acquireOrCreate({
-			initialData: sessionData,
-			location: sessionData.value.initialLocation ?? ChatAgentLocation.Chat,
-			sessionResource,
-			canUseTools: true,
-		}, debugOwner ?? 'ChatService#acquireOrRestoreLocalSession');
-
-		return sessionRef;
+		return undefined;
 	}
 
 	// There are some cases where this returns a real string. What happens if it doesn't?
@@ -649,8 +450,7 @@ export class ChatService extends Disposable implements IChatService {
 			return undefined;
 		}
 
-		return this._sessionModels.get(sessionResource)?.title ??
-			this._chatSessionStore.getMetadataForSessionSync(sessionResource)?.title;
+		return this._sessionModels.get(sessionResource)?.title;
 	}
 
 	loadSessionFromData(data: IExportableChatData | ISerializableChatData, debugOwner?: string, sessionTypeSelectionReason?: SessionTypeSelectionReason): IChatModelReference {
@@ -1888,7 +1688,7 @@ export class ChatService extends Disposable implements IChatService {
 	}
 
 	public hasSessions(): boolean {
-		return this._chatSessionStore.hasSessions();
+		return Iterable.some(this._sessionModels.values(), model => !model.isDeleted);
 	}
 
 	async transferChatSession(transferredSessionResource: URI, toWorkspace: URI): Promise<void> {
@@ -1905,21 +1705,7 @@ export class ChatService extends Disposable implements IChatService {
 			throw new Error(`Can only transfer chat sessions located in the Chat view. Session ${transferredSessionResource} has location=${model.initialLocation}`);
 		}
 
-		await this._chatSessionStore.storeTransferSession({
-			sessionResource: model.sessionResource,
-			timestampInMilliseconds: Date.now(),
-			toWorkspace: toWorkspace,
-		}, model);
-		this.chatTransferService.addWorkspaceToTransferred(toWorkspace);
-		this.trace('transferChatSession', `Transferred session ${model.sessionResource} to workspace ${toWorkspace.toString()}`);
-	}
-
-	getChatStorageFolder(): URI {
-		return this._chatSessionStore.getChatStorageFolder();
-	}
-
-	logChatIndex(): void {
-		this._chatSessionStore.logIndex();
+		throw new Error('Chat transcript transfer is disabled because local transcript storage has been removed.');
 	}
 
 	setSessionTitle(sessionResource: URI, title: string): void {

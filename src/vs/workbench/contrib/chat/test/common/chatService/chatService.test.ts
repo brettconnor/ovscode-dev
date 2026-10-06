@@ -462,48 +462,6 @@ suite('ChatService', () => {
 		}, async () => undefined));
 	});
 
-	test('retrieveSession', async () => {
-		const testService = createChatService();
-		// Don't add refs to testDisposables so we can control disposal
-		const session1Ref = testService.startNewLocalSession(ChatAgentLocation.Chat);
-		const session1 = session1Ref.object as ChatModel;
-		session1.addRequest({ parts: [], text: 'request 1' }, { variables: [] }, 0);
-
-		const session2Ref = testService.startNewLocalSession(ChatAgentLocation.Chat);
-		const session2 = session2Ref.object as ChatModel;
-		session2.addRequest({ parts: [], text: 'request 2' }, { variables: [] }, 0);
-
-		// Dispose refs to trigger persistence to file service
-		session1Ref.dispose();
-		session2Ref.dispose();
-
-		// Wait for async persistence to complete
-		await testService.waitForModelDisposals();
-
-		// Verify that sessions were written to the file service
-		assert.strictEqual(testFileService.writeOperations.length, 2, 'Should have written 2 sessions to file service');
-
-		const session1WriteOp = testFileService.writeOperations.find((op: { resource: URI; content: string }) =>
-			op.content.includes('request 1'));
-		const session2WriteOp = testFileService.writeOperations.find((op: { resource: URI; content: string }) =>
-			op.content.includes('request 2'));
-
-		assert.ok(session1WriteOp, 'Session 1 should have been written to file service');
-		assert.ok(session2WriteOp, 'Session 2 should have been written to file service');
-
-		// Create a new service instance to simulate app restart
-		const testService2 = createChatService();
-
-		// Retrieve sessions and verify they're loaded from file service
-		const retrieved1 = await getOrRestoreModel(testService2, session1.sessionResource);
-		const retrieved2 = await getOrRestoreModel(testService2, session2.sessionResource);
-
-		assert.ok(retrieved1, 'Should retrieve session 1');
-		assert.ok(retrieved2, 'Should retrieve session 2');
-		assert.deepStrictEqual(retrieved1.getRequests()[0]?.message.text, 'request 1');
-		assert.deepStrictEqual(retrieved2.getRequests()[0]?.message.text, 'request 2');
-	});
-
 	test('reports modified edit keep-alive holders', () => {
 		const testService = createChatService();
 		instantiationService.stub(IChatService, testService);
@@ -1965,80 +1923,6 @@ suite('ChatService', () => {
 
 		currentRef!.dispose();
 		await testService.waitForModelDisposals();
-	});
-
-	test('onWillSaveState persists session index synchronously so it survives reload', async () => {
-		const testService = createChatService();
-		const storageService = instantiationService.get(IStorageService) as TestStorageService;
-
-		// Create a session with a request so it qualifies for persistence
-		const ref = testService.startNewLocalSession(ChatAgentLocation.Chat);
-		const model = ref.object as ChatModel;
-		model.addRequest({ parts: [], text: 'hello world' }, { variables: [] }, 0);
-
-		// Simulate what the storage service does before shutdown:
-		// fire onWillSaveState synchronously, then flush.
-		storageService.testEmitWillSaveState(WillSaveStateReason.SHUTDOWN);
-
-		// Create a second ChatService from the same storage (simulating
-		// window reload). The session must be discoverable in history
-		// IMMEDIATELY — no async work from the first service needs to
-		// have completed.
-		const testService2 = createChatService();
-		const historyItems = await testService2.getHistorySessionItems();
-		assert.ok(
-			historyItems.some(item => item.sessionResource.toString() === model.sessionResource.toString()),
-			`Session ${model.sessionResource} should appear in history after onWillSaveState. Got: ${historyItems.map(i => i.sessionResource.toString()).join(', ')}`
-		);
-
-		// Clean up
-		ref.dispose();
-	});
-
-	test('moving an autosaved empty session with a handoff reference preserves its transcript after restart', async () => {
-		const fileService = testDisposables.add(new FileService(new NullLogService()));
-		testDisposables.add(fileService.registerProvider(Schemas.file, testDisposables.add(new InMemoryFileSystemProvider())));
-		instantiationService.stub(IFileService, fileService);
-		const testService = createChatService();
-		instantiationService.stub(IChatService, testService);
-		const sidebarRef = startSessionModel(testService);
-		const resource = sidebarRef.object.sessionResource;
-		const storageService = instantiationService.get(IStorageService) as TestStorageService;
-		storageService.testEmitWillSaveState(WillSaveStateReason.NONE);
-		await testService.getHistorySessionItems();
-
-		const handoffRef = testService.acquireExistingSession(resource, 'test#move');
-		assert.ok(handoffRef);
-		testDisposables.add(handoffRef);
-		sidebarRef.dispose();
-		await testService.waitForModelDisposals();
-		const editorRef = await testService.acquireOrLoadSession(resource, ChatAgentLocation.Chat, CancellationToken.None);
-		assert.ok(editorRef);
-		testDisposables.add(editorRef);
-		handoffRef.dispose();
-
-		const response = await testService.sendRequest(resource, 'message in detached window');
-		ChatSendResult.assertSent(response);
-		await response.data.responseCompletePromise;
-		editorRef.dispose();
-		await testService.waitForModelDisposals();
-
-		const restartedService = createChatService();
-		instantiationService.stub(IChatService, restartedService);
-		const history = await restartedService.getHistorySessionItems();
-		const restoredModel = await getOrRestoreModel(restartedService, resource);
-		const localSessionId = LocalChatSessionUri.parseLocalSessionId(resource);
-		const log = await fileService.readFile(URI.joinPath(testService.getChatStorageFolder(), `${localSessionId}.jsonl`));
-		const firstLogEntry = JSON.parse(log.value.toString().split('\n')[0]) as { kind: number };
-		assert.deepStrictEqual({
-			firstLogEntryKind: firstLogEntry.kind,
-			history: history.map(item => item.sessionResource),
-			requests: restoredModel?.getRequests().map(request => request.message.text),
-		}, {
-			firstLogEntryKind: 0,
-			history: [resource],
-			requests: ['message in detached window'],
-		});
 	});
 
 	test('removeHistoryEntry marks model as deleted and excludes from getLiveSessionItems', async () => {

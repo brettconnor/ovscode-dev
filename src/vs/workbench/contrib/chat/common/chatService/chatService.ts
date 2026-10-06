@@ -2193,8 +2193,6 @@ export interface IChatService {
 	getLocalSessionHistory(): Promise<IChatDetail[]>;
 	clearAllHistoryEntries(): Promise<void>;
 	removeHistoryEntry(sessionResource: URI): Promise<void>;
-	getChatStorageFolder(): URI;
-	logChatIndex(): void;
 	getLiveSessionItems(): Promise<IChatDetail[]>;
 	getHistorySessionItems(): Promise<IChatDetail[]>;
 	getMetadataForSession(sessionResource: URI): Promise<IChatDetail | undefined>;

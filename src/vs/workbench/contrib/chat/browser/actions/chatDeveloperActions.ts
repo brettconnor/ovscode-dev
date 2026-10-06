@@ -35,7 +35,6 @@ function uriReplacer(_key: string, value: unknown): unknown {
 
 export function registerChatDeveloperActions() {
 	registerAction2(LogChatInputHistoryAction);
-	registerAction2(LogChatIndexAction);
 	registerAction2(InspectChatModelAction);
 	registerAction2(InspectChatModelReferencesAction);
 	registerAction2(ClearRecentlyUsedLanguageModelsAction);
@@ -109,26 +108,6 @@ class LogChatInputHistoryAction extends Action2 {
 	override async run(accessor: ServicesAccessor, ...args: unknown[]): Promise<void> {
 		const chatWidgetService = accessor.get(IChatWidgetService);
 		chatWidgetService.lastFocusedWidget?.logInputHistory();
-	}
-}
-
-class LogChatIndexAction extends Action2 {
-	static readonly ID = 'workbench.action.chat.logChatIndex';
-
-	constructor() {
-		super({
-			id: LogChatIndexAction.ID,
-			title: localize2('workbench.action.chat.logChatIndex.label', "Log Chat Index"),
-			icon: Codicon.attach,
-			category: Categories.Developer,
-			f1: true,
-			precondition: ChatContextKeys.enabled
-		});
-	}
-
-	override async run(accessor: ServicesAccessor, ...args: unknown[]): Promise<void> {
-		const chatService = accessor.get(IChatService);
-		chatService.logChatIndex();
 	}
 }
 

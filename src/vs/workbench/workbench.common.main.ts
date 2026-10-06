@@ -223,8 +223,9 @@ import './contrib/speech/browser/speech.contribution.js';
 
 // Chat
 import './contrib/chat/browser/chat.shared.contribution.js';
-import './contrib/chat/browser/chat.contribution.js';
-import './contrib/chat/browser/chat.view.contribution.js';
+// The local Chat pane, participant integration, and persisted transcript UI
+// are removed. Chat services remain temporarily for workbench features being
+// retired in subsequent cuts.
 import './contrib/inlineChat/browser/inlineChat.contribution.js';
 
 // Copilot Voice
