@@ -23,18 +23,12 @@ suite('Terminal Chat actions', () => {
 			.some(item => item.command.id === TerminalChatCommandId.ViewInChat && (!item.when || item.when.evaluate(context)));
 	}
 
-	test('shows View in Chat only for local terminal chat sessions', () => {
+	test('shows View in Chat when the terminal response contains a code block', () => {
 		const base = {
 			[TerminalChatContextKeys.responseContainsCodeBlock.key]: true,
 			[TerminalChatContextKeys.requestActive.key]: false,
 		};
 
-		assert.deepStrictEqual({
-			local: hasViewInChat({ ...base, [TerminalChatContextKeys.usesAgentHost.key]: false }),
-			agentHost: hasViewInChat({ ...base, [TerminalChatContextKeys.usesAgentHost.key]: true }),
-		}, {
-			local: true,
-			agentHost: false,
-		});
+		assert.strictEqual(hasViewInChat(base), true);
 	});
 });

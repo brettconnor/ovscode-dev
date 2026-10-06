@@ -20,11 +20,10 @@ import { IInstantiationService } from '../../../../../platform/instantiation/com
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
 import { IChatAcceptInputOptions, IChatWidgetService } from '../../../chat/browser/chat.js';
 import { IChatAgentService } from '../../../chat/common/participants/chatAgents.js';
-import { IChatModel, IChatResponseModel, isCellTextEditOperationArray } from '../../../chat/common/model/chatModel.js';
+import { IChatResponseModel, isCellTextEditOperationArray } from '../../../chat/common/model/chatModel.js';
 import { ChatMode } from '../../../chat/common/chatModes.js';
 import { IChatModelReference, IChatProgress, IChatService } from '../../../chat/common/chatService/chatService.js';
 import { ChatAgentLocation } from '../../../chat/common/constants.js';
-import { IChatSessionsService } from '../../../chat/common/chatSessionsService.js';
 import { IInlineChatWidgetConstructionOptions, InlineChatWidget } from '../../../inlineChat/browser/inlineChatWidget.js';
 import { MENU_INLINE_CHAT_WIDGET_SECONDARY } from '../../../inlineChat/common/inlineChat.js';
 import { ITerminalInstance, type IXtermTerminal } from '../../../terminal/browser/terminal.js';
@@ -44,7 +43,7 @@ import { IMarkdownRendererService } from '../../../../../platform/markdown/brows
 import { IChatEntitlementService } from '../../../../services/chat/common/chatEntitlementService.js';
 import { IChatWidgetLocationOptions } from '../../../chat/browser/widget/chatWidget.js';
 import { Selection } from '../../../../../editor/common/core/selection.js';
-import { getTerminalChatSessionMeta, ITerminalChatSessionResolver } from './terminalChatSessionResolver.js';
+import { ITerminalChatSessionResolver } from './terminalChatSessionResolver.js';
 
 const enum Constants {
 	HorizontalMargin = 10,
@@ -86,7 +85,6 @@ export class TerminalChatWidget extends Disposable {
 	private readonly _requestActiveContextKey: IContextKey<boolean>;
 	private readonly _responseContainsCodeBlockContextKey: IContextKey<boolean>;
 	private readonly _responseContainsMulitpleCodeBlocksContextKey: IContextKey<boolean>;
-	private readonly _usesAgentHostContextKey: IContextKey<boolean>;
 
 	private _messages = this._store.add(new Emitter<Message>());
 
@@ -103,7 +101,6 @@ export class TerminalChatWidget extends Disposable {
 	private readonly _sessionDisposables: MutableDisposable<IDisposable> = this._register(new MutableDisposable());
 
 	private _sessionCtor: CancelablePromise<void> | undefined;
-	private _agentHostSessionResource: IChatModel['sessionResource'] | undefined;
 
 	private _currentRequestId: string | undefined;
 	private _activeRequestCts?: CancellationTokenSource;
@@ -118,7 +115,6 @@ export class TerminalChatWidget extends Disposable {
 		@IContextKeyService contextKeyService: IContextKeyService,
 		@IChatService private readonly _chatService: IChatService,
 		@ITerminalChatSessionResolver private readonly _sessionResolver: ITerminalChatSessionResolver,
-		@IChatSessionsService private readonly _chatSessionsService: IChatSessionsService,
 		@IStorageService private readonly _storageService: IStorageService,
 		@IInstantiationService instantiationService: IInstantiationService,
 		@IChatAgentService private readonly _chatAgentService: IChatAgentService,
@@ -131,7 +127,6 @@ export class TerminalChatWidget extends Disposable {
 		this._requestActiveContextKey = TerminalChatContextKeys.requestActive.bindTo(contextKeyService);
 		this._responseContainsCodeBlockContextKey = TerminalChatContextKeys.responseContainsCodeBlock.bindTo(contextKeyService);
 		this._responseContainsMulitpleCodeBlocksContextKey = TerminalChatContextKeys.responseContainsMultipleCodeBlocks.bindTo(contextKeyService);
-		this._usesAgentHostContextKey = TerminalChatContextKeys.usesAgentHost.bindTo(contextKeyService);
 
 		this._container = document.createElement('div');
 		this._container.classList.add('terminal-inline-chat');
@@ -176,7 +171,6 @@ export class TerminalChatWidget extends Disposable {
 			Event.fromObservableLight(this._inlineChatWidget.chatWidget.input.selectedLanguageModel),
 			Event.debounce(this._xterm.raw.onCursorMove, () => void 0, MicrotaskDelay),
 		)(() => this._relayout()));
-		this._register(this._instance.onDidChangeShellType(() => this._refreshAgentHostSessionMetadata()));
 
 		const observer = new ResizeObserver(() => this._relayout());
 		observer.observe(this._terminalElement);
@@ -363,19 +357,7 @@ export class TerminalChatWidget extends Disposable {
 			this._model.value = resolution.modelRef;
 			const model = resolution.modelRef.object;
 			this._inlineChatWidget.setChatModel(model);
-			// A contributed session type is not the default agent for its locations, so the widget
-			// must be locked for requests to carry `agentIdSilent` and reach the Agent Host agent.
-			const lockToAgent = resolution.lockToAgent;
-			if (lockToAgent) {
-				this._inlineChatWidget.chatWidget.lockToCodingAgent(lockToAgent.name, lockToAgent.displayName, lockToAgent.type);
-				this._agentHostSessionResource = model.sessionResource;
-				this._usesAgentHostContextKey.set(true);
-				this._refreshAgentHostSessionMetadata();
-			} else {
-				this._inlineChatWidget.chatWidget.unlockFromCodingAgent();
-				this._agentHostSessionResource = undefined;
-				this._usesAgentHostContextKey.set(false);
-			}
+			this._inlineChatWidget.chatWidget.unlockFromCodingAgent();
 			this._resetPlaceholder();
 		});
 		this._sessionCtor = sessionCtor;
@@ -388,15 +370,6 @@ export class TerminalChatWidget extends Disposable {
 				onUnexpectedError(error);
 			}
 		});
-	}
-
-	private _refreshAgentHostSessionMetadata(): void {
-		if (this._agentHostSessionResource) {
-			this._chatSessionsService.updateChatSessionMetadata(
-				this._agentHostSessionResource,
-				getTerminalChatSessionMeta(this._instance.shellType ?? this._instance.processName, this._instance.os ?? OS),
-			);
-		}
 	}
 
 	private async _waitForSession(): Promise<boolean> {
@@ -428,9 +401,6 @@ export class TerminalChatWidget extends Disposable {
 	clear(): void {
 		this.cancel();
 		this._model.clear();
-		this._agentHostSessionResource = undefined;
-		this._usesAgentHostContextKey.reset();
-		this._inlineChatWidget.chatWidget.unlockFromCodingAgent();
 		this._responseContainsCodeBlockContextKey.reset();
 		this._requestActiveContextKey.reset();
 		this.hide();
