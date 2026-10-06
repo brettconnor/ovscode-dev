@@ -8,13 +8,8 @@ import { IStringDictionary } from '../../../../../../base/common/collections.js'
 import { Emitter, Event } from '../../../../../../base/common/event.js';
 import { Disposable } from '../../../../../../base/common/lifecycle.js';
 import { equals } from '../../../../../../base/common/objects.js';
-import { IObservable } from '../../../../../../base/common/observable.js';
-import { AutoTierSourceConfigKey, isAutoModeRoutingTier, isInheritedAutoTier, parseManagedAutoTierDefault, type AutoModeTier } from '../../../../../../platform/agentHost/common/autoModeTiers.js';
-import { ILogService } from '../../../../../../platform/log/common/log.js';
-import { COPILOT_AUTO_TIER_KEY, IManagedSettingsService } from '../../../../../../platform/policy/common/copilotManagedSettings.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../../platform/storage/common/storage.js';
-import { COPILOT_VENDOR_ID, createModelConfigurationActions, ILanguageModelConfigurationSchema, ILanguageModelsService } from '../../../common/languageModels.js';
-import { SessionType } from '../../../common/chatSessionsService.js';
+import { createModelConfigurationActions, ILanguageModelConfigurationSchema, ILanguageModelsService } from '../../../common/languageModels.js';
 import { computeStoredConfiguration, extractSchemaDefaults, filterConfigurationToSchema, resolveModelConfiguration } from './chatModelConfigurationLogic.js';
 import { IModelConfigurationAccess } from './modelPicker/modelPickerModelConfig.js';
 
@@ -36,10 +31,6 @@ export class ChatModelConfigurationStore extends Disposable implements IModelCon
 
 	private readonly _overrides = new Map<string, IStringDictionary<unknown>>();
 	private readonly _preferences = new Map<string, IStringDictionary<unknown>>();
-	private readonly _explicitAutoTiers = new Set<string>();
-	private readonly _sessionAutoTiers = new Set<string>();
-	private _managedAutoTier: AutoModeTier | undefined;
-	private _autoTierSchema: { original: ILanguageModelConfigurationSchema; tier: string; effective: ILanguageModelConfigurationSchema } | undefined;
 
 	private readonly _onDidChange = this._register(new Emitter<string>());
 	readonly onDidChange: Event<string> = this._onDidChange.event;
@@ -51,29 +42,14 @@ export class ChatModelConfigurationStore extends Disposable implements IModelCon
 	constructor(
 		private readonly getStorageKey: () => string,
 		private readonly isEmpty: () => boolean,
-		private readonly agentHostManagedDefaultScope: IObservable<boolean>,
 		private readonly languageModelsService: ILanguageModelsService,
 		private readonly storageService: IStorageService,
-		managedSettingsService: IManagedSettingsService,
-		logService: ILogService,
 	) {
 		super();
 
-		const readManagedTier = () => {
-			try {
-				this._managedAutoTier = parseManagedAutoTierDefault(managedSettingsService.getManagedSettingValue(COPILOT_AUTO_TIER_KEY));
-			} catch (error) {
-				this._managedAutoTier = undefined;
-				logService.error('[Chat] Invalid managed Auto startup default', error);
-			}
-		};
-		readManagedTier();
-		this._register(managedSettingsService.onDidChangeManagedSettings(readManagedTier));
 		// Only untouched draft defaults follow schema updates; selections and started conversations stay pinned.
 		// Model-change events also report other editors' writes, which must not replace this editor's preferences.
-		this._register(Event.any(this.languageModelsService.onDidChangeLanguageModels, Event.map(Event.any(
-			managedSettingsService.onDidChangeManagedSettings, Event.fromObservableLight(agentHostManagedDefaultScope),
-		), () => undefined))(vendor => {
+		this._register(this.languageModelsService.onDidChangeLanguageModels(() => {
 			if (this._overrides.size === 0) {
 				return;
 			}
@@ -88,7 +64,7 @@ export class ChatModelConfigurationStore extends Disposable implements IModelCon
 				const nextOverride = this.isEmpty()
 					? this._resolveConfiguration(modelId, schemaDefaults, preferences)
 					: { ...schemaDefaults, ...(uninitialized ? preferences : override) };
-				if (!equals(override, nextOverride) || vendor === undefined) {
+				if (!equals(override, nextOverride)) {
 					this._overrides.set(modelId, nextOverride);
 					this._onDidChange.fire(modelId);
 				}
@@ -120,10 +96,6 @@ export class ChatModelConfigurationStore extends Disposable implements IModelCon
 	}
 
 	async setModelConfiguration(modelId: string, values: IStringDictionary<unknown>): Promise<void> {
-		if (Object.hasOwn(values, 'tier')) {
-			this._explicitAutoTiers.add(modelId);
-			this._sessionAutoTiers.delete(modelId);
-		}
 		const changed = this._applyLocalModelConfiguration(modelId, values);
 		this._onDidSelectConfiguration.fire(modelId);
 		if (!changed) {
@@ -159,14 +131,10 @@ export class ChatModelConfigurationStore extends Disposable implements IModelCon
 		const schemaDefaults = this._schemaDefaults(modelId);
 		this.getModelConfiguration(modelId);
 		const stored = computeStoredConfiguration({ ...schemaDefaults, ...this._preferences.get(modelId) }, values, schemaDefaults);
-		delete stored[AutoTierSourceConfigKey];
 		this._preferences.set(modelId, { ...this._preferences.get(modelId), ...values });
 		const nextOverride = this._resolveConfiguration(modelId, schemaDefaults, this._preferences.get(modelId));
 		if (!this.isEmpty() && this._overrides.has(modelId)) {
 			Object.assign(nextOverride, this._overrides.get(modelId), values);
-			if (Object.hasOwn(values, 'tier') && this._explicitAutoTiers.has(modelId)) {
-				nextOverride[AutoTierSourceConfigKey] = 'explicit';
-			}
 		}
 
 		// Skip redundant updates. `restoreModelConfiguration` can be invoked on
@@ -204,19 +172,7 @@ export class ChatModelConfigurationStore extends Disposable implements IModelCon
 
 	getModelConfigurationSchema(modelId: string): ILanguageModelConfigurationSchema | undefined {
 		const metadata = this.languageModelsService.lookupLanguageModel(modelId);
-		const schema = metadata?.configurationSchema;
-		const tierSchema = schema?.properties?.tier;
-		const managed = this._managedAutoTier;
-		if (!schema || !tierSchema || !managed || metadata?.id !== 'auto' || !this._usesManagedDefault(metadata.vendor)) {
-			return schema;
-		}
-		if (this._autoTierSchema?.original !== schema || this._autoTierSchema.tier !== managed) {
-			this._autoTierSchema = {
-				original: schema, tier: managed,
-				effective: { ...schema, properties: { ...schema.properties, tier: { ...tierSchema, default: managed } } },
-			};
-		}
-		return this._autoTierSchema.effective;
+		return metadata?.configurationSchema;
 	}
 
 	/** Rebinds picker observers after the owner has restored the incoming conversation's configuration. */
@@ -252,35 +208,6 @@ export class ChatModelConfigurationStore extends Disposable implements IModelCon
 		const filtered = metadata
 			? filterConfigurationToSchema(values, metadata.configurationSchema)
 			: { ...values };
-		const source = values[AutoTierSourceConfigKey];
-		const inherited = isInheritedAutoTier(values);
-		if (isAutoModeRoutingTier(filtered.tier)) {
-			if (source === 'session' || (!this.isEmpty() && inherited)) {
-				this._sessionAutoTiers.add(modelId);
-				this._explicitAutoTiers.delete(modelId);
-				persist = false;
-			} else if (this.isEmpty() && inherited) {
-				this._explicitAutoTiers.delete(modelId);
-				this._sessionAutoTiers.delete(modelId);
-				persist = false;
-			} else {
-				this._explicitAutoTiers.add(modelId);
-				this._sessionAutoTiers.delete(modelId);
-			}
-		} else if (metadata?.id === 'auto' || inherited || source === 'explicit' || source === 'session') {
-			delete filtered.tier;
-			delete filtered[AutoTierSourceConfigKey];
-		}
-		if (this._sessionAutoTiers.has(modelId) && isAutoModeRoutingTier(filtered.tier)) {
-			filtered[AutoTierSourceConfigKey] = 'session';
-		}
-		if (this.isEmpty() && inherited) {
-			persist = false;
-			if (source !== 'preference') {
-				delete filtered.tier;
-				delete filtered[AutoTierSourceConfigKey];
-			}
-		}
 		// Restore only seeds this editor's scoped snapshot; unlike a user-made
 		// change it must NOT write the profile-global value, since restoring a
 		// session is not an intentional reconfiguration and runs on every
@@ -296,33 +223,10 @@ export class ChatModelConfigurationStore extends Disposable implements IModelCon
 	clear(): void {
 		this._overrides.clear();
 		this._preferences.clear();
-		this._explicitAutoTiers.clear();
-		this._sessionAutoTiers.clear();
-		this._autoTierSchema = undefined;
 	}
 
 	private _resolveConfiguration(modelId: string, defaults: IStringDictionary<unknown>, preferences: IStringDictionary<unknown> | undefined): IStringDictionary<unknown> {
-		const configuration = { ...defaults, ...preferences };
-		const metadata = this.languageModelsService.lookupLanguageModel(modelId);
-		if (metadata?.id !== 'auto' || !metadata.configurationSchema?.properties?.tier) {
-			return configuration;
-		}
-		const explicit = this._explicitAutoTiers.has(modelId);
-		const session = this._sessionAutoTiers.has(modelId);
-		const hasPreference = preferences?.tier !== undefined;
-		const managed = this._usesManagedDefault(metadata.vendor) ? this._managedAutoTier : undefined;
-		if (this.isEmpty() && !explicit && !session && managed) {
-			configuration.tier = managed;
-			configuration[AutoTierSourceConfigKey] = 'managed';
-		} else {
-			configuration[AutoTierSourceConfigKey] = explicit ? 'explicit' : session ? 'session' : hasPreference ? 'preference' : 'default';
-		}
-		return configuration;
-	}
-
-	private _usesManagedDefault(vendor: string): boolean {
-		return vendor === COPILOT_VENDOR_ID
-			|| (this.agentHostManagedDefaultScope.get() && vendor === SessionType.AgentHostCopilot);
+		return { ...defaults, ...preferences };
 	}
 
 	private _schemaDefaults(modelId: string): IStringDictionary<unknown> {

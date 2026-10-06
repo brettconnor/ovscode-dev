@@ -16,7 +16,7 @@ import { IChatService, ResponseModelState } from '../../common/chatService/chatS
 import type { ISerializableChatData } from '../../common/model/chatModel.js';
 import { isChatTreeItem, isRequestVM, isResponseVM } from '../../common/model/chatViewModel.js';
 import { CHAT_CATEGORY } from './chatActions.js';
-import { ChatTreeItem, ChatViewPaneTarget, IChatWidgetService } from '../chat.js';
+import { ChatTreeItem, IChatWidgetService } from '../chat.js';
 
 export const ForkConversationActionId = 'workbench.action.chat.forkConversation';
 
@@ -208,7 +208,7 @@ export class ForkConversationAction extends Action2 {
 	protected async _openForkedSession(instantiationService: IInstantiationService, parentSessionResource: URI, forkedSessionResource: URI, _options?: IForkConversationOptions): Promise<void> {
 		await instantiationService.invokeFunction(async accessor => {
 			const chatWidgetService = accessor.get(IChatWidgetService);
-			await chatWidgetService.openSession(forkedSessionResource, ChatViewPaneTarget, { sessionTypeSelectionReason: 'currentSession' });
+			await chatWidgetService.openSession(forkedSessionResource, undefined, { sessionTypeSelectionReason: 'currentSession' });
 		});
 	}
 

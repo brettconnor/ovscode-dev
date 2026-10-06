@@ -30,7 +30,6 @@ import { IStorageService } from '../../../../../../platform/storage/common/stora
 import { maybeConfirmElevatedPermissionLevel } from '../../../common/chatPermissionWarnings.js';
 import { AgentSandboxEnabledSettingValue, AgentSandboxEnabledValue, AgentSandboxSettingId, isAgentSandboxEnabledValue } from '../../../../../../platform/sandbox/common/settings.js';
 import { getCompactCodicon } from '../../chatIcons.js';
-import { getPermissionLevelBadge } from '../../agentSessions/agentHost/agentHostModePickerPresentation.js';
 
 export interface IPermissionPickerDelegate {
 	readonly currentPermissionLevel: IObservable<ChatPermissionLevel>;
@@ -202,7 +201,6 @@ export class PermissionPickerActionItem extends ChatInputPickerActionViewItem {
 						...action,
 						id: meta.id,
 						label: meta.label,
-						...getPermissionLevelBadge(level),
 						detail: meta.detail,
 						icon: meta.icon,
 						checked: currentLevel === level,
@@ -367,12 +365,12 @@ export class PermissionPickerActionItem extends ChatInputPickerActionViewItem {
 		}
 
 		dom.reset(element, ...labelElements);
-		element.classList.toggle('warning', !ext && (level === ChatPermissionLevel.Autopilot || level === ChatPermissionLevel.Assisted));
-		element.classList.toggle('info', !ext && level === ChatPermissionLevel.AutoApprove);
+		element.classList.toggle('warning', level === ChatPermissionLevel.Autopilot || level === ChatPermissionLevel.Assisted);
+		element.classList.toggle('info', level === ChatPermissionLevel.AutoApprove);
 
 		this._currentTooltip = tooltip;
 		const accessibleLabel = sandboxIcon ? localize('permissions.sandboxed.label', "{0} (sandboxed)", label) : label;
-		element.setAttribute('aria-label', !ext && this.delegate.getPermissionLevelHover
+		element.setAttribute('aria-label', this.delegate.getPermissionLevelHover
 			? localize('permissions.ariaLabelWithDescription', "Permission picker, {0}, {1}", accessibleLabel, tooltip)
 			: localize('permissions.ariaLabel', "Permission picker, {0}", accessibleLabel));
 		// `renderLabel` can run against a fresh element on subsequent

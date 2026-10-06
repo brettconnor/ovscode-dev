@@ -63,14 +63,11 @@ import { ILanguageModelChatSelector, ILanguageModelsService } from '../../common
 import { CopilotUsageExtensionFeatureId } from '../../common/languageModelStats.js';
 import { ILanguageModelToolsConfirmationService } from '../../common/tools/languageModelToolsConfirmationService.js';
 import { ILanguageModelToolsService, IToolData, IToolSet, isToolSet, ToolAndToolSetEnablementMap } from '../../common/tools/languageModelToolsService.js';
-import { ChatViewId, IChatWidget, IChatWidgetService, isIChatViewViewContext } from '../chat.js';
+import { IChatWidget, IChatWidgetService } from '../chat.js';
 import { IChatEditorOptions } from '../widgetHosts/editor/chatEditor.js';
 import { ChatEditorInput, showClearEditingSessionConfirmation } from '../widgetHosts/editor/chatEditorInput.js';
 import { convertBufferToScreenshotVariable } from '../attachments/chatScreenshotContext.js';
 import { getChatSessionType, getNewChatSessionResource } from '../../common/model/chatUri.js';
-import { localChatSessionType } from '../../common/chatSessionsService.js';
-import { generateUuid } from '../../../../../base/common/uuid.js';
-import { ChatViewPane } from '../widgetHosts/viewPane/chatViewPane.js';
 
 export const CHAT_CATEGORY = localize2('chat.category', 'Chat');
 
@@ -1786,28 +1783,10 @@ export interface IClearEditingSessionConfirmationOptions {
  * new-session harness resolver.
  */
 export async function clearChatSessionPreservingType(accessor: ServicesAccessor, widget: IChatWidget, sessionType: string | undefined): Promise<void> {
-	const viewsService = accessor.get(IViewsService);
 	const currentResource = widget.viewModel?.model.sessionResource;
 	const currentSessionType = currentResource ? getChatSessionType(currentResource) : undefined;
 	const resolvedSessionType = getDefaultNewChatSessionTypeAndReason(accessor, { explicitOverride: sessionType, currentSessionType });
-	const newSessionType = resolvedSessionType.sessionType;
-	if (isIChatViewViewContext(widget.viewContext)) {
-		const view = await viewsService.openView(ChatViewId) as ChatViewPane;
-		if (newSessionType !== localChatSessionType) {
-			// Load a session of the resolved type in the sidebar.
-			await view.loadSession(URI.from({ scheme: newSessionType, path: `/untitled-${generateUuid()}` }), resolvedSessionType.selectionReason);
-		} else {
-			// The resolved type is local (an explicit request or session
-			// preservation). A plain `widget.clear()` re-acquires the computed
-			// default (a non-local harness when the agent host is enabled), so
-			// start a local session explicitly to honor the resolved type.
-			await view.startNewLocalSession(resolvedSessionType.selectionReason);
-		}
-	} else {
-		// For the editor, thread the resolution through the clear path so
-		// clearChatEditor does not recompute the type or its selection reason.
-		await widget.clear(resolvedSessionType);
-	}
+	await widget.clear(resolvedSessionType);
 }
 
 

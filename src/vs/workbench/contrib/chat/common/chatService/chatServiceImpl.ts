@@ -544,7 +544,6 @@ export class ChatService extends Disposable implements IChatService {
 			return { kind: 'rejected', reason: 'Empty message' };
 		}
 
-		const submittedModeKind = options?.modeInfo?.kind;
 
 		let model = this._sessionModels.get(sessionResource);
 		if (!model) {

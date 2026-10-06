@@ -32,7 +32,6 @@ import { IChatEditorOptions } from './widgetHosts/editor/chatEditor.js';
 import { ChatInputPart } from './widget/input/chatInputPart.js';
 import { IChatWidgetContrib } from './widget/chatWidget.js';
 import { ICodeBlockActionContext, ICodeBlockRenderOptions } from './widget/chatContentParts/codeBlockPart.js';
-import { AgentSessionTarget } from './agentSessions/agentSessions.js';
 
 export { ChatOutline } from './chatOutline.js';
 
@@ -80,37 +79,6 @@ export interface IWorkspacePickerDelegate {
  * Delegate interface for the session target picker.
  * Allows consumers to get and optionally set the active session provider.
  */
-export interface ISessionTypePickerDelegate {
-	getActiveSessionProvider(): AgentSessionTarget | undefined;
-	/**
-	 * Optional setter for the active session provider.
-	 * When provided, the picker will call this instead of executing the openNewChatSessionInPlace command.
-	 * This allows the welcome view to maintain independent state from the main chat panel.
-	 */
-	setActiveSessionProvider?(provider: AgentSessionTarget): void;
-	/**
-	 * Optional getter for the pending delegation target - the target that will be used when submit is pressed.
-	 */
-	getPendingDelegationTarget?(): AgentSessionTarget | undefined;
-	/**
-	 * Optional setter for the pending delegation target.
-	 * When a user selects a different session provider in a non-empty chat,
-	 * this stores the target for delegation on the next submit instead of immediately creating a new session.
-	 */
-	setPendingDelegationTarget?(provider: AgentSessionTarget): void;
-	/**
-	 * Optional event that fires when the active session provider changes.
-	 * When provided, listeners (like chatInputPart) can react to session type changes
-	 * and update pickers accordingly.
-	 */
-	onDidChangeActiveSessionProvider?: Event<AgentSessionTarget>;
-	/**
-	 * Returns whether the current session's workspace has a git repository.
-	 * Used to gate cloud delegation which requires a GitHub repository.
-	 */
-	hasGitRepository?(): boolean;
-}
-
 export const IChatWidgetService = createDecorator<IChatWidgetService>('chatWidgetService');
 
 export interface IChatWidgetService {
@@ -160,9 +128,7 @@ export interface IChatWidgetService {
 	getAllWidgets(): ReadonlyArray<IChatWidget>;
 	getWidgetByInputUri(uri: URI): IChatWidget | undefined;
 	/** Opens or reveals a session, retaining its model while moving it between widgets. */
-	openSession(sessionResource: URI, target?: typeof ChatViewPaneTarget, options?: IChatEditorOptions): Promise<IChatWidget | undefined>;
 	openSession(sessionResource: URI, target?: PreferredGroup, options?: IChatEditorOptions): Promise<IChatWidget | undefined>;
-	openSession(sessionResource: URI, target?: typeof ChatViewPaneTarget | PreferredGroup, options?: IChatEditorOptions): Promise<IChatWidget | undefined>;
 
 	getWidgetBySessionResource(sessionResource: URI): IChatWidget | undefined;
 
@@ -173,8 +139,6 @@ export interface IChatWidgetService {
 	 */
 	register(newWidget: IChatWidget): IDisposable;
 }
-
-export const ChatViewPaneTarget = Symbol('ChatViewPaneTarget');
 
 export const IQuickChatService = createDecorator<IQuickChatService>('quickChatService');
 export interface IQuickChatService {
@@ -317,7 +281,6 @@ export interface IChatWidgetViewOptions {
 	 * This is useful for contexts like the welcome view where target selection should not
 	 * immediately open a new session.
 	 */
-	sessionTypePickerDelegate?: ISessionTypePickerDelegate;
 
 	/**
 	 * Optional delegate for the workspace picker.

@@ -35,7 +35,6 @@ import { ILanguageModelsService } from '../../common/languageModels.js';
 import { CHAT_OPEN_ACTION_ID, CHAT_SETUP_ACTION_ID } from '../actions/chatActions.js';
 import { ChatViewId, IChatWidgetService } from '../chat.js';
 import { IViewsService } from '../../../../services/views/common/viewsService.js';
-import { ChatViewPane } from '../widgetHosts/viewPane/chatViewPane.js';
 import { ILanguageFeaturesService } from '../../../../../editor/common/services/languageFeatures.js';
 import { CodeAction, CodeActionList, Command, NewSymbolName, NewSymbolNameTriggerKind } from '../../../../../editor/common/languages.js';
 import { ITextModel } from '../../../../../editor/common/model.js';
@@ -652,8 +651,6 @@ export class SetupAgent extends Disposable implements IChatAgentImplementation {
 
 		const defaultAgent = chatAgentService.getDefaultAgent(this.location, modeInfo?.kind);
 		const contributedDefaultAgent = chatAgentService.getContributedDefaultAgent(this.location);
-		const chatViewPane = this.viewsService.getActiveViewWithId(ChatViewId) as ChatViewPane | undefined;
-		const matchingWelcomeView = chatViewPane?.getMatchingWelcomeView();
 
 		return {
 			agentActivated,
@@ -672,7 +669,7 @@ export class SetupAgent extends Disposable implements IChatAgentImplementation {
 			toolsModelReady,
 			isRemote: !!this.environmentService.remoteAuthority,
 			isAnonymous: this.chatEntitlementService.anonymous,
-			matchingWelcomeViewWhen: matchingWelcomeView?.when.serialize() ?? (chatViewPane ? 'noWelcomeView' : 'noChatViewPane'),
+			matchingWelcomeViewWhen: 'noChatViewPane',
 		};
 	}
 

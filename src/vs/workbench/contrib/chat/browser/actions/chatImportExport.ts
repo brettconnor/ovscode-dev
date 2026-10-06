@@ -11,24 +11,21 @@ import { Action2, registerAction2 } from '../../../../../platform/actions/common
 import { IFileDialogService } from '../../../../../platform/dialogs/common/dialogs.js';
 import { IFileService } from '../../../../../platform/files/common/files.js';
 import { CHAT_CATEGORY } from './chatActions.js';
-import { ChatViewPaneTarget, IChatWidgetService } from '../chat.js';
+import { IChatWidgetService } from '../chat.js';
 import { IChatEditorOptions } from '../widgetHosts/editor/chatEditor.js';
 import { ChatEditorInput } from '../widgetHosts/editor/chatEditorInput.js';
 import { ChatContextKeys } from '../../common/actions/chatContextKeys.js';
 import { parseChatImport } from '../../common/model/chatModel.js';
-import { IChatService } from '../../common/chatService/chatService.js';
 import { URI } from '../../../../../base/common/uri.js';
-import { ACTIVE_GROUP, PreferredGroup } from '../../../../services/editor/common/editorService.js';
+import { ACTIVE_GROUP } from '../../../../services/editor/common/editorService.js';
 
 const defaultFileName = 'chat.json';
 const filters = [{ name: localize('chat.file.label', "Chat Session"), extensions: ['json'] }];
 
 /**
  * Target location for importing a chat session.
- * - 'chatViewPane': Opens in the chat view pane (sidebar/panel)
- * - 'default': Opens in the active editor group
  */
-export type ChatImportTarget = 'chatViewPane' | 'default';
+export type ChatImportTarget = 'default';
 
 export interface ChatImportOptions {
 	inputPath?: URI;
@@ -50,7 +47,6 @@ export function registerChatExportActions() {
 			const widgetService = accessor.get(IChatWidgetService);
 			const fileDialogService = accessor.get(IFileDialogService);
 			const fileService = accessor.get(IFileService);
-			const chatService = accessor.get(IChatService);
 
 			const widget = widgetService.lastFocusedWidget;
 			if (!widget || !widget.viewModel) {
@@ -115,25 +111,9 @@ export function registerChatExportActions() {
 				const importedData = parseChatImport(content.value.toString());
 
 				let sessionResource: URI;
-				let resolvedTarget: typeof ChatViewPaneTarget | PreferredGroup;
-				let options: IChatEditorOptions;
-
-				if (opts?.target === 'chatViewPane') {
-					const modelRef = chatService.loadSessionFromData(importedData, 'ChatImportExport#importToChatView');
-					try {
-						sessionResource = modelRef.object.sessionResource;
-						resolvedTarget = ChatViewPaneTarget;
-						options = { pinned: true };
-						await widgetService.openSession(sessionResource, resolvedTarget, options);
-					} finally {
-						modelRef.dispose();
-					}
-				} else {
-					sessionResource = ChatEditorInput.getNewEditorUri();
-					resolvedTarget = ACTIVE_GROUP;
-					options = { target: { data: importedData }, pinned: true };
-					await widgetService.openSession(sessionResource, resolvedTarget, options);
-				}
+				sessionResource = ChatEditorInput.getNewEditorUri();
+				const options: IChatEditorOptions = { target: { data: importedData }, pinned: true };
+				await widgetService.openSession(sessionResource, ACTIVE_GROUP, options);
 			} catch (err) {
 				throw err;
 			}

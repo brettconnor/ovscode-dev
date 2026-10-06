@@ -21,7 +21,6 @@ import { TestLifecycleService } from '../../../../test/common/workbenchTestServi
 import { InEditorZenModeContext } from '../../../../common/contextkeys.js';
 import { ChatQuotaResumeState, ChatStatusBarEntry, computeQuotaResumeState } from '../../browser/chatStatus/chatStatusEntry.js';
 import { IChatStatusItemService } from '../../browser/chatStatus/chatStatusItemService.js';
-import { ChatStatusPromo } from '../../browser/chatStatus/chatStatusPromo.js';
 import { UpdateTitleBarChatInProgressContext, UpdateTitleBarContext, UpdateTitleBarEditorVisibleContext } from '../../../update/common/update.js';
 import { CHAT_SETUP_ACTION_ID } from '../../browser/actions/chatActions.js';
 
@@ -133,17 +132,6 @@ suite('ChatStatusBarEntry', () => {
 		const lifecycle = store.add(new TestLifecycleService());
 		lifecycle.usePhases = true;
 		instantiationService.stub(ILifecycleService, lifecycle);
-		const promoChanged = store.add(new Emitter<void>());
-		const promo = { showPip: true, ariaLabel: 'Sale', tooltip: { content: 'Sale', commands: [] } };
-		const promoQueries: boolean[] = [];
-		instantiationService.stubInstance(ChatStatusPromo, {
-			onDidChange: promoChanged.event,
-			getEntryProps: visible => {
-				promoQueries.push(visible);
-				return opts.promo && visible ? promo : undefined;
-			},
-			dispose() { },
-		});
 
 		const visibility = store.add(new Emitter<{ id: string; visible: boolean }>());
 		const statusbar = {
@@ -192,7 +180,7 @@ suite('ChatStatusBarEntry', () => {
 			svc,
 			statusbar,
 			storageService,
-			lifecycle, promo, promoQueries, promoChanged, visibility,
+			lifecycle, visibility,
 			updateTitleBarVisible: contextKeyService.contextMatchesRules(UpdateTitleBarEditorVisibleContext),
 		};
 	}
@@ -204,69 +192,6 @@ suite('ChatStatusBarEntry', () => {
 	function flushTimers(): Promise<void> {
 		return new Promise<void>(resolve => setTimeout(resolve, 0));
 	}
-
-	test('defers promo initialization until the workbench is restored', async () => {
-		const active = createEntry({ promo: true });
-		const disposed = createEntry({ promo: true });
-		const before = active.promoQueries.length;
-		disposed.entry.dispose();
-		active.lifecycle.phase = disposed.lifecycle.phase = LifecyclePhase.Restored;
-		await flushTimers();
-		assert.deepStrictEqual({
-			before, after: active.promoQueries, disposed: disposed.promoQueries, text: active.statusbar.current?.text,
-		}, { before: 0, after: [true], disposed: [], text: '$(copilot-dot)' });
-	});
-
-	test('normal operational states take precedence over promos without enrolling', async () => {
-		const cases: Parameters<typeof createEntry>[0][] = [
-			{ entitlement: ChatEntitlement.Unknown },
-			{ quotas: { premiumChat: exhausted } },
-			{ persisted: 'resumed', quotas: { premiumChat: available } },
-			{ sentiment: { completed: true, disabled: true } },
-			{ sentiment: { completed: true, untrusted: true } },
-			{ sentiment: { completed: true, hidden: true } },
-			{ snoozed: true },
-		];
-		const fixtures = cases.map(options => createEntry({ ...options, promo: true }));
-		const before = fixtures.map(f => f.statusbar.current);
-		for (const fixture of fixtures) {
-			fixture.lifecycle.phase = LifecyclePhase.Restored;
-		}
-		await flushTimers();
-		assert.deepStrictEqual({
-			entries: fixtures.map(f => f.statusbar.current),
-			queries: fixtures.map(f => f.promoQueries.length),
-		}, { entries: before, queries: cases.map(() => 0) });
-	});
-
-	test('updates pip properties without replacing its tooltip and restores current quota status', async () => {
-		const fixture = createEntry({ promo: true });
-		fixture.lifecycle.phase = LifecyclePhase.Restored;
-		await flushTimers();
-		const tooltip = fixture.statusbar.current?.tooltip;
-		fixture.promo.showPip = false;
-		fixture.promoChanged.fire();
-		const seen = fixture.statusbar.current;
-		fixture.svc.quotas = { premiumChat: exhausted };
-		fixture.svc.fireQuotaExceeded();
-		assert.deepStrictEqual({
-			seen: { text: seen?.text, sameTooltip: seen?.tooltip === tooltip },
-			blocked: { text: fixture.statusbar.current?.text, label: fixture.statusbar.current?.ariaLabel },
-		}, {
-			seen: { text: '$(copilot)', sameTooltip: true },
-			blocked: { text: '$(copilot-warning) Quota reached', label: 'Quota reached' },
-		});
-	});
-
-	test('uses status-entry visibility rather than DOM presence', async () => {
-		const fixture = createEntry({ promo: true });
-		fixture.statusbar.visible = false;
-		fixture.lifecycle.phase = LifecyclePhase.Restored;
-		await flushTimers();
-		fixture.statusbar.visible = true;
-		fixture.visibility.fire({ id: 'chat.statusBarEntry', visible: true });
-		assert.deepStrictEqual(fixture.promoQueries, [false, true]);
-	});
 
 	test('toggles the dashboard while preserving the sign-in command', () => {
 		const signedIn = createEntry({ entitlement: ChatEntitlement.Free, quotas: { premiumChat: available } });

@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { IPolicyData } from '../../../../base/common/defaultAccount.js';
-import { SessionConfigKey } from '../../../../platform/agentHost/common/sessionConfigKeys.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { COPILOT_DISABLE_BYPASS_PERMISSIONS_MODE_KEY } from '../../../../platform/policy/common/copilotManagedSettings.js';
 import { ChatConfiguration, ChatPermissionLevel } from './constants.js';
@@ -19,13 +18,4 @@ export function isAutoApprovePolicyRestricted(configurationService: IConfigurati
 
 export function isAutoApproveValuePolicyRestricted(value: unknown, policyRestricted: boolean): boolean {
 	return policyRestricted && value !== ChatPermissionLevel.Default;
-}
-
-export function normalizeSessionConfigValue(property: string, value: string, policyRestricted: boolean): string;
-export function normalizeSessionConfigValue(property: string, value: unknown, policyRestricted: boolean): unknown;
-export function normalizeSessionConfigValue(property: string, value: unknown, policyRestricted: boolean): unknown {
-	if (property === SessionConfigKey.AutoApprove && isAutoApproveValuePolicyRestricted(value, policyRestricted)) {
-		return ChatPermissionLevel.Default;
-	}
-	return value;
 }

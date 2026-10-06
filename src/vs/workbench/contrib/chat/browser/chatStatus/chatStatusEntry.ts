@@ -31,7 +31,6 @@ import { InEditorZenModeContext } from '../../../../common/contextkeys.js';
 import { UpdateTitleBarEditorVisibleContext } from '../../../update/common/update.js';
 import { ChatConfiguration } from '../../common/constants.js';
 import { IWorkbenchLayoutService, Parts } from '../../../../services/layout/browser/layoutService.js';
-import { ChatStatusPromo } from './chatStatusPromo.js';
 import { ILifecycleService, LifecyclePhase } from '../../../../services/lifecycle/common/lifecycle.js';
 import { onUnexpectedError } from '../../../../../base/common/errors.js';
 
@@ -121,7 +120,6 @@ export class ChatStatusBarEntry extends Disposable implements IWorkbenchContribu
 	private readonly activeCodeEditorListener = this._register(new MutableDisposable());
 	private readonly entryAnchor = h('span');
 	private readonly dashboardTooltip: IStatusbarEntry['tooltip'];
-	private promo: ChatStatusPromo | undefined;
 
 	private quotaResumeState: ChatQuotaResumeState;
 	private readonly quotaResetTimer = this._register(new MutableDisposable());
@@ -145,8 +143,6 @@ export class ChatStatusBarEntry extends Disposable implements IWorkbenchContribu
 		this.quotaResumeState = this.readPersistedQuotaResumeState();
 		lifecycleService.when(LifecyclePhase.Restored).then(() => {
 			if (!this._store.isDisposed) {
-				this.promo = this._register(this.instantiationService.createInstance(ChatStatusPromo));
-				this._register(this.promo.onDidChange(() => this.update()));
 				this.update();
 			}
 		}).catch(onUnexpectedError);
@@ -402,15 +398,6 @@ export class ChatStatusBarEntry extends Disposable implements IWorkbenchContribu
 				ariaLabel = localize('completionsSnoozedStatus', "Inline suggestions snoozed");
 			}
 
-			else {
-				const promo = this.promo?.getEntryProps(this.layoutService.isVisible(Parts.STATUSBAR_PART, mainWindow)
-					&& this.statusbarService.isEntryVisible('chat.statusBarEntry'));
-				if (promo) {
-					text = promo.showPip ? '$(copilot-dot)' : '$(copilot)';
-					ariaLabel = promo.ariaLabel;
-					tooltip = promo.tooltip;
-				}
-			}
 		}
 
 		const baseResult = {

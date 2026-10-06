@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { localize } from '../../../../../../../nls.js';
-import { COPILOT_HYDRA_FUSION_MODEL_ID } from '../../../../../../../platform/agentHost/common/copilotCliConfig.js';
 import { ILanguageModelChatMetadataAndIdentifier, isAutoLanguageModel } from '../../../../common/languageModels.js';
 import { ChatEntitlement } from '../../../../../../services/chat/common/chatEntitlementService.js';
 
@@ -12,9 +11,9 @@ export function isAutoModel(model: ILanguageModelChatMetadataAndIdentifier): boo
 	return isAutoLanguageModel(model);
 }
 
-/** Whether the model is the HydraFusion research preview, which the picker lists right below Auto. */
+/** Whether the model is a retired provider-specific research preview. */
 export function isHydraFusionModel(model: ILanguageModelChatMetadataAndIdentifier): boolean {
-	return model.metadata.id === COPILOT_HYDRA_FUSION_MODEL_ID;
+	return false;
 }
 
 export function isMultiplierPricing(model: ILanguageModelChatMetadataAndIdentifier): boolean {
