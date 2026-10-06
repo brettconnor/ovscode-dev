@@ -36,7 +36,6 @@ import { ChatModifiedFilesConfirmationSubPart } from './chatModifiedFilesConfirm
 import { ChatAgentFeedbackReviewConfirmationSubPart } from './chatAgentFeedbackReviewConfirmationSubPart.js';
 import { ChatTerminalToolConfirmationSubPart } from './chatTerminalToolConfirmationSubPart.js';
 import { ChatTerminalToolProgressPart } from './chatTerminalToolProgressPart.js';
-import { ChatToolAuthenticationSubPart } from './chatToolAuthenticationSubPart.js';
 import { ToolConfirmationSubPart } from './chatToolConfirmationSubPart.js';
 import { BaseChatToolInvocationSubPart } from './chatToolInvocationSubPart.js';
 import { ChatToolOutputSubPart } from './chatToolOutputPart.js';
@@ -252,7 +251,6 @@ export class ChatToolInvocationPart extends Disposable implements IChatContentPa
 				this.subPart instanceof ChatModifiedFilesConfirmationSubPart ||
 				this.subPart instanceof ChatSandboxPrerequisiteConfirmationSubPart ||
 				this.subPart instanceof ExtensionsInstallConfirmationWidgetSubPart ||
-				this.subPart instanceof ChatToolAuthenticationSubPart ||
 				this.subPart instanceof ChatToolPostExecuteConfirmationPart;
 			this.domNode.classList.toggle('has-confirmation', isConfirmation);
 
@@ -326,9 +324,6 @@ export class ChatToolInvocationPart extends Disposable implements IChatContentPa
 				} else {
 					return this.instantiationService.createInstance(ToolConfirmationSubPart, this.toolInvocation, this.context, this.renderer, this.editorPool, this.currentWidthDelegate, this.codeBlockStartIndex);
 				}
-			}
-			if (state.type === IChatToolInvocation.StateKind.WaitingForAuthentication) {
-				return this.instantiationService.createInstance(ChatToolAuthenticationSubPart, this.toolInvocation, this.context);
 			}
 			if (state.type === IChatToolInvocation.StateKind.WaitingForPostApproval) {
 				return this.instantiationService.createInstance(ChatToolPostExecuteConfirmationPart, this.toolInvocation, this.context);

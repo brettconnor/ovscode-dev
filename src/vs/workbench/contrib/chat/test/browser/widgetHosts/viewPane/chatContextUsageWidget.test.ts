@@ -15,8 +15,6 @@ import { IHoverService } from '../../../../../../../platform/hover/browser/hover
 import { IInstantiationService } from '../../../../../../../platform/instantiation/common/instantiation.js';
 import { MockContextKeyService } from '../../../../../../../platform/keybinding/test/common/mockKeybindingService.js';
 import { InMemoryStorageService } from '../../../../../../../platform/storage/common/storage.js';
-import { AgentHostLanguageModelProvider } from '../../../../browser/agentSessions/agentHost/agentHostLanguageModelProvider.js';
-import { usageInfoToChatUsage } from '../../../../browser/agentSessions/agentHost/stateToProgressAdapter.js';
 import { ChatContextUsageWidget, isSameContextUsageData, resolveContextWindowInputTokens } from '../../../../browser/widgetHosts/viewPane/chatContextUsageWidget.js';
 import { ChatContextUsageDetails, IChatContextUsageData } from '../../../../browser/widgetHosts/viewPane/chatContextUsageDetails.js';
 import { IChatUsage } from '../../../../common/chatService/chatService.js';
@@ -191,40 +189,6 @@ suite('ChatContextUsageWidget', () => {
 		return { kind: 'usage', promptTokens: 50_000, completionTokens: 4_000, actualModelId };
 	}
 
-	for (const { name, limits } of [
-		{ name: 'only a total context window', limits: { maxContextWindow: 108_000 } },
-		{ name: 'a total context window and output limit', limits: { maxContextWindow: 108_000, maxOutputTokens: 8_000 } },
-		{ name: 'separate input and output limits', limits: { maxPromptTokens: 100_000, maxOutputTokens: 8_000 } },
-	]) {
-		test(`renders BYOK usage without a Copilot catalogue when the host reports ${name}`, async () => {
-			const provider = store.add(new AgentHostLanguageModelProvider('agent-host-copilotcli', 'agent-host-copilotcli'));
-			provider.updateModels([{ provider: 'copilotcli', id: 'custom/model', name: 'Custom Model', ...limits }]);
-			const [model] = await provider.provideLanguageModelChatInfo(undefined, CancellationToken.None);
-			const { widget, getData } = createWidgetWithData(upcastPartial<ILanguageModelsService>({
-				lookupLanguageModel: id => id === model.identifier ? model.metadata : undefined,
-				getModelConfiguration: () => undefined,
-			}));
-
-			widget.setSelectedModel(model.identifier);
-			widget.update(createRequest(model.identifier, usageInfoToChatUsage({ inputTokens: 50_000, outputTokens: 4_000 })));
-
-			assert.deepStrictEqual({
-				visible: widget.isVisible.get(),
-				detailsShown: widget.showDetails(),
-				usedTokens: getData()?.usedTokens,
-				totalContextWindow: getData()?.totalContextWindow,
-				percentage: widget.domNode.querySelector('.percentage-label')?.textContent,
-				ariaLabel: widget.domNode.getAttribute('aria-label'),
-			}, {
-				visible: true,
-				detailsShown: true,
-				usedTokens: 54_000,
-				totalContextWindow: 108_000,
-				percentage: '50%',
-				ariaLabel: 'Context window usage: 50%',
-			});
-		});
-	}
 
 	test('uses the selected model context window for usage, output reserve, and accessible labels', () => {
 		const { widget, getData } = createWidgetWithData();

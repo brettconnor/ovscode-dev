@@ -14,7 +14,6 @@ import { ChatQuestionCarouselPart, IChatQuestionCarouselOptions } from '../../..
 import { IChatQuestionAnswerValue, IChatQuestionCarousel } from '../../../../common/chatService/chatService.js';
 import { IChatContentPartRenderContext } from '../../../../browser/widget/chatContentParts/chatContentParts.js';
 import { ChatQuestionCarouselData } from '../../../../common/model/chatProgressTypes/chatQuestionCarouselData.js';
-import { AgentHostAutoReplyAnswer } from '../../../../../../../platform/agentHost/common/agentHostSchema.js';
 import { IHoverService } from '../../../../../../../platform/hover/browser/hover.js';
 import { NullHoverService } from '../../../../../../../platform/hover/test/browser/nullHoverService.js';
 import '../../../../../../browser/media/style.css';
@@ -1354,33 +1353,6 @@ suite('ChatQuestionCarouselPart', () => {
 			assert.ok(!summary?.querySelector('.codicon-copilot-compact'), 'Should not present a generic external answer as an automatic reply');
 		});
 
-		test('renders a Copilot icon for a structured automatic answer', () => {
-			const carousel: IChatQuestionCarousel = {
-				kind: 'questionCarousel',
-				questions: [
-					{ id: 'q1', type: 'text', title: 'What should we work on next?' }
-				],
-				allowSkip: true,
-				isUsed: true,
-				answeredExternally: true,
-				autoReply: true,
-				answerPresentation: 'conversation',
-				data: { q1: AgentHostAutoReplyAnswer },
-			};
-			createWidget(carousel);
-
-			assert.deepStrictEqual({
-				question: widget.domNode.querySelector('.chat-question-summary-question')?.textContent,
-				answer: widget.domNode.querySelector('.chat-question-answer-collapsible .monaco-button')?.textContent,
-				answerIcon: widget.domNode.querySelector('.chat-question-summary-answer-icon')?.classList.contains('codicon-copilot-compact'),
-				hasGenericMessage: !!widget.domNode.querySelector('.chat-question-summary-answered'),
-			}, {
-				question: 'Question: What should we work on next?',
-				answer: `Answered: ${AgentHostAutoReplyAnswer}`,
-				answerIcon: true,
-				hasGenericMessage: false,
-			});
-		});
 	});
 
 	suite('Description and Message', () => {

@@ -19,7 +19,6 @@ import { Range } from '../../../../../../editor/common/core/range.js';
 import { ICodeEditorService } from '../../../../../../editor/browser/services/codeEditorService.js';
 import { IActionViewItemFactory, IActionViewItemService, NullActionViewItemService } from '../../../../../../platform/actions/browser/actionViewItemService.js';
 import { IMenuService, MenuId, MenuItemAction } from '../../../../../../platform/actions/common/actions.js';
-import { ConfirmationOptionKind, McpServerStatus, ToolCallStatus } from '../../../../../../platform/agentHost/common/state/protocol/state.js';
 import { ConfigurationTarget, IConfigurationService } from '../../../../../../platform/configuration/common/configuration.js';
 import { CommandsRegistry } from '../../../../../../platform/commands/common/commands.js';
 import { TestConfigurationService } from '../../../../../../platform/configuration/test/common/testConfigurationService.js';
@@ -36,7 +35,6 @@ import { IViewDescriptorService } from '../../../../../common/views.js';
 import { IChatOutputRendererService, RenderedOutputPart } from '../../../browser/chatOutputItemRenderer.js';
 import { ChatTreeItem, IChatAccessibilityService, IChatListItemRendererOptions, IChatWidget, IChatWidgetService } from '../../../browser/chat.js';
 import { IChatToolRiskAssessmentService } from '../../../browser/tools/chatToolRiskAssessmentService.js';
-import { toolCallStateToInvocation } from '../../../browser/agentSessions/agentHost/stateToProgressAdapter.js';
 import { AcceptToolConfirmationActionId, registerChatToolActions, SkipToolConfirmationActionId } from '../../../browser/actions/chatToolActions.js';
 import { buildPlanReviewProgressContent, ChatListItemRenderer, endsWithActiveSubagentContent, endsWithCompletedQuestionInteraction, formatCompletedResponseDisclosureLabel, formatResponseTokenStats, getCompletedResponseCollapseEndIndex, getFinalResponseStartIndex, getFinalResponseStartIndexAfterMovingResponseOutcomeTools, getPersistentProgressState, getPersistentWaitingLabel, getTrailingProgressLabel, getVisibleCompletedResponseItemCount, getWorkingProgressRelevantParts, IChatListItemTemplate, isAnchorTarget, isBlockingToolState, isFinalResponseRendered, isWaitingForMcpServers, moveResponseOutcomeToolsAfterFinalResponse, reconcileChatItemHeight, renderChatRequestTimestamp, renderChatResponseDetails, shouldCollapseCompletedResponsePart, shouldCreateGroupedThinkingPart, shouldHideChatUserIdentity, shouldPinToolInvocationToThinking, shouldRenderInitialProgressiveContentImmediately, shouldScheduleInitialHeightChange, shouldShowFileChangesSummaryForSettings, shouldShowTurnPillsSummary, shouldStartNewCollapsedThinkingGroup } from '../../../browser/widget/chatListRenderer.js';
 import { ChatWidget } from '../../../browser/widget/chatWidget.js';
@@ -50,7 +48,7 @@ import { aggregateChatEditDiffs } from '../../../browser/widget/chatContentParts
 import { IChatOutputPartStateCache, IOutputPartState } from '../../../browser/widget/chatContentParts/chatOutputPartStateCache.js';
 import { ChatSystemNotificationContentPart } from '../../../browser/widget/chatContentParts/chatSystemNotificationContentPart.js';
 import { ChatCollapsibleContentPart } from '../../../browser/widget/chatContentParts/chatCollapsibleContentPart.js';
-import { ChatRequestQueueKind, ConfirmedReason, ElicitationState, IChatMcpAuthenticationRequired, IChatMcpAuthenticationRequiredServer, IChatMcpServersStartingSlow, IChatQuestionCarousel, IChatService, IChatSubagentToolInvocationData, IChatTask, IChatTerminalToolInvocationData, IChatToolInputInvocationData, IChatToolInvocation, IChatToolInvocationSerialized, ToolConfirmKind } from '../../../common/chatService/chatService.js';
+import { ChatRequestQueueKind, ConfirmationOptionKind, ConfirmedReason, ElicitationState, IChatMcpServersStartingSlow, IChatQuestionCarousel, IChatService, IChatSubagentToolInvocationData, IChatTask, IChatTerminalToolInvocationData, IChatToolInputInvocationData, IChatToolInvocation, IChatToolInvocationSerialized, ToolConfirmKind } from '../../../common/chatService/chatService.js';
 import { formatChatRequestTimestamp, formatChatResponseDetails, formatElapsedTime } from '../../../common/chatProgressFormatting.js';
 import { CHAT_OPEN_AGENT_HOST_CHAT_COMMAND_ID, ChatAgentLocation, ChatConfiguration, ChatModeKind, ChatProgressAnimation, ChatProgressVerbosity, CollapsedToolsDisplayMode, ThinkingDisplayMode } from '../../../common/constants.js';
 import { ILanguageModelsService } from '../../../common/languageModels.js';
@@ -90,7 +88,6 @@ import { MockChatEditingSession } from '../../common/mockChatEditingSession.js';
 import { IChatEditingService, IChatEditingSession } from '../../../common/editing/chatEditingService.js';
 import { IPlanReviewFeedbackService, PlanReviewFeedbackService } from '../../../browser/planReviewFeedback/planReviewFeedbackService.js';
 import { AgentEditorCommentsBridge, IAgentEditorCommentsBridge } from '../../../../../services/agentEditorComments/common/agentEditorComments.js';
-import { IAgentHostCustomizationService } from '../../../browser/agentSessions/agentHost/agentHostCustomizationService.js';
 import { ChatPlanReviewPart } from '../../../browser/widget/chatContentParts/chatPlanReviewPart.js';
 import { ITerminalChatService, ITerminalConfigurationService, ITerminalService } from '../../../../terminal/browser/terminal.js';
 import { AccessibilityWorkbenchSettingId } from '../../../../accessibility/browser/accessibilityConfiguration.js';
@@ -1473,10 +1470,6 @@ suite('ChatListRenderer', () => {
 		const commentsBridge = disposables.add(new AgentEditorCommentsBridge());
 		instantiationService.stub(IAgentEditorCommentsBridge, commentsBridge);
 		instantiationService.stub(IPlanReviewFeedbackService, disposables.add(new PlanReviewFeedbackService(commentsBridge)));
-		instantiationService.stub(IAgentHostCustomizationService, new class extends mock<IAgentHostCustomizationService>() {
-			override readonly onDidChangeCustomizations = Event.None;
-			override getMcpServers() { return []; }
-		}());
 		instantiationService.stub(IChatToolRiskAssessmentService, new class extends mock<IChatToolRiskAssessmentService>() {
 			override isEnabled() { return false; }
 		}());
@@ -4161,103 +4154,6 @@ suite('ChatListRenderer', () => {
 			finalTextComplete: [...finalPart.domNode.querySelectorAll(':scope > p')].map(p => p.textContent).join('\n\n').trim() === finalText.trim(),
 		}, { initiallyBuffered: true, collapsedBeforeDraining: false, hasDisclosure: true, finalPartRetained: true, finalTextComplete: true });
 	});
-
-	test('persistent progress resumes when authentication finishes without provider output', async () => {
-		const { disposables, instantiationService, model, request, response, renderer, template, node } = createPersistentProgressRenderer();
-		const changed = disposables.add(new Emitter<void>());
-		const server = new class extends mock<ReturnType<IAgentHostCustomizationService['getMcpServers']>[number]>() {
-			override readonly id = 'mcp';
-			override readonly name = 'MCP server';
-			override readonly enabled = true;
-			override readonly status = McpServerStatus.AuthRequired;
-		}();
-		let needsAuthentication = true;
-		instantiationService.stub(IAgentHostCustomizationService, new class extends mock<IAgentHostCustomizationService>() {
-			override readonly onDidChangeCustomizations = changed.event;
-			override getMcpServers() { return needsAuthentication ? [server] : []; }
-		}());
-		const authentication: IChatMcpAuthenticationRequired = {
-			kind: 'mcpAuthenticationRequired',
-			sessionResource: response.sessionResource,
-			servers: observableValue('servers', [{ id: 'mcp', name: 'MCP server', resource: 'https://example.com/mcp' }]),
-			isUsed: false,
-		};
-		model.acceptResponseProgress(request, authentication);
-		renderer.renderElement(node, 0, template);
-		const footer = template.value.querySelector('.chat-working-progress');
-		assert.ok(footer);
-		const before = footer.textContent?.replace(/\u00a0/g, ' ').trim();
-		needsAuthentication = false;
-		changed.fire();
-		await timeout(0);
-		assert.deepStrictEqual({
-			before,
-			after: footer.textContent?.replace(/\u00a0/g, ' ').trim(),
-			isUsed: authentication.isUsed,
-			responseParts: response.response.value.length,
-		}, { before: 'Authentication required', after: 'Working', isUsed: true, responseParts: 1 });
-		request.response?.complete();
-		renderer.renderElement(node, 0, template);
-	});
-
-	test('persistent progress ignores an authentication prompt with no servers left to authenticate', () => {
-		const { disposables, instantiationService, model, viewModel, request, response, renderer, template, node } = createPersistentProgressRenderer();
-		instantiationService.stub(IAgentHostCustomizationService, new class extends mock<IAgentHostCustomizationService>() {
-			override readonly onDidChangeCustomizations = Event.None;
-			override getMcpServers() { return []; }
-		}());
-		// The producer publishes an empty prompt and fills it in asynchronously; if the servers are
-		// authenticated elsewhere (auto-granted, another window, the customizations editor) before a
-		// transcript row ever shows the prompt, nothing marks it used.
-		const servers = observableValue<IChatMcpAuthenticationRequiredServer[]>('servers', []);
-		const authentication: IChatMcpAuthenticationRequired = {
-			kind: 'mcpAuthenticationRequired', sessionResource: response.sessionResource, servers, isUsed: false,
-		};
-		model.acceptResponseProgress(request, authentication);
-		renderer.renderElement(node, 0, template);
-		// Server changes reach the footer through the model's change notification, like a live turn.
-		disposables.add(viewModel.onDidChange(() => renderer.renderElement(node, 0, template)));
-		const footer = template.value.querySelector('.chat-working-progress');
-		assert.ok(footer);
-		const label = () => footer.textContent?.replace(/\u00a0/g, ' ').trim();
-		const emptyPrompt = label();
-		servers.set([{ id: 'mcp', name: 'MCP', resource: 'https://example.com/mcp' }], undefined);
-		const pending = label();
-		servers.set([], undefined);
-
-		assert.deepStrictEqual({
-			emptyPrompt, pending, drained: label(),
-			drainedState: getPersistentProgressState([authentication], 0, false),
-			isUsed: authentication.isUsed,
-		}, { emptyPrompt: 'Working', pending: 'Authentication required', drained: 'Working', drainedState: 'active', isUsed: false });
-		request.response?.complete();
-		renderer.renderElement(node, 0, template);
-	});
-
-	for (const mountBeforeCompletion of [false, true]) {
-		test(`authentication completion stays cleared ${mountBeforeCompletion ? 'between disposal and remount' : 'before first mount'}`, () => {
-			const { model, request, response, renderer, template, node } = createPersistentProgressRenderer();
-			const servers = observableValue('servers', [{ id: 'mcp', name: 'MCP', resource: 'https://example.com/mcp' }]);
-			const authentication: IChatMcpAuthenticationRequired = {
-				kind: 'mcpAuthenticationRequired', sessionResource: response.sessionResource, servers, isUsed: false,
-			};
-			model.acceptResponseProgress(request, authentication);
-			if (mountBeforeCompletion) {
-				renderer.renderElement(node, 0, template);
-				renderer.disposeElement(node, 0, template);
-			}
-			authentication.isUsed = true;
-			servers.set([], undefined);
-			renderer.renderElement(node, 0, template);
-			assert.deepStrictEqual({
-				progress: template.value.querySelector('.chat-working-progress')?.textContent?.replace(/\u00a0/g, ' ').trim(),
-				pendingState: getPersistentProgressState([authentication], 0, false),
-				isUsed: authentication.isUsed,
-			}, { progress: 'Working', pendingState: 'active', isUsed: true });
-			request.response?.complete();
-			renderer.renderElement(node, 0, template);
-		});
-	}
 
 	test('new activity shares one working phrase without replacing the footer logo', () => runWithFakedTimers({ useFakeTimers: true }, async () => {
 		const { disposables, configurationService, model, request, renderer, template, node } = createPersistentProgressRenderer({ chatMode: ChatModeKind.Agent, collapsedTools: CollapsedToolsDisplayMode.Always });
@@ -7047,82 +6943,6 @@ suite('ChatListRenderer', () => {
 				firstState: IChatToolInvocation.StateKind.Executing, secondState: IChatToolInvocation.StateKind.WaitingForConfirmation,
 			});
 		});
-
-		for (const carousel of [true, false]) {
-			for (const selectedOption of ['allow-session', 'allow-once', 'skip']) {
-				test(`renders sandbox bypass as a terminal confirmation and returns ${selectedOption} ${carousel ? 'in the carousel' : 'inline'}`, async () => {
-					const context = createConfirmationRenderer();
-					configureTerminalProgressRenderer(context);
-					context.configurationService.setUserConfiguration(ChatConfiguration.ToolConfirmationCarousel, carousel);
-					context.configurationService.setUserConfiguration('chat.tools.terminal.enableAutoApprove', true);
-					let menuActions: readonly IAction[] = [];
-					context.instantiationService.stub(IContextMenuService, new class extends mock<IContextMenuService>() {
-						override showContextMenu(delegate: Parameters<IContextMenuService['showContextMenu']>[0]): void {
-							assert.ok(delegate.getActions);
-							menuActions = delegate.getActions();
-						}
-					}());
-					const command = 'git switch -c DileepY/sandbox_sessionPicker; if ($LASTEXITCODE -eq 0) { git --no-pager status --short --branch }';
-					const title = 'Run in terminal outside the sandbox?';
-					const tool = toolCallStateToInvocation({
-						status: ToolCallStatus.PendingConfirmation,
-						toolCallId: 'sandbox-terminal',
-						toolName: 'powershell',
-						displayName: 'PowerShell',
-						invocationMessage: 'Create branch and verify working tree status',
-						toolInput: command,
-						confirmationTitle: title,
-						_meta: { toolKind: 'terminal', language: 'powershell', 'agentHost.sandboxBypass': true },
-						options: [
-							{ id: 'allow-session', label: 'Allow in this Session', kind: ConfirmationOptionKind.Approve, group: 1 },
-							{ id: 'allow-once', label: 'Allow Once', kind: ConfirmationOptionKind.Approve },
-							{ id: 'skip', label: 'Skip', kind: ConfirmationOptionKind.Deny, group: 2 },
-						],
-					}, undefined, context.model.sessionResource, 'local');
-					context.model.acceptResponseProgress(context.request, tool);
-					context.render();
-
-					const container = carousel ? context.confirmationContainer : context.template.value;
-					const editor = context.instantiationService.get(ICodeEditorService).listCodeEditors()
-						.find(editor => container.contains(editor.getDomNode()));
-					assert.ok(editor);
-					const displayed = {
-						terminal: !!container.querySelector('.chat-confirmation-message-terminal'),
-						command: editor.getValue(),
-						readOnly: editor.getRawOptions().readOnly,
-						ariaLabel: editor.getRawOptions().ariaLabel,
-					};
-					const primary = container.querySelector<HTMLElement>('.chat-confirmation-widget-buttons .monaco-button');
-					const dropdown = container.querySelector<HTMLElement>('.monaco-dropdown-button');
-					const skip = container.querySelector<HTMLElement>('.chat-confirmation-widget-buttons .monaco-button.secondary');
-					assert.ok(primary && dropdown && skip);
-					const labels = [primary, skip].map(button => button.textContent?.replaceAll('\u00a0', ' '));
-					dropdown.click();
-					const moreActions = menuActions.filter(action => !(action instanceof Separator));
-					const moreLabels = moreActions.map(action => action.label);
-					if (selectedOption === 'allow-once') {
-						assert.strictEqual(moreActions.length, 1);
-						await moreActions[0].run();
-					} else {
-						(selectedOption === 'skip' ? skip : primary).click();
-					}
-
-					assert.deepStrictEqual({
-						...displayed, labels, moreLabels,
-						confirmed: IChatToolInvocation.executionConfirmedOrDenied(tool),
-					}, {
-						terminal: true, command, readOnly: true, ariaLabel: title,
-						labels: ['Allow in this Session', 'Skip'],
-						moreLabels: ['Allow Once'],
-						confirmed: {
-							type: ToolConfirmKind.UserAction,
-							selectedButton: selectedOption,
-							selectedButtonKind: selectedOption === 'skip' ? ConfirmationOptionKind.Deny : ConfirmationOptionKind.Approve,
-						},
-					});
-				});
-			}
-		}
 
 		for (const cdPrefix of ['', 'cd /workspace && ']) {
 			test(`restores edited shell approvals after switching sessions (${cdPrefix ? 'directory prefix' : 'no prefix'})`, async () => {

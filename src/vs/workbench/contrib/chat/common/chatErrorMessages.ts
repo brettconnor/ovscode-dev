@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { localize } from '../../../../nls.js';
-import type { ErrorInfo } from '../../../../platform/agentHost/common/state/protocol/state.js';
 import { ChatEntitlement } from '../../../services/chat/common/chatEntitlementService.js';
 import { ChatErrorLevel, IChatResponseErrorDetails } from './chatService/chatService.js';
 
@@ -352,7 +351,7 @@ function isForwardedChatError(value: unknown): value is IForwardedChatError {
  * pass an {@link IChatErrorContext} (resolved from `IChatEntitlementService`)
  * whose fields take precedence over the values forwarded in `_meta`.
  */
-export function getChatErrorDetailsFromMeta(error: ErrorInfo | undefined, context?: IChatErrorContext): IChatResponseErrorDetails | undefined {
+export function getChatErrorDetailsFromMeta(error: { readonly _meta?: { readonly chatError?: IForwardedChatError } } | undefined, context?: IChatErrorContext): IChatResponseErrorDetails | undefined {
 	const meta = error?._meta;
 	const chatError = meta?.chatError;
 	if (!isForwardedChatError(chatError)) {

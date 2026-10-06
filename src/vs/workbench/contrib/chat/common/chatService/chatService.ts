@@ -37,7 +37,7 @@ import { HookTypeValue } from '../promptSyntax/hookTypes.js';
 import { IParsedChatRequest } from '../requestParser/chatParserTypes.js';
 import { IChatParserContext } from '../requestParser/chatRequestParser.js';
 import { IPreparedToolInvocation, IToolConfirmationMessages, IToolResult, IToolResultInputOutputDetails, ToolDataSource } from '../tools/languageModelToolsService.js';
-import { ConfirmationOptionKind, type McpOAuthClient, type MessageOrigin } from '../../../../../platform/agentHost/common/state/protocol/state.js';
+import { type McpOAuthClient, type MessageOrigin } from '../../../../../platform/agentHost/common/state/protocol/state.js';
 import { AgentFusionPhaseStatus } from '../../../../../platform/agentHost/common/meta/agentToolCallMeta.js';
 
 export interface IChatRequest {
@@ -842,6 +842,18 @@ export interface IChatToolInputInvocationData {
 	 * edit and then running the original is worse than showing none.
 	 */
 	editable?: boolean;
+}
+
+export const enum ConfirmationOptionKind {
+	Approve = 'approve',
+	Deny = 'deny',
+}
+
+export interface ConfirmationOption {
+	readonly id: string;
+	readonly label: string;
+	readonly kind: ConfirmationOptionKind;
+	readonly group?: number;
 }
 
 export const enum ToolConfirmKind {

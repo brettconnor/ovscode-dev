@@ -16,7 +16,7 @@ import Severity from '../../../../../../../base/common/severity.js';
 import { isObject } from '../../../../../../../base/common/types.js';
 import { ILanguageService } from '../../../../../../../editor/common/languages/language.js';
 import { localize } from '../../../../../../../nls.js';
-import { ConfirmationOption, ConfirmationOptionKind } from '../../../../../../../platform/agentHost/common/state/protocol/state.js';
+import { ConfirmationOption, ConfirmationOptionKind } from '../../../../common/chatService/chatService.js';
 import { ConfigurationTarget, IConfigurationService } from '../../../../../../../platform/configuration/common/configuration.js';
 import { IContextKeyService } from '../../../../../../../platform/contextkey/common/contextkey.js';
 import { IDialogService } from '../../../../../../../platform/dialogs/common/dialogs.js';

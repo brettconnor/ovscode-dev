@@ -16,11 +16,8 @@ import {
 } from '../../common/chatErrorMessages.js';
 import { ChatEntitlement } from '../../../../services/chat/common/chatEntitlementService.js';
 import { ChatErrorLevel } from '../../common/chatService/chatService.js';
-import type { ErrorInfo } from '../../../../../platform/agentHost/common/state/protocol/state.js';
-
-/** Wraps a `_meta` bag in a minimal {@link ErrorInfo} so the reader sees the right source type. */
-function errorInfo(meta: Record<string, unknown> | undefined): ErrorInfo {
-	return { errorType: 'e', message: 'm', _meta: meta };
+function errorInfo(meta: Record<string, unknown> | undefined): { readonly _meta?: { readonly chatError?: import('../../common/chatErrorMessages.js').IForwardedChatError } } {
+	return { _meta: meta as { readonly chatError?: import('../../common/chatErrorMessages.js').IForwardedChatError } | undefined };
 }
 
 suite('ChatErrorMessages', () => {
