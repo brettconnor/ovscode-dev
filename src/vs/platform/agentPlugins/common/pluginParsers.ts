@@ -22,20 +22,20 @@ const CustomizationType = {
 	Hook: 'hook',
 	McpServer: 'mcpServer',
 } as const;
-type CustomizationType = typeof CustomizationType[keyof typeof CustomizationType];
+type CustomizationTypeValue = typeof CustomizationType[keyof typeof CustomizationType];
 
-const McpServerStatus = { Stopped: 'stopped' } as const;
+const McpServerStatus = { Starting: 'starting', Stopped: 'stopped' } as const;
 type McpServerStatus = typeof McpServerStatus[keyof typeof McpServerStatus];
 
 interface IPluginCustomizationBase {
-	readonly type: CustomizationType;
+	readonly type: CustomizationTypeValue;
 	readonly id: string;
 	readonly uri: string;
 	readonly name: string;
 }
 
 interface AgentCustomization extends IPluginCustomizationBase {
-	readonly type: CustomizationType.Agent;
+	readonly type: typeof CustomizationType.Agent;
 	description?: string;
 	model?: string;
 	tools?: string[];
@@ -44,23 +44,23 @@ interface AgentCustomization extends IPluginCustomizationBase {
 }
 
 interface SkillCustomization extends IPluginCustomizationBase {
-	readonly type: CustomizationType.Skill;
+	readonly type: typeof CustomizationType.Skill;
 	description?: string;
 	disableModelInvocation?: boolean;
 	disableUserInvocation?: boolean;
 }
 
 interface RuleCustomization extends IPluginCustomizationBase {
-	readonly type: CustomizationType.Rule;
+	readonly type: typeof CustomizationType.Rule;
 	description?: string;
 }
 
 interface HookCustomization extends IPluginCustomizationBase {
-	readonly type: CustomizationType.Hook;
+	readonly type: typeof CustomizationType.Hook;
 }
 
 interface McpServerCustomization extends IPluginCustomizationBase {
-	readonly type: CustomizationType.McpServer;
+	readonly type: typeof CustomizationType.McpServer;
 	readonly state: { readonly kind: McpServerStatus };
 }
 
