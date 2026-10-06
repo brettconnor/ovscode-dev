@@ -15,7 +15,6 @@ import { upcastPartial } from '../../../../../base/test/common/mock.js';
 import { localize } from '../../../../../nls.js';
 import { IAccessibilityService } from '../../../../../platform/accessibility/common/accessibility.js';
 import { TestAccessibilityService } from '../../../../../platform/accessibility/test/common/testAccessibilityService.js';
-import { autoModeTiers, defaultAutoModeTier, getAutoModeTierDescription, getAutoModeTierLabel } from '../../../../../platform/agentHost/common/autoModeTiers.js';
 import { ExtensionIdentifier } from '../../../../../platform/extensions/common/extensions.js';
 import { IContextViewDelegate, IContextViewService } from '../../../../../platform/contextview/browser/contextView.js';
 import { ContextViewService } from '../../../../../platform/contextview/browser/contextViewService.js';
@@ -43,6 +42,7 @@ import '../../../../contrib/chat/browser/widget/media/chat.css';
 import '../../../../contrib/chat/browser/widget/input/modelPicker/media/modelPicker.css';
 
 const EXTENSION = new ExtensionIdentifier('fixture.models');
+const REASONING_EFFORTS = ['low', 'medium', 'high'] as const;
 
 interface IFixtureModelOptions {
 	readonly vendor?: string;
@@ -126,15 +126,12 @@ function createModel(id: string, name: string, options: IFixtureModelOptions = {
 	};
 }
 
-// Built from the runtime's own routing profiles so the fixture cannot drift from the
-// values the Auto model actually offers.
 const AUTO_MODEL = createModel('auto', 'Auto', {
 	detail: '10% off',
-	effortTitle: localize('copilot.modelAutoTier.title', "Optimize for"),
-	effortValues: [...autoModeTiers],
-	effortLabels: autoModeTiers.map(getAutoModeTierLabel),
-	effortDescriptions: autoModeTiers.map(tier => getAutoModeTierDescription(tier) ?? ''),
-	effortDefault: defaultAutoModeTier,
+	effortTitle: localize('chat.modelReasoningEffort.title', "Reasoning effort"),
+	effortValues: [...REASONING_EFFORTS],
+	effortLabels: [...REASONING_EFFORTS],
+	effortDefault: REASONING_EFFORTS[1],
 });
 
 const COPILOT_MODELS = [
@@ -197,7 +194,7 @@ const COPILOT_ONLY_MODELS = [AUTO_MODEL, ...COPILOT_MODELS];
 
 /** How the Copilot agent host relays models: its own vendor, BYOK stamped on everything. */
 const RELAYED_MODELS = [
-	createModel('auto', 'Auto', { vendor: 'agent-host-copilotcli', isBYOK: true, modelGroupId: 'copilot', detail: '10% off', effortValues: [...autoModeTiers], effortLabels: autoModeTiers.map(getAutoModeTierLabel), effortDefault: defaultAutoModeTier }),
+	createModel('auto', 'Auto', { vendor: 'agent-host-copilotcli', isBYOK: true, modelGroupId: 'copilot', detail: '10% off', effortValues: [...REASONING_EFFORTS], effortLabels: [...REASONING_EFFORTS], effortDefault: REASONING_EFFORTS[1] }),
 	createModel('gpt-5-5', 'GPT-5.5', { vendor: 'agent-host-copilotcli', isBYOK: true, byokModelIdentifier: 'copilot/gpt-5-5', modelGroupId: 'copilot', category: 'powerful', priceCategory: 'high' }),
 	createModel('claude-sonnet-5', 'Claude Sonnet 5', { vendor: 'agent-host-copilotcli', isBYOK: true, modelGroupId: 'copilot', category: 'powerful' }),
 	createModel('llama-3-70b', 'Llama 3 70B', { vendor: 'agent-host-copilotcli', isBYOK: true, modelGroupId: 'ollama' }),
