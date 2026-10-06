@@ -4,8 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import assert from 'assert';
-import { DeferredPromise, timeout } from '../../../../../base/common/async.js';
-import { Emitter, Event } from '../../../../../base/common/event.js';
+import { timeout } from '../../../../../base/common/async.js';
 import { Disposable, DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { constObservable, ISettableObservable, observableValue } from '../../../../../base/common/observable.js';
 import { URI } from '../../../../../base/common/uri.js';
@@ -13,7 +12,7 @@ import { runWithFakedTimers } from '../../../../../base/test/common/timeTravelSc
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import { OffsetRange } from '../../../../../editor/common/core/ranges/offsetRange.js';
 import { computeStringDiff } from '../../../../../editor/common/services/editorWebWorker.js';
-import { EditSources, EditSuggestionId, TextModelEditSource } from '../../../../../editor/common/textModelEditSource.js';
+import { EditSources, EditSuggestionId } from '../../../../../editor/common/textModelEditSource.js';
 import { ServiceCollection } from '../../../../../platform/instantiation/common/serviceCollection.js';
 import { TestInstantiationService } from '../../../../../platform/instantiation/test/common/instantiationServiceMock.js';
 import { ILogService, NullLogService } from '../../../../../platform/log/common/log.js';
@@ -196,12 +195,8 @@ function setup(
 	const stats: Array<{
 		statsUuid: string;
 		otherAIModifiedCount: number;
-		agentHostModifiedCount: number;
 		externalModifiedCount: number;
 		totalModifiedCharacters: number;
-		agentHostAttributionCoverage?: 'complete' | 'partial';
-		agentHostUntrackedEditCount?: number;
-		agentHostUntrackedInsertedCount?: number;
 	}> = [];
 	const allStats: Array<typeof stats[number] & { mode: string }> = [];
 	let uuid = 0;
@@ -249,7 +244,7 @@ function setup(
 
 	const workspace = new MutableObservableWorkspace();
 	const annotatedDocuments = disposables.add(new AnnotatedDocuments(workspace, instantiationService));
-	const impl = disposables.add(new EditSourceTrackingImpl(constObservable(true), annotatedDocuments, undefined, instantiationService));
+	const impl = disposables.add(new EditSourceTrackingImpl(constObservable(true), annotatedDocuments, instantiationService));
 	const document = disposables.add(workspace.createDocument({
 		uri: URI.file('C:\\repo\\file.ts'),
 		initialValue: 'hello',
@@ -269,47 +264,4 @@ function chatEdit(requestId: string) {
 		extensionId: undefined,
 		codeBlockSuggestionId: undefined,
 	});
-}
-
-class TestExternalEditCorrelation implements IExternalEditCorrelation {
-	private readonly _onDidSuppress = new Emitter<string>();
-	readonly onDidSuppress = this._onDidSuppress.event;
-	private readonly _onDidResolve = new Emitter<IExternalEditCorrelationResolution>();
-	readonly onDidResolve = this._onDidResolve.event;
-	private readonly _onDidInvalidate = new Emitter<string>();
-	readonly onDidInvalidate = this._onDidInvalidate.event;
-	private readonly _drain = new DeferredPromise<void>();
-	private resolution: IExternalEditCorrelationResolution | undefined;
-
-	constructor(private readonly waitForDrain = false) { }
-
-	register(): string {
-		return 'observation';
-	}
-
-	isSuppressed(): boolean {
-		return this.resolution !== undefined;
-	}
-
-	getResolution(): IExternalEditCorrelationResolution | undefined {
-		return this.resolution;
-	}
-
-	async waitForResolution(_ids: readonly string[], timeoutMs: number): Promise<void> {
-		if (this.waitForDrain) {
-			await Promise.race([this._drain.p, timeout(timeoutMs)]);
-		}
-	}
-
-	release(): void { }
-
-	resolve(source: TextModelEditSource): void {
-		this.resolution = { id: 'observation', source };
-		this._onDidSuppress.fire('observation');
-		this._onDidResolve.fire(this.resolution);
-	}
-
-	completeDrain(): void {
-		this._drain.complete();
-	}
 }

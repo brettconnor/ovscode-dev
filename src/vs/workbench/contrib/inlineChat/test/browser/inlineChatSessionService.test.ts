@@ -33,7 +33,6 @@ import { IChatService } from '../../../chat/common/chatService/chatService.js';
 import { ChatService } from '../../../chat/common/chatService/chatServiceImpl.js';
 import { ChatAgentLocation, ChatModeKind } from '../../../chat/common/constants.js';
 import { IChatEditingService } from '../../../chat/common/editing/chatEditingService.js';
-import { ChatModel } from '../../../chat/common/model/chatModel.js';
 import { IChatAgentData, IChatAgentImplementation, IChatAgentService, ChatAgentService } from '../../../chat/common/participants/chatAgents.js';
 import { IChatSessionsService } from '../../../chat/common/chatSessionsService.js';
 import { IChatDebugService } from '../../../chat/common/chatDebugService.js';

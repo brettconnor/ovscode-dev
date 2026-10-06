@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import { CancellationToken } from '../../../../base/common/cancellation.js';
-import { CancellationError, isCancellationError, onUnexpectedError } from '../../../../base/common/errors.js';
+import { CancellationError } from '../../../../base/common/errors.js';
 import { Emitter, Event } from '../../../../base/common/event.js';
-import { Disposable, dispose, DisposableStore, toDisposable } from '../../../../base/common/lifecycle.js';
+import { Disposable, dispose, DisposableStore } from '../../../../base/common/lifecycle.js';
 import { ResourceMap } from '../../../../base/common/map.js';
 import { Schemas } from '../../../../base/common/network.js';
 import { autorun, observableFromEvent, observableValue } from '../../../../base/common/observable.js';
@@ -15,17 +15,15 @@ import { IActiveCodeEditor, isCodeEditor, isCompositeEditor, isDiffEditor } from
 import { localize } from '../../../../nls.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { IContextKey, IContextKeyService } from '../../../../platform/contextkey/common/contextkey.js';
-import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
 import { observableConfigValue } from '../../../../platform/observable/common/platformObservableUtils.js';
 import { IEditorService } from '../../../services/editor/common/editorService.js';
 import { IChatAgentService } from '../../chat/common/participants/chatAgents.js';
-import { IChatEditReviewSession, IChatEditingService, ModifiedFileEntryState } from '../../chat/common/editing/chatEditingService.js';
+import { IChatEditReviewSession, ModifiedFileEntryState } from '../../chat/common/editing/chatEditingService.js';
 import { IChatService } from '../../chat/common/chatService/chatService.js';
 import { ChatAgentLocation } from '../../chat/common/constants.js';
 import { ILanguageModelToolsService, IToolData, ToolDataSource } from '../../chat/common/tools/languageModelToolsService.js';
 import { CTX_INLINE_CHAT_HAS_AGENT, CTX_INLINE_CHAT_HAS_NOTEBOOK_AGENT, CTX_INLINE_CHAT_POSSIBLE, InlineChatConfigKeys } from '../common/inlineChat.js';
-import { InlineChatEditReviewSession } from './inlineChatEditReviewSession.js';
 import { IInlineChatSession, IInlineChatSessionService, InlineChatSessionTerminationState } from './inlineChatSessionService.js';
 import { IInlineChatSessionResolver } from './inlineChatSessionResolver.js';
 
@@ -52,20 +50,14 @@ export class InlineChatSessionServiceImpl implements IInlineChatSessionService {
 
 	readonly #chatService: IChatService;
 	readonly #inlineChatSessionResolver: IInlineChatSessionResolver;
-	readonly #instantiationService: IInstantiationService;
-	readonly #chatEditingService: IChatEditingService;
 
 	constructor(
 		@IChatService chatService: IChatService,
 		@IChatAgentService chatAgentService: IChatAgentService,
 		@IInlineChatSessionResolver inlineChatSessionResolver: IInlineChatSessionResolver,
-		@IInstantiationService instantiationService: IInstantiationService,
-		@IChatEditingService chatEditingService: IChatEditingService,
 	) {
 		this.#chatService = chatService;
 		this.#inlineChatSessionResolver = inlineChatSessionResolver;
-		this.#instantiationService = instantiationService;
-		this.#chatEditingService = chatEditingService;
 		// Listen for agent changes and dispose all sessions when there is no agent
 		const agentObs = observableFromEvent(this, chatAgentService.onDidChangeAgents, () => chatAgentService.getDefaultAgent(ChatAgentLocation.EditorInline));
 		this.#store.add(autorun(r => {
@@ -93,11 +85,11 @@ export class InlineChatSessionServiceImpl implements IInlineChatSessionService {
 
 		this.#onWillStartSession.fire(editor);
 
-		const isAgentHostEligible = uri.scheme === Schemas.file && !isNotebook;
-		const resolution = isAgentHostEligible
+		const shouldResolveLocalChat = uri.scheme === Schemas.file && !isNotebook;
+		const resolution = shouldResolveLocalChat
 			? await this.#inlineChatSessionResolver.resolve(token, model.getLanguageId(), uri)
 			: undefined;
-		if (token.isCancellationRequested || (isAgentHostEligible && !resolution)) {
+		if (token.isCancellationRequested || (shouldResolveLocalChat && !resolution)) {
 			resolution?.modelRef.dispose();
 			throw new CancellationError();
 		}
@@ -110,7 +102,6 @@ export class InlineChatSessionServiceImpl implements IInlineChatSessionService {
 		}
 		const chatModelRef = resolution?.modelRef ?? this.#chatService.startNewLocalSession(ChatAgentLocation.EditorInline, { canUseTools: false /* SEE https://github.com/microsoft/vscode/issues/279946 */ });
 		const chatModel = chatModelRef.object;
-		let reviewSession: InlineChatEditReviewSession | undefined;
 		chatModel.startEditingSession(false);
 		const editingSession: IChatEditReviewSession = chatModel.editingSession!;
 		const terminationState = observableValue<InlineChatSessionTerminationState | undefined>(this, undefined);
@@ -123,11 +114,6 @@ export class InlineChatSessionServiceImpl implements IInlineChatSessionService {
 			this.#onDidChangeSessions.fire(this);
 		}));
 		store.add(chatModelRef);
-		if (reviewSession) {
-			store.add(this.#chatEditingService.registerEditReviewSession(reviewSession));
-			store.add(reviewSession);
-			this.#installEditReviewObserver(chatModel, reviewSession, store);
-		}
 
 		store.add(autorun(r => {
 
@@ -182,75 +168,6 @@ export class InlineChatSessionServiceImpl implements IInlineChatSessionService {
 		this.#sessions.set(uri, result);
 		this.#onDidChangeSessions.fire(this);
 		return result;
-	}
-
-	#installEditReviewObserver(chatModel: IInlineChatSession['chatModel'], reviewSession: InlineChatEditReviewSession, store: DisposableStore): void {
-		let turnQueue = Promise.resolve();
-		let isDisposed = false;
-		store.add(toDisposable(() => isDisposed = true));
-
-		store.add(chatModel.onDidChange(async e => {
-			if (e.kind !== 'addRequest' || !e.request.response) {
-				return;
-			}
-
-			const response = e.request.response;
-			const previousTurn = turnQueue;
-			let completeTurn: (() => void) | undefined;
-			turnQueue = new Promise<void>(resolve => completeTurn = resolve);
-
-			await previousTurn;
-			if (isDisposed) {
-				completeTurn?.();
-				return;
-			}
-
-			let beganTurn = false;
-			try {
-				await reviewSession.beginTurn(response);
-				beganTurn = true;
-				if (isDisposed) {
-					return;
-				}
-
-				if (!response.isComplete) {
-					const responseStore = new DisposableStore();
-					try {
-						await new Promise<void>(resolve => {
-							responseStore.add(response.onDidChange(() => {
-								if (response.isComplete) {
-									resolve();
-								}
-							}));
-							responseStore.add(reviewSession.onDidDispose(resolve));
-							if (response.isComplete) {
-								resolve();
-							}
-						});
-					} finally {
-						responseStore.dispose();
-					}
-				}
-			} catch (error) {
-				// Preparation failed, so the file is not locked and there is no review
-				// baseline. Cancel the request rather than letting the agent write unguarded.
-				if (!isDisposed) {
-					void this.#chatService.cancelCurrentRequestForSession(chatModel.sessionResource, 'inlineChatBeginTurnFailed');
-				}
-				if (!isCancellationError(error)) {
-					onUnexpectedError(error);
-				}
-			} finally {
-				if (beganTurn && !isDisposed) {
-					try {
-						await reviewSession.endTurn(response);
-					} catch (error) {
-						onUnexpectedError(error);
-					}
-				}
-				completeTurn?.();
-			}
-		}));
 	}
 
 	getSessionByTextModel(uri: URI): IInlineChatSession | undefined {

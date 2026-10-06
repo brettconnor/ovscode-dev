@@ -128,14 +128,14 @@ function chatEditSource(modelId: string, requestId: string): TextModelEditSource
 	});
 }
 
-function snapshot(tracker: DocumentEditSourceTracker, includeSuppressed = false): Array<{ key: string; delta: number; retained: number; requestId: string | undefined }> {
+function snapshot(tracker: DocumentEditSourceTracker): Array<{ key: string; delta: number; retained: number; requestId: string | undefined }> {
 	const retained = new Map<string, number>();
-	for (const range of tracker.getTrackedRanges(undefined, includeSuppressed)) {
+	for (const range of tracker.getTrackedRanges()) {
 		retained.set(range.sourceKey, (retained.get(range.sourceKey) ?? 0) + range.range.length);
 	}
-	return tracker.getAllKeys(includeSuppressed).map(key => ({
+	return tracker.getAllKeys().map(key => ({
 		key,
-		delta: tracker.getTotalInsertedCharactersCount(key, includeSuppressed),
+		delta: tracker.getTotalInsertedCharactersCount(key),
 		retained: retained.get(key) ?? 0,
 		requestId: tracker.getRepresentative(key)?.props.$$requestId,
 	})).sort((a, b) => a.key.localeCompare(b.key));

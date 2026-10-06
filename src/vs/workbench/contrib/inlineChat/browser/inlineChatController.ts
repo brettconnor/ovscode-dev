@@ -5,7 +5,6 @@
 
 import { renderAsPlaintext } from '../../../../base/browser/markdownRenderer.js';
 import { alert } from '../../../../base/browser/ui/aria/aria.js';
-import { disposableTimeout } from '../../../../base/common/async.js';
 import { CancellationTokenSource } from '../../../../base/common/cancellation.js';
 import { CancellationError, isCancellationError, onUnexpectedError } from '../../../../base/common/errors.js';
 import { Event } from '../../../../base/common/event.js';
@@ -118,7 +117,6 @@ export class InlineChatController implements IEditorContribution {
 	readonly #instaService: IInstantiationService;
 	readonly #notebookEditorService: INotebookEditorService;
 	readonly #inlineChatSessionService: IInlineChatSessionService;
-	readonly #codeEditorService: ICodeEditorService;
 	readonly #configurationService: IConfigurationService;
 	readonly #editorService: IEditorService;
 	readonly #markerDecorationsService: IMarkerDecorationsService;
@@ -155,7 +153,6 @@ export class InlineChatController implements IEditorContribution {
 		this.#instaService = instaService;
 		this.#notebookEditorService = notebookEditorService;
 		this.#inlineChatSessionService = inlineChatSessionService;
-		this.#codeEditorService = codeEditorService;
 		this.#configurationService = configurationService;
 		this.#editorService = editorService;
 		this.#markerDecorationsService = markerDecorationsService;
