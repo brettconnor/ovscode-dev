@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { sep } from '../../../../../base/common/path.js';
-import { AsyncIterableProducer, DeferredPromise, raceCancellationError } from '../../../../../base/common/async.js';
+import { AsyncIterableProducer, raceCancellationError } from '../../../../../base/common/async.js';
 import { CancellationToken, CancellationTokenSource } from '../../../../../base/common/cancellation.js';
 import { Codicon } from '../../../../../base/common/codicons.js';
 import { Emitter, Event } from '../../../../../base/common/event.js';
@@ -17,18 +17,15 @@ import { URI, UriComponents } from '../../../../../base/common/uri.js';
 import { localize, localize2 } from '../../../../../nls.js';
 import { Action2, IMenuService, MenuId, MenuItemAction, MenuRegistry, registerAction2 } from '../../../../../platform/actions/common/actions.js';
 import { ContextKeyExpr, IContextKey, IContextKeyService } from '../../../../../platform/contextkey/common/contextkey.js';
-import { IRelaxedExtensionDescription } from '../../../../../platform/extensions/common/extensions.js';
 import { InstantiationType, registerSingleton } from '../../../../../platform/instantiation/common/extensions.js';
 import { IInstantiationService, ServicesAccessor } from '../../../../../platform/instantiation/common/instantiation.js';
 import { ILabelService } from '../../../../../platform/label/common/label.js';
 import { ILogService } from '../../../../../platform/log/common/log.js';
-import { IProgressService } from '../../../../../platform/progress/common/progress.js';
 import { Registry } from '../../../../../platform/registry/common/platform.js';
 import { isDark } from '../../../../../platform/theme/common/theme.js';
 import { IThemeService } from '../../../../../platform/theme/common/themeService.js';
 import { IEditorService } from '../../../../services/editor/common/editorService.js';
-import { IExtensionService, isProposedApiEnabled } from '../../../../services/extensions/common/extensions.js';
-import { ExtensionsRegistry } from '../../../../services/extensions/common/extensionsRegistry.js';
+import { IRelaxedExtensionDescription } from '../../../../../platform/extensions/common/extensions.js';
 import { ChatEditorInput } from '../widgetHosts/editor/chatEditorInput.js';
 import { IChatAgentAttachmentCapabilities, IChatAgentData, IChatAgentService } from '../../common/participants/chatAgents.js';
 import { ChatContextKeys } from '../../common/actions/chatContextKeys.js';
@@ -43,7 +40,6 @@ import { IViewsService } from '../../../../services/views/common/viewsService.js
 import { ChatViewId } from '../chat.js';
 import { ChatViewPane } from '../widgetHosts/viewPane/chatViewPane.js';
 import { AgentSessionProviders, getAgentSessionProvider, getAgentSessionProviderName } from '../agentSessions/agentSessions.js';
-import { IAgentHostImportConversationStore, type IAgentHostImportConversation } from '../agentSessions/agentHost/agentHostImportConversationStore.js';
 import { BugIndicatingError, isCancellationError } from '../../../../../base/common/errors.js';
 import { IEditorGroupsService } from '../../../../services/editor/common/editorGroupsService.js';
 import { getChatSessionType, isUntitledChatSession, LocalChatSessionUri } from '../../common/model/chatUri.js';
@@ -56,223 +52,6 @@ import { ILanguageModelToolsService } from '../../common/tools/languageModelTool
 import { IChatModel } from '../../common/model/chatModel.js';
 import { ICustomizationHarnessService } from '../../common/customizationHarnessService.js';
 import { generateUuid } from '../../../../../base/common/uuid.js';
-import { AGENT_HOST_ENABLED_CONTEXT_KEY } from '../../../../../platform/agentHost/common/agentHostEnablementService.js';
-import { AgentHostCodexAgentEnabledSettingId } from '../../../../../platform/agentHost/common/agentService.js';
-
-const extensionPoint = ExtensionsRegistry.registerExtensionPoint<IChatSessionsExtensionPoint[]>({
-	extensionPoint: 'chatSessions',
-	jsonSchema: {
-		description: localize('chatSessionsExtPoint', 'Contributes chat session integrations to the chat widget.'),
-		type: 'array',
-		items: {
-			type: 'object',
-			additionalProperties: false,
-			properties: {
-				type: {
-					description: localize('chatSessionsExtPoint.chatSessionType', 'Unique identifier for the type of chat session.'),
-					type: 'string',
-				},
-				name: {
-					description: localize('chatSessionsExtPoint.name', 'Name of the dynamically registered chat participant (eg: @agent). Must not contain whitespace.'),
-					type: 'string',
-					pattern: '^[\\w-]+$'
-				},
-				displayName: {
-					description: localize('chatSessionsExtPoint.displayName', 'A longer name for this item which is used for display in menus.'),
-					type: 'string',
-				},
-				description: {
-					description: localize('chatSessionsExtPoint.description', 'Description of the chat session for use in menus and tooltips.'),
-					type: 'string'
-				},
-				when: {
-					description: localize('chatSessionsExtPoint.when', 'Condition which must be true to show this item.'),
-					type: 'string'
-				},
-				icon: {
-					description: localize('chatSessionsExtPoint.icon', 'Icon identifier (codicon ID) for the chat session editor tab. For example, "{0}" or "{1}".', '$(github)', '$(cloud)'),
-					anyOf: [{
-						type: 'string'
-					},
-					{
-						type: 'object',
-						properties: {
-							light: {
-								description: localize('icon.light', 'Icon path when a light theme is used'),
-								type: 'string'
-							},
-							dark: {
-								description: localize('icon.dark', 'Icon path when a dark theme is used'),
-								type: 'string'
-							}
-						}
-					}]
-				},
-				order: {
-					description: localize('chatSessionsExtPoint.order', 'Order in which this item should be displayed.'),
-					type: 'integer'
-				},
-				alternativeIds: {
-					description: localize('chatSessionsExtPoint.alternativeIds', 'Alternative identifiers for backward compatibility.'),
-					type: 'array',
-					items: {
-						type: 'string'
-					}
-				},
-				welcomeTitle: {
-					description: localize('chatSessionsExtPoint.welcomeTitle', 'Title text to display in the chat welcome view for this session type.'),
-					type: 'string'
-				},
-				welcomeMessage: {
-					description: localize('chatSessionsExtPoint.welcomeMessage', 'Message text (supports markdown) to display in the chat welcome view for this session type.'),
-					type: 'string'
-				},
-				welcomeTips: {
-					description: localize('chatSessionsExtPoint.welcomeTips', 'Tips text (supports markdown and theme icons) to display in the chat welcome view for this session type.'),
-					type: 'string'
-				},
-				inputPlaceholder: {
-					description: localize('chatSessionsExtPoint.inputPlaceholder', 'Placeholder text to display in the chat input box for this session type.'),
-					type: 'string'
-				},
-				capabilities: {
-					description: localize('chatSessionsExtPoint.capabilities', 'Optional capabilities for this chat session.'),
-					type: 'object',
-					additionalProperties: false,
-					properties: {
-						supportsFileAttachments: {
-							description: localize('chatSessionsExtPoint.supportsFileAttachments', 'Whether this chat session supports attaching files or file references.'),
-							type: 'boolean'
-						},
-						supportsToolAttachments: {
-							description: localize('chatSessionsExtPoint.supportsToolAttachments', 'Whether this chat session supports attaching tools or tool references.'),
-							type: 'boolean'
-						},
-						supportsMCPAttachments: {
-							description: localize('chatSessionsExtPoint.supportsMCPAttachments', 'Whether this chat session supports attaching MCP resources.'),
-							type: 'boolean'
-						},
-						supportsImageAttachments: {
-							description: localize('chatSessionsExtPoint.supportsImageAttachments', 'Whether this chat session supports attaching images.'),
-							type: 'boolean'
-						},
-						supportsSearchResultAttachments: {
-							description: localize('chatSessionsExtPoint.supportsSearchResultAttachments', 'Whether this chat session supports attaching search results.'),
-							type: 'boolean'
-						},
-						supportsInstructionAttachments: {
-							description: localize('chatSessionsExtPoint.supportsInstructionAttachments', 'Whether this chat session supports attaching instructions.'),
-							type: 'boolean'
-						},
-						supportsSourceControlAttachments: {
-							description: localize('chatSessionsExtPoint.supportsSourceControlAttachments', 'Whether this chat session supports attaching source control changes.'),
-							type: 'boolean'
-						},
-						supportsProblemAttachments: {
-							description: localize('chatSessionsExtPoint.supportsProblemAttachments', 'Whether this chat session supports attaching problems.'),
-							type: 'boolean'
-						},
-						supportsSymbolAttachments: {
-							description: localize('chatSessionsExtPoint.supportsSymbolAttachments', 'Whether this chat session supports attaching symbols.'),
-							type: 'boolean'
-						},
-						supportsPromptAttachments: {
-							description: localize('chatSessionsExtPoint.supportsPromptAttachments', 'Whether this chat session supports attaching prompts.'),
-							type: 'boolean'
-						},
-						supportsHandOffs: {
-							description: localize('chatSessionsExtPoint.supportsHandOffs', 'Whether this chat session supports hand-off prompts.'),
-							type: 'boolean'
-						}
-					}
-				},
-				commands: {
-					markdownDescription: localize('chatCommandsDescription', "Commands available for this chat session, which the user can invoke with a `/`."),
-					type: 'array',
-					items: {
-						additionalProperties: false,
-						type: 'object',
-						defaultSnippets: [{ body: { name: '', description: '' } }],
-						required: ['name'],
-						properties: {
-							name: {
-								description: localize('chatCommand', "A short name by which this command is referred to in the UI, e.g. `fix` or `explain` for commands that fix an issue or explain code. The name should be unique among the commands provided by this participant."),
-								type: 'string'
-							},
-							description: {
-								description: localize('chatCommandDescription', "A description of this command."),
-								type: 'string'
-							},
-							when: {
-								description: localize('chatCommandWhen', "A condition which must be true to enable this command."),
-								type: 'string'
-							},
-						}
-					}
-				},
-				canDelegate: {
-					description: localize('chatSessionsExtPoint.canDelegate', 'Whether delegation is supported. Default is false. Note that enabling this is experimental and may not be respected at all times.'),
-					type: 'boolean',
-					default: false
-				},
-				customAgentTarget: {
-					description: localize('chatSessionsExtPoint.customAgentTarget', 'When set, the chat session will show a filtered mode picker that prefers custom agents whose target property matches this value. Custom agents without a target property are still shown in all session types. This enables the use of standard agent/mode with contributed sessions.'),
-					type: 'string'
-				},
-				requiresCustomModels: {
-					description: localize('chatSessionsExtPoint.requiresCustomModels', 'When set, the chat session will show a filtered model picker that prefers custom models. This enables the use of standard model picker with contributed sessions.'),
-					type: 'boolean',
-					default: false
-				},
-				supportsAutoModel: {
-					description: localize('chatSessionsExtPoint.supportsAutoModel', 'Whether the chat session supports the synthetic "Auto" model fallback. Defaults to false. When true and no models are available, the picker shows "Auto" instead of a "No models available" state.'),
-					type: 'boolean',
-					default: false
-				},
-				requiresCopilotSignIn: {
-					description: localize('chatSessionsExtPoint.requiresCopilotSignIn', 'Whether the chat session relies on a GitHub Copilot account and so cannot be used until the user signs in. Defaults to false.'),
-					type: 'boolean',
-					default: false
-				},
-				autoAttachReferences: {
-					description: localize('chatSessionsExtPoint.autoAttachReferences', 'Whether to automatically attach instruction files to chat requests for this session type.'),
-					type: 'boolean',
-					default: false
-				},
-				useRequestToPopulateBuiltInPickers: {
-					description: localize('chatSessionsExtPoint.useRequestToPopulateBuiltInPickers', 'Whether to use ChatRequestTurn2 to populate built-in pickers such as the Agent and Model pickers.'),
-					type: 'boolean',
-					default: false
-				}
-			},
-			required: ['type', 'name', 'displayName', 'description'],
-		}
-	},
-	activationEventsGenerator: function* (contribs) {
-		for (const contrib of contribs) {
-			yield `onChatSession:${contrib.type}`;
-		}
-	}
-});
-
-const codexExtensionHostAvailableWhen = ContextKeyExpr.and(
-	ContextKeyExpr.or(
-		AGENT_HOST_ENABLED_CONTEXT_KEY.negate(),
-		ContextKeyExpr.not(`config.${AgentHostCodexAgentEnabledSettingId}`),
-	),
-)!;
-
-export function applyCodexAgentHostAvailability(contribution: IChatSessionsExtensionPoint): IChatSessionsExtensionPoint {
-	if (contribution.type !== SessionType.Codex) {
-		return contribution;
-	}
-
-	const contributedWhen = contribution.when ? ContextKeyExpr.deserialize(contribution.when) : undefined;
-	return {
-		...contribution,
-		when: ContextKeyExpr.and(contributedWhen, codexExtensionHostAvailableWhen)?.serialize(),
-	};
-}
 
 class ContributedChatSessionData extends Disposable {
 
@@ -363,7 +142,6 @@ export class ChatSessionsService extends Disposable implements IChatSessionsServ
 	constructor(
 		@ILogService private readonly _logService: ILogService,
 		@IChatAgentService private readonly _chatAgentService: IChatAgentService,
-		@IExtensionService private readonly _extensionService: IExtensionService,
 		@IContextKeyService private readonly _contextKeyService: IContextKeyService,
 		@IMenuService private readonly _menuService: IMenuService,
 		@IThemeService private readonly _themeService: IThemeService,
@@ -374,19 +152,6 @@ export class ChatSessionsService extends Disposable implements IChatSessionsServ
 
 		this._hasCanDelegateProvidersKey = ChatContextKeys.hasCanDelegateProviders.bindTo(this._contextKeyService);
 
-		this._register(extensionPoint.setHandler(extensions => {
-			for (const ext of extensions) {
-				if (!isProposedApiEnabled(ext.description, 'chatSessionsProvider')) {
-					continue;
-				}
-				if (!Array.isArray(ext.value)) {
-					continue;
-				}
-				for (const contribution of ext.value) {
-					this._register(this.registerContribution(contribution, ext.description));
-				}
-			}
-		}));
 
 		// Listen for context changes and re-evaluate contributions
 		this._register(Event.filter(this._contextKeyService.onDidChangeContext, e => e.affectsSome(this._contextKeys))(() => {
@@ -502,7 +267,6 @@ export class ChatSessionsService extends Disposable implements IChatSessionsServ
 	}
 
 	private registerContribution(contribution: IChatSessionsExtensionPoint, ext: IRelaxedExtensionDescription): IDisposable {
-		contribution = applyCodexAgentHostAvailability(contribution);
 		this._logService.trace(`[ChatSessionsService] registerContribution called for type='${contribution.type}', canDelegate=${contribution.canDelegate}, when='${contribution.when}', extension='${ext.identifier.value}'`);
 		if (this._contributions.has(contribution.type)) {
 			this._logService.trace(`[ChatSessionsService] registerContribution: type='${contribution.type}' already registered, skipping`);
@@ -979,7 +743,6 @@ export class ChatSessionsService extends Disposable implements IChatSessionsServ
 	}
 
 	private async doActivateChatSessionItemController(chatViewType: string): Promise<boolean> {
-		await this._extensionService.whenInstalledExtensionsRegistered();
 		const resolvedType = this._resolveToPrimaryType(chatViewType);
 		if (resolvedType) {
 			chatViewType = resolvedType;
@@ -993,14 +756,12 @@ export class ChatSessionsService extends Disposable implements IChatSessionsServ
 			return true;
 		}
 
-		await this._extensionService.activateByEvent(`onChatSession:${chatViewType}`);
 
 		const controller = this._itemControllers.get(chatViewType)!;
 		return !!controller;
 	}
 
 	async canResolveChatSession(sessionType: string) {
-		await this._extensionService.whenInstalledExtensionsRegistered();
 		if (!this._isContributionAvailableForType(sessionType)) {
 			return false;
 		}
@@ -1022,7 +783,6 @@ export class ChatSessionsService extends Disposable implements IChatSessionsServ
 			return false;
 		}
 
-		await this._extensionService.activateByEvent(`onChatSession:${sessionType}`);
 		return this._contentProviders.has(sessionType);
 	}
 
@@ -1147,66 +907,6 @@ export class ChatSessionsService extends Disposable implements IChatSessionsServ
 
 	getRegisteredChatSessionItemProviders(): readonly string[] {
 		return [...new Set(Array.from(this._itemControllers.keys()).map(key => this._resolveToPrimaryType(key) ?? key))];
-	}
-
-	registerChatSessionItemController(chatSessionType: string, controller: IChatSessionItemController): IDisposable {
-		const disposables = new DisposableStore();
-
-
-		// Register and trigger an initial refresh to populate the provider's items
-		const initialRefreshCts = disposables.add(new CancellationTokenSource());
-		this._itemControllers.set(chatSessionType, { controller, initialRefresh: controller.refresh(initialRefreshCts.token) });
-		this._onDidChangeItemsProviders.fire({ chatSessionType });
-
-		disposables.add(controller.onDidChangeChatSessionItems(e => {
-			for (const sessionResource of e.removed ?? []) {
-				this._disposeSession(sessionResource);
-			}
-			this._onDidChangeSessionItems.fire(e);
-			this.updateInProgressStatus(chatSessionType);
-		}));
-
-		return {
-			dispose: () => {
-				initialRefreshCts.cancel();
-				disposables.dispose();
-
-				const registeredController = this._itemControllers.get(chatSessionType)?.controller;
-				if (registeredController === controller) {
-					this._itemControllers.delete(chatSessionType);
-					this._onDidChangeItemsProviders.fire({ chatSessionType });
-
-					if (this.inProgressMap.delete(chatSessionType)) {
-						this._onDidChangeInProgress.fire();
-					}
-				}
-			}
-		};
-	}
-
-	registerChatSessionContentProvider(chatSessionType: string, provider: IChatSessionContentProvider): IDisposable {
-		if (this._contentProviders.has(chatSessionType)) {
-			throw new Error(`Content provider for ${chatSessionType} is already registered.`);
-		}
-
-		this._contentProviders.set(chatSessionType, provider);
-		this._onDidChangeContentProviderSchemes.fire({ added: [chatSessionType], removed: [] });
-
-		return {
-			dispose: () => {
-				this._contentProviders.delete(chatSessionType);
-
-				this._onDidChangeContentProviderSchemes.fire({ added: [], removed: [chatSessionType] });
-
-				// Remove all sessions that were created by this provider
-				for (const [key, session] of this._sessions) {
-					if (session.chatSessionType === chatSessionType) {
-						session.dispose();
-						this._sessions.delete(key);
-					}
-				}
-			}
-		};
 	}
 
 	registerCustomizationsProvider(chatSessionType: string, provider: IChatSessionCustomizationsProvider): IDisposable {
@@ -1721,12 +1421,6 @@ type NewChatSessionSendOptions = {
 	readonly prompt: string;
 	readonly attachedContext?: IChatRequestVariableEntry[];
 	readonly initialSessionOptions?: ReadonlyChatSessionOptionsMap;
-	/**
-	 * A prior conversation to seed into the new session as real, editable turns
-	 * ("Continue in…" migration). Consumed once when the backend session is
-	 * created; see {@link IAgentHostImportConversationStore}.
-	 */
-	readonly importConversation?: IAgentHostImportConversation;
 };
 
 export type NewChatSessionOpenOptions = {
@@ -1751,37 +1445,14 @@ export async function openChatSession(accessor: ServicesAccessor, openOptions: N
 	const editorService = accessor.get(IEditorService);
 	const customizationHarnessService = accessor.get(ICustomizationHarnessService);
 	const toolsService = accessor.get(ILanguageModelToolsService);
-	const importConversationStore = accessor.get(IAgentHostImportConversationStore);
-	const progressService = accessor.get(IProgressService);
 
 	// Determine resource to open
 	const sessionResource = getResourceForNewChatSession(openOptions);
 
-	// Stash any imported ("Continue in…") conversation before the session is
-	// opened: opening can eagerly pre-create the backend session (via the chat
-	// input picker), which consumes this to seed the turns as editable history.
-	if (chatSendOptions?.importConversation && chatSendOptions.importConversation.turns.length > 0) {
-		importConversationStore.set(sessionResource, chatSendOptions.importConversation);
-	}
-
-	// Open chat session. For a sidebar "Continue in…" migration the transition
-	// spans multiple async phases (load → materializing send → untitled→real
-	// rebind), during which the chat widget is transiently empty. Hold the
-	// sessions list suppressed across the whole transition so it never flashes.
-	let sessionsListSuppression: IDisposable | undefined;
-	let transitionProgress: DeferredPromise<void> | undefined;
 	try {
 		switch (openOptions.position) {
 			case ChatSessionPosition.Sidebar: {
 				const view = await viewsService.openView(ChatViewId) as ChatViewPane;
-				if (chatSendOptions?.importConversation) {
-					sessionsListSuppression = view.beginSessionsListSuppression();
-					// Show the chat view's working indicator for the whole transition (the
-					// widget is blank while the backend session materializes) so it does not
-					// look hung. Completed once the migration finishes below.
-					transitionProgress = new DeferredPromise<void>();
-					progressService.withProgress({ location: ChatViewId }, () => transitionProgress!.p);
-				}
 				if (openOptions.type === AgentSessionProviders.Local) {
 					await view.startNewLocalSession();
 				} else {
@@ -1831,8 +1502,6 @@ export async function openChatSession(accessor: ServicesAccessor, openOptions: N
 		}
 	} catch (e) {
 		logService.error(`Failed to open '${openOptions.type}' chat session with openOptions: ${JSON.stringify(openOptions)}`, e);
-		sessionsListSuppression?.dispose();
-		transitionProgress?.complete();
 		return;
 	}
 
@@ -1877,11 +1546,6 @@ export async function openChatSession(accessor: ServicesAccessor, openOptions: N
 		}
 	}
 
-	// The migration transition is complete (session loaded, request sent and any
-	// untitled→real rebind done); allow the sessions list again and stop the
-	// working indicator.
-	sessionsListSuppression?.dispose();
-	transitionProgress?.complete();
 }
 
 /**

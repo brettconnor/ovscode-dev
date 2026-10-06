@@ -833,7 +833,6 @@ export interface IChatSessionsService {
 	 */
 	registerChatSessionContribution(contribution: IChatSessionsExtensionPoint): IDisposable;
 
-	registerChatSessionItemController(chatSessionType: string, controller: IChatSessionItemController): IDisposable;
 	getRegisteredChatSessionItemProviders(): readonly string[];
 	activateChatSessionItemProvider(chatSessionType: string): Promise<void>;
 
@@ -887,7 +886,6 @@ export interface IChatSessionsService {
 
 	getContentProviderSchemes(): string[];
 
-	registerChatSessionContentProvider(scheme: string, provider: IChatSessionContentProvider): IDisposable;
 	canResolveChatSession(sessionType: string): Promise<boolean>;
 	getOrCreateChatSession(sessionResource: URI, token: CancellationToken): Promise<IChatSession>;
 	updateChatSessionMetadata(sessionResource: URI, metadata: Record<string, unknown>): boolean;

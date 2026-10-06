@@ -12,7 +12,7 @@ import { DomScrollableElement } from '../../../../../../base/browser/ui/scrollba
 import { CancellationToken, CancellationTokenSource } from '../../../../../../base/common/cancellation.js';
 import { isCancellationError } from '../../../../../../base/common/errors.js';
 import { Event } from '../../../../../../base/common/event.js';
-import { MutableDisposable, toDisposable, DisposableStore, IDisposable } from '../../../../../../base/common/lifecycle.js';
+import { MutableDisposable, toDisposable, DisposableStore } from '../../../../../../base/common/lifecycle.js';
 import { LRUCache } from '../../../../../../base/common/map.js';
 import { MarshalledId } from '../../../../../../base/common/marshallingIds.js';
 import { autorun, IObservable, IReader, observableFromEvent, observableValue } from '../../../../../../base/common/observable.js';
@@ -122,8 +122,6 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 	private restoringSession: Promise<void> | undefined;
 	private readonly loadSessionCts = this._register(new MutableDisposable<CancellationTokenSource>());
 	private readonly _applyModelCts = this._register(new MutableDisposable<CancellationTokenSource>());
-	/** While > 0 the sessions list is suppressed so a session transition's transiently-empty widget does not reveal it (see {@link beginSessionsListSuppression}). */
-	private _sessionsListSuppressionCount = 0;
 	private readonly modelRef = this._register(new MutableDisposable<IChatModelReference>());
 	private readonly widgetViewStates = new LRUCache<string, IChatWidgetViewState>(CHAT_WIDGET_VIEW_STATE_CACHE_LIMIT);
 
@@ -968,7 +966,6 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 				newSessionsContainerVisible =
 					(!!this.chatEntitlementService.sentiment.completed || this.chatEntitlementService.hasByokModels) &&					// chat is setup (otherwise make room for terms and welcome)
 					(!this._widget || (this._widget.isEmpty() && !!this._widget.viewModel && !this._widget.viewModel.model.title)) &&	// chat widget empty (but not when model is loading or has a title)
-					this._sessionsListSuppressionCount === 0 &&																			// not mid-transition (a slow session transiently shows an empty widget)
 					!this.welcomeController?.isShowingWelcome.get();																	// welcome not showing
 			}
 
@@ -998,21 +995,6 @@ export class ChatViewPane extends ViewPane implements IViewWelcomeDelegate {
 		if (changed) {
 			this.relayout();
 		}
-	}
-
-	/**
-	 * Suppresses the sessions list until the returned disposable is disposed.
-	 * Used to span a whole session transition (e.g. a "Continue in…" migration:
-	 * load → materializing send → rebind) so the transiently-empty widget never
-	 * falls back to the list.
-	 */
-	beginSessionsListSuppression(): IDisposable {
-		this._sessionsListSuppressionCount++;
-		this.refreshSessionsControlVisibility();
-		return toDisposable(() => {
-			this._sessionsListSuppressionCount--;
-			this.refreshSessionsControlVisibility();
-		});
 	}
 
 	getFocusedSessions(): IAgentSession[] {

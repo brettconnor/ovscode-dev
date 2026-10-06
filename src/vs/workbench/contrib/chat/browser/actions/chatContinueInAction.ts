@@ -50,8 +50,6 @@ import { CHAT_SETUP_ACTION_ID } from './chatActions.js';
 import { IChatRequestPasteVariableEntry, PromptFileVariableKind, toPasteVariableEntry, toPromptFileVariableEntry } from '../../common/attachments/chatVariableEntries.js';
 import { getChatSessionType } from '../../common/model/chatUri.js';
 import { ChatSessionPosition, openChatSession } from '../chatSessions/chatSessions.contribution.js';
-import { importedTurnsFromChatModel } from '../agentSessions/agentHost/importLocalConversationToAgentSession.js';
-import type { ModelSelection } from '../../../../../platform/agentHost/common/state/protocol/state.js';
 
 /**
  * Extracts the "owner/repo" name-with-owner from a git remote URL.
@@ -540,22 +538,7 @@ export class CreateRemoteAgentJobAction {
 				const sourceName = sourceContribution?.displayName ?? getAgentSessionProviderName(sourceSessionType);
 				const continuationContext = attachedContext.asArray();
 				let handoffPrompt = userPrompt;
-				// Continuing a local chat into Copilot CLI (main window) imports the
-				// prior conversation as real, editable turns seeded into the new
-				// session, instead of handing it over as a read-only transcript
-				// attachment. The turns are threaded through the normal
-				// `openChatSession` flow so the session lifecycle (model picker,
-				// config chips, etc.) is unchanged.
-				const importConversationTurns = continuationTargetType === SessionType.AgentHostCopilot
-					? importedTurnsFromChatModel(chatModel)
-					: undefined;
-				// Carry the source session's selected model so the imported session
-				// resumes on the same model rather than the host default. The raw
-				// model id (`metadata.id`) matches the Copilot catalog shared by the
-				// local models and Copilot CLI.
-				const importConversationModelId = importConversationTurns ? widget.input.selectedLanguageModel.get()?.metadata.id : undefined;
-				const importConversationModel: ModelSelection | undefined = importConversationModelId ? { id: importConversationModelId } : undefined;
-				if (transcript && !importConversationTurns) {
+				if (transcript) {
 					if (isAgentHostTarget(continuationTargetType)) {
 						const transcriptAttachment = createDelegationTranscriptAttachment(transcript, sourceName);
 						if (transcriptAttachment) {
@@ -595,7 +578,6 @@ export class CreateRemoteAgentJobAction {
 								prompt: handoffPrompt,
 								attachedContext: continuationContext,
 								initialSessionOptions: initialSessionOptions.size > 0 ? initialSessionOptions : undefined,
-								importConversation: importConversationTurns ? { turns: importConversationTurns, model: importConversationModel } : undefined,
 							}
 					));
 					return;

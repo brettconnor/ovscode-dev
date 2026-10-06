@@ -3599,13 +3599,6 @@ export enum ChatLocation {
 	Editor = 4,
 }
 
-export enum ChatSessionStatus {
-	Failed = 0,
-	Completed = 1,
-	InProgress = 2,
-	NeedsInput = 3
-}
-
 export class ChatSessionCustomizationType {
 	static readonly Agent = new ChatSessionCustomizationType('agent');
 	static readonly Skill = new ChatSessionCustomizationType('skill');
