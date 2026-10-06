@@ -15,7 +15,7 @@ import { ILanguageModelChatMetadataAndIdentifier } from '../../../../contrib/cha
 import { ChatAgentLocation } from '../../../../contrib/chat/common/constants.js';
 import { ChatInputNotificationSeverity, IChatInputNotification } from '../../../../contrib/chat/browser/widget/input/chatInputNotificationService.js';
 import { defineComponentFixture, defineThemedFixtureGroup } from '../fixtureUtils.js';
-import { ChatInputFixtureOptions, renderChatInput } from './renderChatInput.js';
+import { renderChatInput } from './renderChatInput.js';
 
 import '../../../../contrib/chat/browser/widget/media/chat.css';
 
