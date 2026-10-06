@@ -744,7 +744,8 @@ export class ChatTeardownContribution extends Disposable implements IWorkbenchCo
 		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
 		@IWorkbenchExtensionEnablementService private readonly extensionEnablementService: IWorkbenchExtensionEnablementService,
 		@IViewDescriptorService private readonly viewDescriptorService: IViewDescriptorService,
-		@IWorkbenchLayoutService private readonly layoutService: IWorkbenchLayoutService
+		@IWorkbenchLayoutService private readonly layoutService: IWorkbenchLayoutService,
+		@IConfigurationService private readonly configurationService: IConfigurationService
 	) {
 		super();
 

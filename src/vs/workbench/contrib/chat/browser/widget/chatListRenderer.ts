@@ -3677,7 +3677,7 @@ export class ChatListItemRenderer extends Disposable implements ITreeRenderer<Ch
 
 	private shouldShowFileChangesSummary(element: IChatResponseViewModel): boolean {
 		// Only show file changes summary for local sessions - background sessions already have their own file changes part
-		const isLocalSession = sessionType === localChatSessionType;
+		const isLocalSession = getChatSessionType(element.sessionResource) === localChatSessionType;
 		return shouldShowFileChangesSummaryForSettings(
 			element.isComplete,
 			isLocalSession,

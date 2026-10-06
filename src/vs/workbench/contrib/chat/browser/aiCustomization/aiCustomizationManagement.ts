@@ -10,7 +10,6 @@ import { AICustomizationManagementSection } from '../../common/aiCustomizationWo
 import { PromptsType } from '../../common/promptSyntax/promptTypes.js';
 import { localize } from '../../../../../nls.js';
 import { MenuId } from '../../../../../platform/actions/common/actions.js';
-import { hasReadableCustomizationContent } from '../../../../../platform/agentHost/common/agentHostCustomizationUri.js';
 import { CustomizationMigrationCategoryId } from './customizationMigrationCategories.js';
 import { ICustomizationMigrationHint } from '../../common/promptSyntax/service/customizationMigrationService.js';
 
@@ -127,7 +126,7 @@ export const AICustomizationManagementItemMenuId = MenuId.for('AICustomizationMa
 export const AICustomizationManagementSyntheticItemMenuId = MenuId.for('AICustomizationManagementEditorSyntheticItem');
 
 export function getAICustomizationManagementItemMenuId(uri: URI): MenuId {
-	return hasReadableCustomizationContent(uri)
+	return uri.scheme === 'file'
 		? AICustomizationManagementItemMenuId
 		: AICustomizationManagementSyntheticItemMenuId;
 }

@@ -12,27 +12,15 @@ import { ChatConfiguration } from '../../common/constants.js';
 import { CustomizationMarketplaceConfiguration } from '../../../../../platform/customizationMarketplace/common/customizationMarketplaceSources.js';
 import { chatProgressConfigurationProperties } from '../../browser/chatProgressConfiguration.js';
 import { customizationMarketplaceConfigurationProperties } from '../../browser/aiCustomization/customizationMarketplaceConfiguration.js';
-import '../../browser/agentSessionsConfiguration.js';
 
 const configurationProperties = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration).getConfigurationProperties();
-const registeredAgentSessionsSettings = [
-	ChatConfiguration.UnifiedWorkspacePicker,
-	ChatConfiguration.AutoMarkAsDoneMergedSessionsAfterDays,
-	ChatConfiguration.AutoDeleteMarkedAsDoneMergedSessionsAfterDays,
-].map(key => configurationProperties[key] !== undefined);
 const migrations = Registry.as<IConfigurationMigrationRegistry & { readonly migrations: readonly ConfigurationMigration[] }>(WorkbenchConfigurationExtensions.ConfigurationMigration).migrations;
-const legacyAutoArchiveMigration = migrations.find(migration => migration.key === 'chat.agentSessions.autoArchiveMergedSessionsAfterDays');
-const legacyAutoDeleteArchivedMigration = migrations.find(migration => migration.key === 'chat.agentSessions.autoDeleteArchivedMergedSessionsAfterDays');
 const legacyProgressVerbosityMigration = migrations.find(migration => migration.key === ChatConfiguration.PersistentProgressVerbosity);
 const persistentProgressSetting = chatProgressConfigurationProperties[ChatConfiguration.PersistentProgress];
 
 suite('Chat configuration', () => {
 
 	ensureNoDisposablesAreLeakedInTestSuite();
-
-	test('registers Agents Window settings in the shared workbench contribution', () => {
-		assert.deepStrictEqual(registeredAgentSessionsSettings, [true, true, true]);
-	});
 
 	test('Marketplace visibility is default-off while the GitHub Feed is default-on', () => {
 		assert.deepStrictEqual({
@@ -106,41 +94,5 @@ suite('Chat configuration', () => {
 		), [[], [], [], []]);
 	});
 
-	test('migrates the auto archive setting to auto mark as done', async () => {
-		assert.deepStrictEqual({
-			includeApplication: legacyAutoArchiveMigration?.includeApplication,
-			result: await legacyAutoArchiveMigration?.migrateFn(15, () => undefined),
-		}, {
-			includeApplication: true,
-			result: [
-				['chat.agentSessions.autoArchiveMergedSessionsAfterDays', { value: undefined }],
-				[ChatConfiguration.AutoMarkAsDoneMergedSessionsAfterDays, { value: 15 }],
-			],
-		});
-	});
 
-	test('does not overwrite the auto mark as done setting during migration', async () => {
-		assert.deepStrictEqual(await legacyAutoArchiveMigration?.migrateFn(15, () => 30), [
-			['chat.agentSessions.autoArchiveMergedSessionsAfterDays', { value: undefined }],
-		]);
-	});
-
-	test('migrates the auto delete archived setting to auto delete marked as done', async () => {
-		assert.deepStrictEqual({
-			includeApplication: legacyAutoDeleteArchivedMigration?.includeApplication,
-			result: await legacyAutoDeleteArchivedMigration?.migrateFn(15, () => undefined),
-		}, {
-			includeApplication: true,
-			result: [
-				['chat.agentSessions.autoDeleteArchivedMergedSessionsAfterDays', { value: undefined }],
-				[ChatConfiguration.AutoDeleteMarkedAsDoneMergedSessionsAfterDays, { value: 15 }],
-			],
-		});
-	});
-
-	test('does not overwrite the auto delete marked as done setting during migration', async () => {
-		assert.deepStrictEqual(await legacyAutoDeleteArchivedMigration?.migrateFn(15, () => 30), [
-			['chat.agentSessions.autoDeleteArchivedMergedSessionsAfterDays', { value: undefined }],
-		]);
-	});
 });

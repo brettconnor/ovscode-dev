@@ -42,7 +42,6 @@ import { IClipboardService } from '../../../../../platform/clipboard/common/clip
 import { IHoverService } from '../../../../../platform/hover/browser/hover.js';
 import { getDefaultHoverDelegate } from '../../../../../base/browser/ui/hover/hoverDelegateFactory.js';
 import { IFileService } from '../../../../../platform/files/common/files.js';
-import { hasReadableCustomizationContent } from '../../../../../platform/agentHost/common/agentHostCustomizationUri.js';
 import { generateCustomizationDebugReport } from './aiCustomizationDebugPanel.js';
 import { getCustomizationSecondaryText } from './aiCustomizationListWidgetUtils.js';
 import { ITelemetryService } from '../../../../../platform/telemetry/common/telemetry.js';
@@ -57,6 +56,10 @@ import { IConfigurationService } from '../../../../../platform/configuration/com
 import { asTreeRenderer, CustomizationListLayout, CustomizationTreeTabs, getCustomizationListLayout, getSelectedCustomizationGroup, ICustomizationTreeGroup } from './customizationTree.js';
 
 export { truncateToFirstLine } from './aiCustomizationListWidgetUtils.js';
+
+function isReadableCustomizationFile(uri: URI): boolean {
+	return uri.scheme === 'file';
+}
 
 const $ = DOM.$;
 
@@ -916,7 +919,7 @@ export class AICustomizationListWidget extends Disposable {
 							return localize('groupAriaLabel', "{0}, {1} items", entry.label, entry.count);
 						}
 						const label = getCustomizationItemAriaLabel(entry.item);
-						if (!hasReadableCustomizationContent(entry.item.uri)) {
+						if (!isReadableCustomizationFile(entry.item.uri)) {
 							return localize('itemAriaLabelNoSourceContent', "{0}, source content unavailable", label);
 						}
 						return label;
@@ -937,7 +940,7 @@ export class AICustomizationListWidget extends Disposable {
 				if (e.element.type === 'group-header') {
 					return;
 				} else {
-					if (hasReadableCustomizationContent(e.element.item.uri)) {
+					if (isReadableCustomizationFile(e.element.item.uri)) {
 						this._onDidSelectItem.fire(e.element.item);
 					}
 				}
@@ -1027,7 +1030,7 @@ export class AICustomizationListWidget extends Disposable {
 		const { secondary } = getContextMenuActions(actions, 'inline');
 
 		// Add copy path actions (not shown for built-in items where the path is an implementation detail)
-		const copyActions = item.isBuiltin || !hasReadableCustomizationContent(item.uri) ? [] : [
+		const copyActions = item.isBuiltin || !isReadableCustomizationFile(item.uri) ? [] : [
 			new Separator(),
 			new Action('copyFullPath', localize('copyFullPath', "Copy Full Path"), undefined, true, async () => {
 				await this.clipboardService.writeText(item.uri.fsPath);
@@ -1083,7 +1086,7 @@ export class AICustomizationListWidget extends Disposable {
 			}
 			actions.push(...uniqueGroupActions);
 		}
-		if (!item.isBuiltin && hasReadableCustomizationContent(item.uri)) {
+		if (!item.isBuiltin && isReadableCustomizationFile(item.uri)) {
 			if (actions.length > 0) {
 				actions.push(new Separator());
 			}
@@ -1128,7 +1131,7 @@ export class AICustomizationListWidget extends Disposable {
 	}
 
 	private hasCardItemActions(item: IAICustomizationListItem): boolean {
-		if (hasReadableCustomizationContent(item.uri)) {
+		if (isReadableCustomizationFile(item.uri)) {
 			return true;
 		}
 
@@ -2141,7 +2144,7 @@ export class AICustomizationListWidget extends Disposable {
 			? localize('customizationCardAriaLabelDisabled', "{0}. {1}. Disabled", displayName, accessibleSecondaryText || groupLabel)
 			: localize('customizationCardAriaLabel', "{0}. {1}", displayName, accessibleSecondaryText || groupLabel);
 		const primary = createCustomizationCardPrimaryAction(row, accessibleLabel, 'customization-row-primary');
-		const hasReadableContent = hasReadableCustomizationContent(item.uri);
+		const hasReadableContent = isReadableCustomizationFile(item.uri);
 		if (!hasReadableContent) {
 			primary.setAttribute('aria-disabled', 'true');
 		}
