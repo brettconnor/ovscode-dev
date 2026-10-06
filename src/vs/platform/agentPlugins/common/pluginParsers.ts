@@ -15,17 +15,17 @@ import { parseFrontMatter } from '../../../base/common/yaml.js';
 import { IMcpRemoteServerConfiguration, IMcpServerConfiguration, IMcpStdioServerConfiguration, McpServerType } from '../../mcp/common/mcpPlatformTypes.js';
 import { readAgentPluginManifest } from './agentPluginParser.js';
 
-const enum CustomizationType {
-	Agent = 'agent',
-	Skill = 'skill',
-	Rule = 'rule',
-	Hook = 'hook',
-	McpServer = 'mcpServer',
-}
+const CustomizationType = {
+	Agent: 'agent',
+	Skill: 'skill',
+	Rule: 'rule',
+	Hook: 'hook',
+	McpServer: 'mcpServer',
+} as const;
+type CustomizationType = typeof CustomizationType[keyof typeof CustomizationType];
 
-const enum McpServerStatus {
-	Stopped = 'stopped',
-}
+const McpServerStatus = { Stopped: 'stopped' } as const;
+type McpServerStatus = typeof McpServerStatus[keyof typeof McpServerStatus];
 
 interface IPluginCustomizationBase {
 	readonly type: CustomizationType;
