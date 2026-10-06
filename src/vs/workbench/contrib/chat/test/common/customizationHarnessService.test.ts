@@ -10,9 +10,7 @@ import { Emitter } from '../../../../../base/common/event.js';
 import { URI } from '../../../../../base/common/uri.js';
 import { ThemeIcon } from '../../../../../base/common/themables.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
-import { AGENT_BUILTIN_CUSTOMIZATION_SCHEME } from '../../../../../platform/agentHost/common/agentHostCustomizationUri.js';
-import { toAgentHostUri } from '../../../../../platform/agentHost/common/agentHostUri.js';
-import { CustomizationHarnessServiceBase, createVSCodeHarnessDescriptor, ICustomizationItemProvider, IHarnessDescriptor, ICustomizationItem } from '../../common/customizationHarnessService.js';
+import { CustomizationHarnessServiceBase, createVSCodeHarnessDescriptor, IHarnessDescriptor } from '../../common/customizationHarnessService.js';
 import { PromptsType, Target } from '../../common/promptSyntax/promptTypes.js';
 import { ICustomAgent, IPromptsService, PromptsStorage } from '../../common/promptSyntax/service/promptsService.js';
 import { SessionType } from '../../common/chatSessionsService.js';
@@ -140,30 +138,6 @@ suite('CustomizationHarnessService', () => {
 					{ name: 'review', type: PromptsType.skill, userInvocable: true, sessionTypes: undefined },
 				]);
 			}
-		});
-
-		test('resolves a wrapped synthetic built-in without reading prompt content', async () => {
-			let parseCalls = 0;
-			const promptsService = new class extends MockPromptsService {
-				override async parseNew(uri: URI, token: CancellationToken) {
-					parseCalls++;
-					return super.parseNew(uri, token);
-				}
-			};
-			const builtInUri = URI.from({ scheme: AGENT_BUILTIN_CUSTOMIZATION_SCHEME, path: '/skill/init' });
-			const service = createSlashCommandService(toAgentHostUri(builtInUri, 'remote'), promptsService);
-
-			const command = await service.resolvePromptSlashCommand('init', URI.parse('test-session-type://session'), CancellationToken.None);
-
-			assert.deepStrictEqual({
-				name: command?.name,
-				parsedPromptFile: command?.parsedPromptFile,
-				parseCalls,
-			}, {
-				name: 'init',
-				parsedPromptFile: undefined,
-				parseCalls: 0,
-			});
 		});
 
 		test('propagates cancellation while resolving file-backed command content', async () => {

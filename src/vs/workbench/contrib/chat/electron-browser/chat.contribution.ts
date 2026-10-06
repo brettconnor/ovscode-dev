@@ -6,14 +6,11 @@
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { autorun } from '../../../../base/common/observable.js';
 import { resolve } from '../../../../base/common/path.js';
-import { isMacintosh } from '../../../../base/common/platform.js';
 import { URI } from '../../../../base/common/uri.js';
 import { ipcRenderer } from '../../../../base/parts/sandbox/electron-browser/globals.js';
-import { localize } from '../../../../nls.js';
 import { registerAction2 } from '../../../../platform/actions/common/actions.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
 import { IContextKeyService } from '../../../../platform/contextkey/common/contextkey.js';
-import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
 import { ILocalGitService } from '../../../../platform/git/common/localGitService.js';
 import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
 import { registerSharedProcessRemoteService } from '../../../../platform/ipc/electron-browser/services.js';
@@ -22,11 +19,8 @@ import { INativeHostService } from '../../../../platform/native/common/native.js
 import { IWorkspaceTrustRequestService } from '../../../../platform/workspace/common/workspaceTrust.js';
 import { WorkbenchPhase, registerWorkbenchContribution2 } from '../../../common/contributions.js';
 import { ViewContainerLocation } from '../../../common/views.js';
-import { IChatEntitlementService } from '../../../services/chat/common/chatEntitlementService.js';
 import { INativeWorkbenchEnvironmentService } from '../../../services/environment/electron-browser/environmentService.js';
-import { IExtensionService } from '../../../services/extensions/common/extensions.js';
 import { IWorkbenchLayoutService } from '../../../services/layout/browser/layoutService.js';
-import { ILifecycleService, ShutdownReason } from '../../../services/lifecycle/common/lifecycle.js';
 import { ACTION_ID_NEW_CHAT, CHAT_OPEN_ACTION_ID, IChatViewOpenOptions } from '../browser/actions/chatActions.js';
 import { ChatViewPaneTarget, IChatWidgetService } from '../browser/chat.js';
 import { ChatContextKeys } from '../common/actions/chatContextKeys.js';
@@ -37,7 +31,6 @@ import { registerChatDeveloperActions } from './actions/chatDeveloperActions.js'
 import { registerChatExportZipAction } from './actions/chatExportZip.js';
 import { registerExportAgentTracesDbAction } from './actions/exportAgentTracesDb.js';
 import { registerInstallDictationModelAction } from './actions/installDictationModelAction.js';
-import { confirmSessionShutdown, getEffectiveSessionShutdownReason, shouldWarnForInFlightSessionShutdown } from './chatLifecycle.js';
 import { HoldToVoiceChatInChatViewAction, InlineVoiceChatAction, KeywordActivationContribution, QuickVoiceChatAction, ReadChatResponseAloud, StartVoiceChatAction, StopListeningAction, StopListeningAndSubmitAction, StopReadAloud, StopReadChatItemAloud, VoiceChatInChatViewAction } from './actions/voiceChatActions.js';
 import { NativeBuiltinToolsContribution } from './builtInTools/tools.js';
 import { NativePluginGitCommandService } from './pluginGitCommandService.js';
@@ -142,64 +135,6 @@ class ChatSuspendThrottlingHandler extends Disposable {
 	}
 }
 
-class ChatLifecycleHandler extends Disposable {
-
-	static readonly ID = 'workbench.contrib.chatLifecycleHandler';
-
-	constructor(
-		@ILifecycleService lifecycleService: ILifecycleService,
-		@IDialogService private readonly dialogService: IDialogService,
-		@IChatWidgetService private readonly widgetService: IChatWidgetService,
-		@IContextKeyService private readonly contextKeyService: IContextKeyService,
-		@IExtensionService extensionService: IExtensionService,
-		@INativeWorkbenchEnvironmentService private readonly environmentService: INativeWorkbenchEnvironmentService,
-		@IChatEntitlementService private readonly chatEntitlementService: IChatEntitlementService,
-		@INativeHostService private readonly nativeHostService: INativeHostService,
-		@IChatService private readonly chatService: IChatService,
-	) {
-		super();
-
-		this._register(lifecycleService.onBeforeShutdown(e => {
-			e.veto(this.shouldVetoShutdown(e.reason), 'veto.chat');
-		}));
-
-		this._register(extensionService.onWillStop(e => {
-			e.veto(this.hasSessionThatWillStop(ShutdownReason.CLOSE), localize('chatRequestInProgress', "A session is in progress."));
-		}));
-	}
-
-	private hasSessionThatWillStop(reason: ShutdownReason): boolean {
-		if (this.chatEntitlementService.sentiment.hidden) {
-			return false; // AI features are disabled
-		}
-
-		if (shouldWarnForInFlightSessionShutdown(this.chatService.getPendingRequestSessionTypes(), reason)) {
-			return true;
-		}
-
-		return false;
-	}
-
-	private async shouldVetoShutdown(reason: ShutdownReason): Promise<boolean> {
-		if (this.environmentService.enableSmokeTestDriver) {
-			return false;
-		}
-
-		const windowCount = reason === ShutdownReason.CLOSE ? await this.nativeHostService.getWindowCount() : 0;
-		const effectiveReason = getEffectiveSessionShutdownReason(reason, windowCount, isMacintosh);
-		if (!this.hasSessionThatWillStop(effectiveReason)) {
-			return false;
-		}
-
-		if (ChatContextKeys.skipChatRequestInProgressMessage.getValue(this.contextKeyService) === true) {
-			return false;
-		}
-
-		this.widgetService.revealWidget();
-		return !await confirmSessionShutdown(this.dialogService, effectiveReason);
-	}
-}
-
 registerAction2(StartVoiceChatAction);
 
 registerAction2(VoiceChatInChatViewAction);
@@ -223,4 +158,3 @@ registerWorkbenchContribution2(KeywordActivationContribution.ID, KeywordActivati
 registerWorkbenchContribution2(NativeBuiltinToolsContribution.ID, NativeBuiltinToolsContribution, WorkbenchPhase.AfterRestored);
 registerWorkbenchContribution2(ChatCommandLineHandler.ID, ChatCommandLineHandler, WorkbenchPhase.BlockRestore);
 registerWorkbenchContribution2(ChatSuspendThrottlingHandler.ID, ChatSuspendThrottlingHandler, WorkbenchPhase.AfterRestored);
-registerWorkbenchContribution2(ChatLifecycleHandler.ID, ChatLifecycleHandler, WorkbenchPhase.AfterRestored);

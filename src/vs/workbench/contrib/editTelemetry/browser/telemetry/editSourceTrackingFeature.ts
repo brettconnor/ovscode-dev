@@ -7,7 +7,7 @@
 import { CachedFunction } from '../../../../../base/common/cache.js';
 import { MarkdownString } from '../../../../../base/common/htmlContent.js';
 import { Disposable } from '../../../../../base/common/lifecycle.js';
-import { autorun, mapObservableArrayCached, IObservable, ISettableObservable, observableValue, derivedWithSetter, observableFromEvent } from '../../../../../base/common/observable.js';
+import { autorun, mapObservableArrayCached, derived, IObservable, ISettableObservable, observableValue, derivedWithSetter, observableFromEvent } from '../../../../../base/common/observable.js';
 import { DynamicCssRules } from '../../../../../editor/browser/editorDom.js';
 import { observableCodeEditor } from '../../../../../editor/browser/observableCodeEditor.js';
 import { CodeEditorWidget } from '../../../../../editor/browser/widget/codeEditor/codeEditorWidget.js';

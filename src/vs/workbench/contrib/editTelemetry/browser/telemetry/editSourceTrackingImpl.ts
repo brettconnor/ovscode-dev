@@ -89,7 +89,7 @@ class TrackedDocumentInfo extends Disposable {
 			if (!this._statsEnabled.read(reader)) { return undefined; }
 			longtermResetSignal.read(reader);
 
-			const t = new DocumentEditSourceTracker(docWithJustReason);
+			const t = new DocumentEditSourceTracker(docWithJustReason, undefined);
 			const startFocusTime = this._userAttentionService.totalFocusTimeMs;
 			const startTime = Date.now();
 			reader.store.add(toDisposable(() => {
@@ -144,7 +144,7 @@ class TrackedDocumentInfo extends Disposable {
 				resetSignal.trigger(undefined);
 			}));
 
-			const t = new DocumentEditSourceTracker(docWithJustReason);
+			const t = new DocumentEditSourceTracker(docWithJustReason, undefined);
 			const startFocusTime = this._userAttentionService.totalFocusTimeMs;
 			const startTime = Date.now();
 			reader.store.add(toDisposable(() => {
@@ -172,7 +172,7 @@ class TrackedDocumentInfo extends Disposable {
 				focusResetSignal.trigger(undefined);
 			}));
 
-			const t = new DocumentEditSourceTracker(docWithJustReason);
+			const t = new DocumentEditSourceTracker(docWithJustReason, undefined);
 			const startFocusTime = this._userAttentionService.totalFocusTimeMs;
 			const startTime = Date.now();
 			reader.store.add(toDisposable(() => {
@@ -217,7 +217,7 @@ class TrackedDocumentInfo extends Disposable {
 				modifiedCount: 0,
 				deltaModifiedCount: 0,
 			};
-			entry.deltaModifiedCount += t.getTotalInsertedCharactersCount(internalKey, includeSuppressedExternal);
+			entry.deltaModifiedCount += t.getTotalInsertedCharactersCount(internalKey);
 			telemetryKeys.set(telemetryKey, entry);
 		}
 		for (const range of ranges) {
@@ -250,8 +250,6 @@ class TrackedDocumentInfo extends Disposable {
 				statsUuid: statsUuid,
 				conversationId: repr.props.$$sessionId,
 				requestId: repr.props.$$requestId,
-				origin: repr.props.$origin,
-				harness: repr.props.$harness,
 				modifiedCount: value,
 				deltaModifiedCount: deltaModifiedCount,
 				totalModifiedCount,
@@ -261,7 +259,7 @@ class TrackedDocumentInfo extends Disposable {
 
 		const isTrackedByGit = await data.isTrackedByGit;
 		sendEditSourcesStatsTelemetry(this._telemetryService, {
-			attributionSchemaVersion: 1,
+			attributionSchemaVersion: 2,
 			mode,
 			languageId: this._doc.document.languageId.get(),
 			statsUuid: statsUuid,

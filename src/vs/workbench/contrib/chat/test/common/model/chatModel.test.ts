@@ -17,7 +17,6 @@ import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../../base/
 import { Range } from '../../../../../../editor/common/core/range.js';
 import { OffsetRange } from '../../../../../../editor/common/core/ranges/offsetRange.js';
 import { SymbolKind } from '../../../../../../editor/common/languages.js';
-import { MessageKind } from '../../../../../../platform/agentHost/common/state/protocol/state.js';
 import { IConfigurationService } from '../../../../../../platform/configuration/common/configuration.js';
 import { TestConfigurationService } from '../../../../../../platform/configuration/test/common/testConfigurationService.js';
 import { IContextKeyService } from '../../../../../../platform/contextkey/common/contextkey.js';
@@ -2802,39 +2801,6 @@ suite('ChatModel - Pending Requests', () => {
 		assert.deepStrictEqual(restoredOptions.instructionContext?.enabledTools, enabledTools);
 	});
 
-	test('pending requests restore Agent Host message provenance', () => {
-		const model = createModel();
-		const provenance = {
-			agentHostMessageOrigin: { kind: MessageKind.SystemNotification },
-			metadata: { 'vscode.chat.systemInitiatedLabel': 'Background task completed' },
-			isSystemInitiated: true,
-			systemInitiatedLabel: 'Background task completed',
-		};
-		const request = new ChatRequestModel({
-			session: model,
-			message: { text: 'background task', parts: [] },
-			variableData: { variables: [] },
-			timestamp: 0,
-			isSystemInitiated: provenance.isSystemInitiated,
-			systemInitiatedLabel: provenance.systemInitiatedLabel,
-		});
-		model.addPendingRequest(request, ChatRequestQueueKind.Queued, provenance);
-		const operationLog = new ChatSessionOperationLog();
-		const serializedData = operationLog.read(operationLog.createInitial(model));
-		const restoredModel = testDisposables.add(instantiationService.createInstance(
-			ChatModel,
-			{ value: serializedData, serializer: undefined! },
-			{ initialLocation: ChatAgentLocation.Chat, canUseTools: true }
-		));
-		const restored = restoredModel.getPendingRequests()[0].sendOptions;
-
-		assert.deepStrictEqual({
-			agentHostMessageOrigin: restored.agentHostMessageOrigin,
-			metadata: restored.metadata,
-			isSystemInitiated: restored.isSystemInitiated,
-			systemInitiatedLabel: restored.systemInitiatedLabel,
-		}, provenance);
-	});
 });
 
 suite('serializeSendOptions', () => {

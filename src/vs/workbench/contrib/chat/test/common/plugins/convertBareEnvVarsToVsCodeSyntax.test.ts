@@ -8,12 +8,7 @@ import { URI } from '../../../../../../base/common/uri.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../../base/test/common/utils.js';
 import { IMcpRemoteServerConfiguration, IMcpStdioServerConfiguration, McpServerType } from '../../../../../../platform/mcp/common/mcpPlatformTypes.js';
 import { convertBareEnvVarsToVsCodeSyntax as convertBareEnvVarsToVsCodeSyntaxRaw } from '../../../common/plugins/agentPluginServiceImpl.js';
-import { CustomizationType, McpServerStatus, type McpServerCustomization } from '../../../../../../platform/agentHost/common/state/protocol/state.js';
 import type { IMcpServerDefinition } from '../../../../../../platform/agentPlugins/common/pluginParsers.js';
-
-function stubMcpCustomization(): McpServerCustomization {
-	return { type: CustomizationType.McpServer, id: 'stub', uri: 'file:///test', name: 'test', state: { kind: McpServerStatus.Starting } };
-}
 
 /**
  * Wraps the production {@link convertBareEnvVarsToVsCodeSyntaxRaw} so tests
@@ -21,7 +16,7 @@ function stubMcpCustomization(): McpServerCustomization {
  * every fixture — the env-var conversion never touches it.
  */
 function convertBareEnvVarsToVsCodeSyntax(def: Omit<IMcpServerDefinition, 'customization'>) {
-	return convertBareEnvVarsToVsCodeSyntaxRaw({ ...def, customization: stubMcpCustomization() });
+	return convertBareEnvVarsToVsCodeSyntaxRaw(def as IMcpServerDefinition);
 }
 
 suite('convertBareEnvVarsToVsCodeSyntax', () => {
