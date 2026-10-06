@@ -21,13 +21,15 @@ import { CustomAgent } from './promptSyntax/service/promptsServiceImpl.js';
 import { ExtensionIdentifier } from '../../../../platform/extensions/common/extensions.js';
 import { getCanonicalPluginCommandId } from './plugins/agentPluginService.js';
 import { getChatSessionType, LocalChatSessionUri } from './model/chatUri.js';
-import { type CustomizationDisabledReason } from '../../../../platform/agentHost/common/customizationEnablement.js';
-import { isAgentBuiltinCustomizationUri } from '../../../../platform/agentHost/common/agentHostCustomizationUri.js';
-import { CustomizationEnablementKind } from '../../../../platform/agentHost/common/state/protocol/state.js';
 import type { IMcpServerCustomizationMigrationCandidate, IMcpServerCustomizationMigrationResult, McpServerCustomizationMigration } from './promptSyntax/service/customizationMigrationService.js';
 
 
 export const ICustomizationHarnessService = createDecorator<ICustomizationHarnessService>('customizationHarnessService');
+
+interface CustomizationDisabledReason {
+	readonly source?: string;
+	readonly scope?: 'workspace' | 'session' | 'global';
+}
 
 /**
  * Override for a management section's create-button behavior.
@@ -234,12 +236,12 @@ export function getCustomizationDisabledLabel(reason: CustomizationDisabledReaso
 	if (reason?.source === 'plugin') {
 		return localize('customizationDisabledPlugin', "Disabled (Plugin)");
 	}
-	switch (reason?.scope) {
-		case CustomizationEnablementKind.Workspace:
-			return localize('customizationDisabledWorkspace', "Disabled (Workspace)");
-		case CustomizationEnablementKind.Session:
-			return localize('customizationDisabledSession', "Disabled (Session)");
-		case CustomizationEnablementKind.Global:
+		switch (reason?.scope) {
+			case 'workspace':
+				return localize('customizationDisabledWorkspace', "Disabled (Workspace)");
+			case 'session':
+				return localize('customizationDisabledSession', "Disabled (Session)");
+			case 'global':
 		case undefined:
 			return localize('customizationDisabled', "Disabled");
 	}
@@ -635,9 +637,6 @@ export class CustomizationHarnessServiceBase implements ICustomizationHarnessSer
 		const commands = await this.getSlashCommands(sessionResource, token);
 		const command = commands.find(cmd => cmd.name === name);
 		if (command) {
-			if (isAgentBuiltinCustomizationUri(command.uri)) {
-				return command;
-			}
 			const parsedPromptFile = await this.promptsService.parseNew(command.uri, token);
 			return {
 				...command,

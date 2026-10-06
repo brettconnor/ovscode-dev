@@ -4,8 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { URI } from '../../../../base/common/uri.js';
-import { isRemoteAgentHostSessionType } from '../../../../platform/agentHost/common/agentHostSessionType.js';
-import { LOCAL_AGENT_HOST_SCHEME_PREFIX } from '../../../../platform/agentHost/common/agentHostConnectionsService.js';
 
 /** Session identifiers still used by the workbench while Agent Host is being removed. */
 export namespace SessionType {
@@ -20,6 +18,21 @@ export namespace SessionType {
 }
 
 export const localChatSessionType = SessionType.Local;
+
+const LOCAL_AGENT_HOST_SCHEME_PREFIX = 'agent-host-';
+const REMOTE_AGENT_HOST_SESSION_TYPE_PREFIX = 'remote-';
+
+export function isRemoteAgentHostSessionType(sessionType: string): boolean {
+	return sessionType.startsWith(REMOTE_AGENT_HOST_SESSION_TYPE_PREFIX);
+}
+
+export function parseRemoteAgentHostHarness(sessionType: string): string | undefined {
+	if (!isRemoteAgentHostSessionType(sessionType)) {
+		return undefined;
+	}
+	const harness = sessionType.slice(sessionType.lastIndexOf('-') + 1);
+	return harness || undefined;
+}
 
 export function isLocalAgentHostTarget(target: string): boolean {
 	return target === SessionType.AgentHostCopilot || target.startsWith(LOCAL_AGENT_HOST_SCHEME_PREFIX);
