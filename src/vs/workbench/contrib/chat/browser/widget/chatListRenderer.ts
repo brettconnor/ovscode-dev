@@ -2300,7 +2300,6 @@ export class ChatListItemRenderer extends Disposable implements ITreeRenderer<Ch
 		// session, which only has data when the response carries text/notebook
 		// edit groups — so skip the summary for those unless such a group is
 		// present.
-		const sessionType = getChatSessionType(element.sessionResource);
 		if (!element.model.entireResponse.value.some(part => part.kind === 'textEditGroup' || part.kind === 'notebookEditGroup')) {
 			return undefined;
 		}
@@ -3678,7 +3677,6 @@ export class ChatListItemRenderer extends Disposable implements ITreeRenderer<Ch
 
 	private shouldShowFileChangesSummary(element: IChatResponseViewModel): boolean {
 		// Only show file changes summary for local sessions - background sessions already have their own file changes part
-		const sessionType = getChatSessionType(element.sessionResource);
 		const isLocalSession = sessionType === localChatSessionType;
 		return shouldShowFileChangesSummaryForSettings(
 			element.isComplete,

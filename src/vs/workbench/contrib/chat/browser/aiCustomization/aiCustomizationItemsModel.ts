@@ -22,11 +22,10 @@ import { IAgentPluginService } from '../../common/plugins/agentPluginService.js'
 import { PromptsType } from '../../common/promptSyntax/promptTypes.js';
 import { IPromptsService } from '../../common/promptSyntax/service/promptsService.js';
 import { isContributionEnabled } from '../../common/enablement.js';
-import { AICustomizationItemNormalizer, EmptyItemProviderItemSource, IAICustomizationItemSource, IAICustomizationListItem, ItemProviderItemSource, PureItemProviderItemSource } from './aiCustomizationItemSource.js';
+import { AICustomizationItemNormalizer, EmptyItemProviderItemSource, IAICustomizationItemSource, IAICustomizationListItem, ItemProviderItemSource } from './aiCustomizationItemSource.js';
 import { PromptsServiceCustomizationItemProvider } from './promptsServiceCustomizationItemProvider.js';
 import { URI } from '../../../../../base/common/uri.js';
 import { getChatSessionType } from '../../common/model/chatUri.js';
-import { isAgentHostTarget } from '../agentSessions/agentSessions.js';
 import { ILogService } from '../../../../../platform/log/common/log.js';
 
 
@@ -261,24 +260,16 @@ export class AICustomizationItemsModel extends Disposable implements IAICustomiz
 				this.logService.warn(`No harness descriptor found for session type ${sessionType}`);
 				return new EmptyItemProviderItemSource(sessionResource);
 			}
-			if (isAgentHostTarget(sessionType)) {
-				if (!descriptor.itemProvider) {
-					this.logService.warn(`Agent-host session type ${sessionType} has no item provider`);
-					return new EmptyItemProviderItemSource(sessionResource);
-				}
-				return new PureItemProviderItemSource(sessionResource, descriptor.itemProvider, this.itemNormalizer);
-			} else {
-				const itemProvider = descriptor.itemProvider ?? this.instantiationService.createInstance(PromptsServiceCustomizationItemProvider);
-				return new ItemProviderItemSource(
-					sessionResource,
-					itemProvider,
-					this.promptsService,
-					this.workspaceService,
-					this.fileService,
-					this.pathService,
-					this.itemNormalizer,
-				);
-			}
+			const itemProvider = descriptor.itemProvider ?? this.instantiationService.createInstance(PromptsServiceCustomizationItemProvider);
+			return new ItemProviderItemSource(
+				sessionResource,
+				itemProvider,
+				this.promptsService,
+				this.workspaceService,
+				this.fileService,
+				this.pathService,
+				this.itemNormalizer,
+			);
 		};
 		const source = getItemSource();
 		this.sourceDescriptor = descriptor;

@@ -9,8 +9,6 @@ import { getDefaultHoverDelegate } from '../../../../../base/browser/ui/hover/ho
 import { IMarkdownString } from '../../../../../base/common/htmlContent.js';
 import { DisposableStore } from '../../../../../base/common/lifecycle.js';
 import { type MarkedExtension } from '../../../../../base/common/marked/marked.js';
-import { URI } from '../../../../../base/common/uri.js';
-import { ILabelService } from '../../../../../platform/label/common/label.js';
 import { IMarkdownRenderer, IMarkdownRendererService } from '../../../../../platform/markdown/browser/markdownRenderer.js';
 import { ILanguageService } from '../../../../../editor/common/languages/language.js';
 import { IConfigurationService } from '../../../../../platform/configuration/common/configuration.js';
@@ -124,7 +122,6 @@ export class ChatContentMarkdownRenderer implements IMarkdownRenderer {
 		@IConfigurationService configurationService: IConfigurationService,
 		@IHoverService private readonly hoverService: IHoverService,
 		@IMarkdownRendererService private readonly markdownRendererService: IMarkdownRendererService,
-		@ILabelService private readonly labelService: ILabelService,
 	) { }
 
 	render(markdown: IMarkdownString, options?: MarkdownRenderOptions, outElement?: HTMLElement): IRenderedMarkdown {

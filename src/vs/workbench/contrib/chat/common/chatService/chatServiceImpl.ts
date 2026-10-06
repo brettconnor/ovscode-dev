@@ -8,8 +8,7 @@ import { CancellationToken, CancellationTokenSource } from '../../../../../base/
 import { toErrorMessage } from '../../../../../base/common/errorMessage.js';
 import { BugIndicatingError, ErrorNoTelemetry, onUnexpectedError } from '../../../../../base/common/errors.js';
 import { Emitter, Event } from '../../../../../base/common/event.js';
-import { Codicon } from '../../../../../base/common/codicons.js';
-import { createMarkdownCommandLink, MarkdownString } from '../../../../../base/common/htmlContent.js';
+import { MarkdownString } from '../../../../../base/common/htmlContent.js';
 import { Iterable } from '../../../../../base/common/iterator.js';
 import { Disposable, DisposableResourceMap, DisposableStore, IDisposable } from '../../../../../base/common/lifecycle.js';
 import { equals } from '../../../../../base/common/objects.js';
@@ -44,7 +43,7 @@ import { isAgentHostTarget } from '../chatSessionsService.js';
 import { IChatSlashCommandService } from '../participants/chatSlashCommands.js';
 import { chatSessionResourceToId, getChatSessionType, LocalChatSessionUri } from '../model/chatUri.js';
 import { ChatRequestVariableSet, IChatRequestVariableEntry, isExplicitFileOrImageVariableEntry, isPromptTextVariableEntry } from '../attachments/chatVariableEntries.js';
-import { ChatAgentLocation, SessionTypeSelectionReason, ChatConfiguration, ChatModeKind, CustomizationMigrationHintMode } from '../constants.js';
+import { ChatAgentLocation, SessionTypeSelectionReason, ChatConfiguration, ChatModeKind } from '../constants.js';
 import { ChatMessageRole, IChatMessage, ILanguageModelsService } from '../languageModels.js';
 import { ILanguageModelToolsService } from '../tools/languageModelToolsService.js';
 import { ChatSessionOperationLog } from '../model/chatSessionOperationLog.js';
@@ -52,11 +51,6 @@ import { IPromptsService } from '../promptSyntax/service/promptsService.js';
 import { AGENT_DEBUG_LOG_FILE_LOGGING_ENABLED_SETTING, TROUBLESHOOT_COMMAND_NAME, TROUBLESHOOT_SKILL_PATH, COPILOT_SKILL_URI_SCHEME } from '../promptSyntax/promptTypes.js';
 import { ChatRequestHooks, mergeHooks } from '../promptSyntax/hookSchema.js';
 import { ComputeAutomaticInstructions } from '../promptSyntax/computeAutomaticInstructions.js';
-import { ICustomizationMigrationHint, ICustomizationMigrationService } from '../promptSyntax/service/customizationMigrationService.js';
-import { ICustomizationMigrationTelemetryService } from '../promptSyntax/service/customizationMigrationTelemetryService.js';
-import { AICustomizationManagementCommands, getCustomizationMigrationHintDismissedStorageKey } from '../aiCustomizationWorkspaceService.js';
-
-const customizationMigrationHintShownStateKey = 'customizationMigrationHintShown';
 
 class CancellableRequest implements IDisposable {
 	private readonly _yieldRequested: ISettableObservable<boolean> = observableValue(this, false);
@@ -205,8 +199,6 @@ export class ChatService extends Disposable implements IChatService {
 		@IChatEntitlementService private readonly chatEntitlementService: IChatEntitlementService,
 		@ILanguageModelsService private readonly languageModelsService: ILanguageModelsService,
 		@IChatDebugService private readonly chatDebugService: IChatDebugService,
-		@ICustomizationMigrationTelemetryService private readonly customizationMigrationTelemetryService: ICustomizationMigrationTelemetryService,
-		@ICustomizationMigrationService private readonly customizationMigrationService: ICustomizationMigrationService,
 	) {
 		super();
 
@@ -812,31 +804,6 @@ export class ChatService extends Disposable implements IChatService {
 				return { hooks: collectedHooks, hasDisabledClaudeHooks };
 			};
 
-			const collectCustomizationMigrationHint = async (): Promise<ICustomizationMigrationHint | undefined> => {
-				const sessionType = getChatSessionType(sessionResource);
-				const hintMode = this.configurationService.getValue<CustomizationMigrationHintMode>(ChatConfiguration.ChatCustomizationsMigrationHint);
-				const hintAlreadyShown = model.inputModel.state.get()?.contrib[customizationMigrationHintShownStateKey] === true;
-				const showOnce = hintMode === CustomizationMigrationHintMode.Once;
-				if (!isAgentHostTarget(sessionType)
-					|| (!showOnce && hintMode !== CustomizationMigrationHintMode.Always)
-					|| this.storageService.getBoolean(getCustomizationMigrationHintDismissedStorageKey(sessionType), StorageScope.WORKSPACE)
-					|| (showOnce && hintAlreadyShown)
-				) {
-					return undefined;
-				}
-
-				try {
-					const hint = await this.customizationMigrationService.computeMigrationHint(sessionResource, token);
-					if (hint && !token.isCancellationRequested) {
-						this.customizationMigrationTelemetryService.hintComputed(hint);
-						return hint;
-					}
-					return undefined;
-				} catch (error) {
-					this.logService.warn('[ChatService] Failed to compute customization migration hint:', error);
-					return undefined;
-				}
-			};
 
 			// Collect automatic instructions (.instructions.md, skills, etc.)
 			const collectInstructions = async (): Promise<IChatRequestVariableEntry[]> => {
@@ -904,10 +871,9 @@ export class ChatService extends Disposable implements IChatService {
 					completeResponseCreated();
 
 					// --- Step 2: Collect request context and hints in parallel (after UI is shown) ---
-					const [hooksResult, instructionEntries, customizationMigrationHint] = await Promise.all([
+					const [hooksResult, instructionEntries] = await Promise.all([
 						collectHooks(),
 						collectInstructions(),
-						collectCustomizationMigrationHint(),
 					]);
 					const collectedHooks = hooksResult.hooks;
 					const hasDisabledClaudeHooks = hooksResult.hasDisabledClaudeHooks;
@@ -1040,43 +1006,6 @@ export class ChatService extends Disposable implements IChatService {
 						}
 					}
 
-					const showCustomizationMigrationHint = (hint: ICustomizationMigrationHint | undefined): void => {
-						const hintAlreadyShown = model.inputModel.state.get()?.contrib[customizationMigrationHintShownStateKey] === true;
-						const hintMode = this.configurationService.getValue<CustomizationMigrationHintMode>(ChatConfiguration.ChatCustomizationsMigrationHint);
-						const showOnce = hintMode === CustomizationMigrationHintMode.Once;
-						if (!hint || token.isCancellationRequested || (showOnce && hintAlreadyShown)) {
-							return;
-						}
-
-						if (showOnce) {
-							model.inputModel.setState({
-								contrib: { ...model.inputModel.state.get()?.contrib, [customizationMigrationHintShownStateKey]: true }
-							});
-						}
-
-						const reviewLink = createMarkdownCommandLink({
-							id: AICustomizationManagementCommands.OpenEditor,
-							text: localize('customizationMigrationHint.review', "Review Migrations"),
-							tooltip: localize('customizationMigrationHint.review.tooltip', "Open Chat Customizations"),
-							arguments: [{ migration: true, migrationHint: hint }],
-						});
-						const dismissLink = createMarkdownCommandLink({
-							id: AICustomizationManagementCommands.DismissMigrationHint,
-							text: localize('customizationMigrationHint.dismiss', "Don't Show Again"),
-							tooltip: localize('customizationMigrationHint.dismiss.tooltip', "Do not show this migration hint again for this harness in this workspace"),
-							arguments: [{ hint }],
-						});
-						this.customizationMigrationTelemetryService.hintShown(hint);
-						progressCallback([{
-							kind: 'systemNotification',
-							content: new MarkdownString(
-								localize('customizationMigrationHint', "*{0} {1} | {2}*", hint.message, reviewLink, dismissLink),
-								{ isTrusted: { enabledCommands: [AICustomizationManagementCommands.OpenEditor, AICustomizationManagementCommands.DismissMigrationHint] } }
-							),
-							icon: Codicon.info,
-						}]);
-					};
-					showCustomizationMigrationHint(customizationMigrationHint);
 
 					// Check for disabled Claude Code hooks and notify the user once per workspace.
 					// Only set the flag when actually showing the hint, so the setup agent flow

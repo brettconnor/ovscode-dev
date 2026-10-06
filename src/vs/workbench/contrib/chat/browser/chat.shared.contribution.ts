@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { Event } from '../../../../base/common/event.js';
-import { createMarkdownCommandLink } from '../../../../base/common/htmlContent.js';
 import { Disposable, DisposableMap, DisposableStore } from '../../../../base/common/lifecycle.js';
 import { Schemas } from '../../../../base/common/network.js';
 import { autorun, observableFromEvent } from '../../../../base/common/observable.js';
@@ -63,9 +62,8 @@ import { IChatService } from '../common/chatService/chatService.js';
 import { ChatRequestOriginService, IChatRequestOriginService } from '../common/chatRequestOrigin.js';
 import { ChatService } from '../common/chatService/chatServiceImpl.js';
 import { ChatSideChatService, IChatSideChatService } from '../common/chatSideChatService.js';
-import { BYOKUtilityModelDefault, ChatAIDisabledSettingId, ChatAgentLocation, ChatConfiguration, ChatClosedPromoNotification, ChatDefaultPermissionLevel, CustomizationMigrationHintMode, ChatNotificationMode, ChatPermissionLevel } from '../common/constants.js';
+import { BYOKUtilityModelDefault, ChatAIDisabledSettingId, ChatAgentLocation, ChatConfiguration, ChatClosedPromoNotification, ChatDefaultPermissionLevel, ChatNotificationMode, ChatPermissionLevel } from '../common/constants.js';
 import { chatProgressConfigurationProperties } from './chatProgressConfiguration.js';
-import { customizationMarketplaceConfigurationProperties } from './aiCustomization/customizationMarketplaceConfiguration.js';
 import { CodeMapperService, ICodeMapperService } from '../common/editing/chatCodeMapperService.js';
 import { IChatEditingService } from '../common/editing/chatEditingService.js';
 import { ILanguageModelIgnoredFilesService, LanguageModelIgnoredFilesService } from '../common/ignoredFiles.js';
@@ -80,9 +78,6 @@ import { PromptsConfig, isTildePath } from '../common/promptSyntax/config/config
 import { AGENTS_SOURCE_FOLDER, AGENT_FILE_EXTENSION, CLAUDE_AGENTS_SOURCE_FOLDER, COPILOT_USER_AGENTS_SOURCE_FOLDER, DEFAULT_HOOK_FILE_PATHS, DEFAULT_INSTRUCTIONS_SOURCE_FOLDERS, DEFAULT_SKILL_SOURCE_FOLDERS, INSTRUCTIONS_DEFAULT_SOURCE_FOLDER, INSTRUCTION_FILE_EXTENSION, LEGACY_MODE_DEFAULT_SOURCE_FOLDER, LEGACY_MODE_FILE_EXTENSION, PROMPT_DEFAULT_SOURCE_FOLDER, PROMPT_FILE_EXTENSION, SKILL_FILENAME } from '../common/promptSyntax/config/promptFileLocations.js';
 import { HOOK_SCHEMA_URI, hookFileSchema } from '../common/promptSyntax/hookSchema.js';
 import { AgentHostAgentDebugLogEnabledSettingId, AgentHostAgentDebugLogMaxEventsSettingId, getDocumentationUrl, PromptFileSource, PromptsType } from '../common/promptSyntax/promptTypes.js';
-import { ICustomizationMigrationService } from '../common/promptSyntax/service/customizationMigrationService.js';
-import { CustomizationMigrationTelemetryService, ICustomizationMigrationTelemetryService } from '../common/promptSyntax/service/customizationMigrationTelemetryService.js';
-import { CustomizationMigrationService } from './aiCustomization/customizationMigrationServiceImpl.js';
 import { IPromptsService } from '../common/promptSyntax/service/promptsService.js';
 import { PromptsService } from '../common/promptSyntax/service/promptsServiceImpl.js';
 import { BuiltinToolsContribution } from '../common/tools/builtinTools/tools.js';
@@ -93,6 +88,8 @@ import { LanguageModelToolsExtensionPointHandler } from '../common/tools/languag
 import { ILanguageModelToolsService } from '../common/tools/languageModelToolsService.js';
 import { IVoiceChatService, VoiceChatService } from '../common/voiceChatService.js';
 import '../common/widget/chatColors.js';
+import './aiCustomization/aiCustomizationItemsModel.js';
+import './aiCustomization/customizationHarnessService.js';
 import { IChatLayoutService } from '../common/widget/chatLayoutService.js';
 import { ChatResponseResourceFileSystemProvider, ChatResponseResourceWorkbenchContribution, IChatResponseResourceFileSystemProvider } from '../common/widget/chatResponseResourceFileSystemProvider.js';
 import { ChatWidgetHistoryService, IChatWidgetHistoryService } from '../common/widget/chatWidgetHistoryService.js';
@@ -115,7 +112,6 @@ import { registerChatFindActions } from './actions/chatFindActions.js';
 import { ChatGettingStartedContribution } from './actions/chatGettingStarted.js';
 import { registerChatExportActions } from './actions/chatImportExport.js';
 import { registerLanguageModelActions } from './actions/chatLanguageModelActions.js';
-import { registerChatOpenAgentDebugPanelAction } from './actions/chatOpenAgentDebugPanelAction.js';
 import { registerChatPluginActions } from './actions/chatPluginActions.js';
 import { registerChatPromptNavigationActions } from './actions/chatPromptNavigationActions.js';
 import { registerChatQueueActions } from './actions/chatQueueActions.js';
@@ -124,8 +120,6 @@ import { registerChatSpeechToTextActions } from './actions/chatSpeechToTextActio
 import { registerChatTitleActions } from './actions/chatTitleActions.js';
 import { registerChatToolActions } from './actions/chatToolActions.js';
 import { CONFIGURE_DICTATION_INSTRUCTIONS_ACTION_ID, registerConfigureSpeechInstructionsActions } from './actions/configureVoiceInstructionsAction.js';
-import { ChatDebugEditor } from './chatDebug/chatDebugEditor.js';
-import { ChatDebugEditorInput, ChatDebugEditorInputSerializer } from './chatDebug/chatDebugEditorInput.js';
 import { ChatGoalSummaryService, IChatGoalSummaryService } from './chatGoalSummaryService.js';
 import { ChatSubmitRequestHandlerService, IChatSubmitRequestHandlerService } from './chatSubmitRequestHandlerService.js';
 import { PromptsDebugContribution } from './promptsDebugContribution.js';
@@ -140,13 +134,8 @@ import { RenameToolContribution } from './tools/renameTool.js';
 import { UsagesToolContribution } from './tools/usagesTool.js';
 
 import { ChatContextKeys } from '../common/actions/chatContextKeys.js';
-import { AICustomizationManagementCommands } from '../common/aiCustomizationWorkspaceService.js';
 
 import { ChatAccessibilityService } from './accessibility/chatAccessibilityService.js';
-import './aiCustomization/aiCustomizationItemsModel.js';
-import './aiCustomization/aiCustomizationManagement.contribution.js';
-import './aiCustomization/aiCustomizationWorkspaceService.js';
-import './aiCustomization/customizationHarnessService.js';
 import './attachments/chatAttachmentModel.js';
 import { ChatAttachmentResolveService, IChatAttachmentResolveService } from './attachments/chatAttachmentResolveService.js';
 import { ChatAttachmentWidgetRegistry, IChatAttachmentWidgetRegistry } from './attachments/chatAttachmentWidgetRegistry.js';
@@ -230,7 +219,6 @@ import { ChatFindAccessibilityHelp } from './widget/chatFind/chatFindAccessibili
 import { ChatWidget } from './widget/chatWidget.js';
 import { ChatWidgetService } from './widget/chatWidgetService.js';
 import { ChatQueuePickerRendering } from './widget/input/chatQueuePickerActionItem.js';
-import './widget/input/editor/chatInputCommandArgumentHint.js';
 import './widget/input/editor/chatInputCompletions.js';
 import './widget/input/editor/chatInputEditorContrib.js';
 import './widget/input/editor/chatInputEditorHover.js';
@@ -251,12 +239,6 @@ jsonContributionRegistry.registerSchema(HOOK_SCHEMA_URI, hookFileSchema);
 
 // Register configuration
 const configurationRegistry = Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration);
-const migrationsTabLink = createMarkdownCommandLink({
-	id: AICustomizationManagementCommands.OpenEditor,
-	text: nls.localize('chat.locations.migrate', "Migrations tab"),
-	tooltip: nls.localize('chat.locations.migrate.tooltip', "Open the Migrations Tab"),
-	arguments: [{ migration: true }],
-});
 configurationRegistry.registerConfiguration({
 	id: 'chatSidebar',
 	title: nls.localize('interactiveSessionConfigurationTitle', "Chat"),
@@ -1921,7 +1903,7 @@ configurationRegistry.registerConfiguration({
 			default: {
 				...DEFAULT_INSTRUCTIONS_SOURCE_FOLDERS.map((folder) => ({ [folder.path]: true })).reduce((acc, curr) => ({ ...acc, ...curr }), {}),
 			},
-			markdownDeprecationMessage: nls.localize('chat.instructions.config.locations.deprecated', "This setting and the Local agent harness will be removed in a future release. Review the {0} in the Agent Customizations editor to move instructions into supported locations.", migrationsTabLink),
+			markdownDeprecationMessage: nls.localize('chat.instructions.config.locations.deprecated', "This setting and the Local agent harness will be removed in a future release. Review configured instruction locations."),
 			deprecationMessageSeverity: 'info',
 			additionalProperties: { type: 'boolean' },
 			propertyNames: {
@@ -1955,7 +1937,7 @@ configurationRegistry.registerConfiguration({
 			default: {
 				[PROMPT_DEFAULT_SOURCE_FOLDER]: true,
 			},
-			markdownDeprecationMessage: nls.localize('chat.reusablePrompts.config.locations.deprecated', "This setting and the Local agent harness will be removed in a future release. Review the {0} in the Agent Customizations editor to convert prompt files into skills.", migrationsTabLink),
+			markdownDeprecationMessage: nls.localize('chat.reusablePrompts.config.locations.deprecated', "This setting and the Local agent harness will be removed in a future release. Review the configured prompt locations."),
 			deprecationMessageSeverity: 'info',
 			additionalProperties: { type: 'boolean' },
 			unevaluatedProperties: { type: 'boolean' },
@@ -1990,7 +1972,7 @@ configurationRegistry.registerConfiguration({
 			default: {
 				[LEGACY_MODE_DEFAULT_SOURCE_FOLDER]: true,
 			},
-			markdownDeprecationMessage: nls.localize('chat.mode.config.locations.deprecated', "This setting and the Local agent harness will be removed in a future release. Chat modes are now called custom agents and are located in `.github/agents`. Review the {0} in the Agent Customizations editor to move them into supported locations.", migrationsTabLink),
+			markdownDeprecationMessage: nls.localize('chat.mode.config.locations.deprecated', "This setting and the Local agent harness will be removed in a future release. Chat modes are now called custom agents and are located in `.github/agents`. Review the configured locations."),
 			deprecationMessageSeverity: 'info',
 			additionalProperties: { type: 'boolean' },
 			unevaluatedProperties: { type: 'boolean' },
@@ -2023,7 +2005,7 @@ configurationRegistry.registerConfiguration({
 				[CLAUDE_AGENTS_SOURCE_FOLDER]: true,
 				[COPILOT_USER_AGENTS_SOURCE_FOLDER]: true,
 			},
-			markdownDeprecationMessage: nls.localize('chat.agents.config.locations.deprecated', "This setting and the Local agent harness will be removed in a future release. Review the {0} in the Agent Customizations editor to move agents into supported locations.", migrationsTabLink),
+			markdownDeprecationMessage: nls.localize('chat.agents.config.locations.deprecated', "This setting and the Local agent harness will be removed in a future release. Review the {0} in the Agent Customizations editor to move agents into supported locations."),
 			deprecationMessageSeverity: 'info',
 			additionalProperties: { type: 'boolean' },
 			propertyNames: {
@@ -2131,7 +2113,7 @@ configurationRegistry.registerConfiguration({
 			default: {
 				...DEFAULT_SKILL_SOURCE_FOLDERS.map((folder) => ({ [folder.path]: true })).reduce((acc, curr) => ({ ...acc, ...curr }), {}),
 			},
-			markdownDeprecationMessage: nls.localize('chat.agentSkillsLocations.deprecated', "This setting and the Local agent harness will be removed in a future release. Review the {0} in the Agent Customizations editor to move skills into supported locations.", migrationsTabLink),
+			markdownDeprecationMessage: nls.localize('chat.agentSkillsLocations.deprecated', "This setting and the Local agent harness will be removed in a future release. Review the {0} in the Agent Customizations editor to move skills into supported locations."),
 			deprecationMessageSeverity: 'info',
 			additionalProperties: { type: 'boolean' },
 			propertyNames: {
@@ -2486,44 +2468,6 @@ configurationRegistry.registerConfiguration({
 			description: nls.localize('chat.experimental.customizations.toggleStyle', "Controls whether Plugin, MCP, and Tools customization pages use checkboxes or switches for enablement."),
 			default: 'switch',
 		},
-		...customizationMarketplaceConfigurationProperties,
-		[ChatConfiguration.ChatCustomizationsPromptMigrationEnabled]: {
-			type: 'boolean',
-			tags: ['experimental'],
-			description: nls.localize('chat.customizations.promptMigration.enabled', "Controls whether the Chat Customizations editor offers to convert prompt files into skills for agent-host harnesses, which ignore prompt files. When disabled, the migration card and sidebar shortcut are hidden."),
-			default: true,
-		},
-		[ChatConfiguration.ChatCustomizationsUserDataMigrationEnabled]: {
-			type: 'boolean',
-			tags: ['experimental'],
-			description: nls.localize('chat.customizations.userDataMigration.enabled', "Controls whether the Chat Customizations editor offers to move agents and instructions stored in user data to the active agent-host harness, which ignores the user data location. When disabled, the migration card and sidebar shortcut are hidden."),
-			default: false,
-		},
-		[ChatConfiguration.ChatCustomizationsLocationsMigrationEnabled]: {
-			type: 'boolean',
-			tags: ['experimental'],
-			description: nls.localize('chat.customizations.locationsMigration.enabled', "Controls whether the Chat Customizations editor offers to move agents, instructions, and skills from configured locations that are not supported by the active agent-host harness. When disabled, the migration card and sidebar shortcut are hidden."),
-			default: false,
-		},
-		[ChatConfiguration.ChatCustomizationsMcpServerMigrationEnabled]: {
-			type: 'boolean',
-			tags: ['experimental'],
-			description: nls.localize('chat.customizations.mcpServerMigration.enabled', "Controls whether VS Code shows MCP server migration actions, hints, compatibility badges, and compatibility details. Migration moves eligible workspace MCP servers out of .vscode/mcp.json and into a .mcp.json file at the workspace root, where the active agent-host harness discovers them directly."),
-			default: false,
-		},
-		[ChatConfiguration.ChatCustomizationsMigrationHint]: {
-			type: 'string',
-			enum: [CustomizationMigrationHintMode.Never, CustomizationMigrationHintMode.Once, CustomizationMigrationHintMode.Always],
-			enumDescriptions: [
-				nls.localize('chat.customizations.migrationHint.never', "Never show customization migration hints in chat."),
-				nls.localize('chat.customizations.migrationHint.once', "Show a customization migration hint once per chat session."),
-				nls.localize('chat.customizations.migrationHint.always', "Show a customization migration hint for every chat request."),
-			],
-			description: nls.localize('chat.customizations.migrationHint', "Controls whether chat shows information about customizations that are not used by the active Agent Host harness."),
-			default: CustomizationMigrationHintMode.Never,
-			tags: ['experimental'],
-			experiment: { mode: 'auto' },
-		}
 	}
 });
 Registry.as<IEditorPaneRegistry>(EditorExtensions.EditorPane).registerEditorPane(
@@ -2536,16 +2480,7 @@ Registry.as<IEditorPaneRegistry>(EditorExtensions.EditorPane).registerEditorPane
 		new SyncDescriptor(ChatEditorInput)
 	]
 );
-Registry.as<IEditorPaneRegistry>(EditorExtensions.EditorPane).registerEditorPane(
-	EditorPaneDescriptor.create(
-		ChatDebugEditor,
-		ChatDebugEditorInput.ID,
-		nls.localize('chatDebug', "Debug View")
-	),
-	[
-		new SyncDescriptor(ChatDebugEditorInput)
-	]
-);
+
 Registry.as<IEditorPaneRegistry>(EditorExtensions.EditorPane).registerEditorPane(
 	EditorPaneDescriptor.create(
 		AgentPluginEditor,
@@ -2691,7 +2626,7 @@ Registry.as<IConfigurationMigrationRegistry>(Extensions.ConfigurationMigration).
 	// Agent Merge settings dropped the `agentHost` segment from their ids. Without
 	// this an explicit opt-out (for example `fixCI: false`) would silently revert to
 	// the permissive default for sessions that already have Agent Merge enabled.
-	...Object.values(AgentMergeSettingId).map(settingId => {
+	...Object.values(AgentMergeSettingId).filter((settingId): settingId is string => typeof settingId === 'string').map(settingId => {
 		const legacyKey = settingId.replace(/^chat\./, 'chat.agentHost.');
 		return {
 			key: legacyKey,
@@ -2843,35 +2778,7 @@ class CopilotTelemetryContribution extends Disposable implements IWorkbenchContr
 	}
 }
 
-class ChatDebugResolverContribution implements IWorkbenchContribution {
 
-	static readonly ID = 'workbench.contrib.chatDebugResolver';
-
-	constructor(
-		@IEditorResolverService editorResolverService: IEditorResolverService,
-	) {
-		editorResolverService.registerEditor(
-			`${ChatDebugEditorInput.RESOURCE.scheme}:**/**`,
-			{
-				id: ChatDebugEditorInput.ID,
-				label: nls.localize('chatDebug', "Debug View"),
-				priority: RegisteredEditorPriority.exclusive
-			},
-			{
-				singlePerResource: true,
-				canSupportResource: resource => resource.scheme === ChatDebugEditorInput.RESOURCE.scheme
-			},
-			{
-				createEditorInput: () => {
-					return {
-						editor: ChatDebugEditorInput.instance,
-						options: { pinned: true }
-					};
-				}
-			}
-		);
-	}
-}
 
 class ChatAgentSettingContribution extends Disposable implements IWorkbenchContribution {
 
@@ -3193,6 +3100,7 @@ class ChatSpeechToTextInitContribution implements IWorkbenchContribution {
 	}
 }
 
+
 AccessibleViewRegistry.register(new ChatResponseAccessibleView());
 AccessibleViewRegistry.register(new PanelChatAccessibilityHelp());
 AccessibleViewRegistry.register(new QuickChatAccessibilityHelp());
@@ -3203,12 +3111,10 @@ AccessibleViewRegistry.register(new ChatPetAchievementsAccessibilityHelp());
 
 registerEditorFeature(ChatInputBoxContentProvider);
 Registry.as<IEditorFactoryRegistry>(EditorExtensions.EditorFactory).registerEditorSerializer(ChatEditorInput.TypeID, ChatEditorInputSerializer);
-Registry.as<IEditorFactoryRegistry>(EditorExtensions.EditorFactory).registerEditorSerializer(ChatDebugEditorInput.ID, ChatDebugEditorInputSerializer);
 
 registerWorkbenchContribution2(CopilotTelemetryContribution.ID, CopilotTelemetryContribution, WorkbenchPhase.BlockRestore);
 registerWorkbenchContribution2(ChatSpeechToTextInitContribution.ID, ChatSpeechToTextInitContribution, WorkbenchPhase.BlockRestore);
 registerWorkbenchContribution2(ChatResolverContribution.ID, ChatResolverContribution, WorkbenchPhase.BlockStartup);
-registerWorkbenchContribution2(ChatDebugResolverContribution.ID, ChatDebugResolverContribution, WorkbenchPhase.BlockStartup);
 registerWorkbenchContribution2(PromptsDebugContribution.ID, PromptsDebugContribution, WorkbenchPhase.BlockRestore);
 registerWorkbenchContribution2(ChatLanguageModelsDataContribution.ID, ChatLanguageModelsDataContribution, WorkbenchPhase.BlockRestore);
 registerWorkbenchContribution2(ChatSlashCommandsContribution.ID, ChatSlashCommandsContribution, WorkbenchPhase.Eventually);
@@ -3265,7 +3171,6 @@ registerWorkbenchContribution2(ChatPetEditingAchievementContribution.ID, ChatPet
 registerChatAccessibilityActions();
 registerChatCopyActions();
 registerChatModelFeedbackSurveyActions();
-registerChatOpenAgentDebugPanelAction();
 registerChatCodeBlockActions();
 registerChatCodeCompareBlockActions();
 registerChatFileTreeActions();
@@ -3335,8 +3240,6 @@ registerSingleton(IChatMarkdownAnchorService, ChatMarkdownAnchorService, Instant
 registerSingleton(IAgentNetworkFilterService, AgentNetworkFilterService, InstantiationType.Delayed);
 registerSingleton(ILanguageModelIgnoredFilesService, LanguageModelIgnoredFilesService, InstantiationType.Delayed);
 registerSingleton(IPromptsService, PromptsService, InstantiationType.Delayed);
-registerSingleton(ICustomizationMigrationService, CustomizationMigrationService, InstantiationType.Delayed);
-registerSingleton(ICustomizationMigrationTelemetryService, CustomizationMigrationTelemetryService, InstantiationType.Delayed);
 registerSingleton(IChatContextPickService, ChatContextPickService, InstantiationType.Delayed);
 registerSingleton(IChatModeService, ChatModeService, InstantiationType.Delayed);
 registerSingleton(IChatAttachmentResolveService, ChatAttachmentResolveService, InstantiationType.Delayed);

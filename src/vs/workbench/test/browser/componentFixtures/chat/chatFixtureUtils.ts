@@ -6,7 +6,6 @@
 import { Event } from '../../../../../base/common/event.js';
 import { constObservable, IObservable, observableValue } from '../../../../../base/common/observable.js';
 import { Disposable } from '../../../../../base/common/lifecycle.js';
-import { URI } from '../../../../../base/common/uri.js';
 import { mock } from '../../../../../base/test/common/mock.js';
 import { ICommandService } from '../../../../../platform/commands/common/commands.js';
 import { IContextKeyService } from '../../../../../platform/contextkey/common/contextkey.js';
@@ -40,7 +39,6 @@ import { INotebookDocumentService } from '../../../../services/notebook/common/n
 import { IViewDescriptorService } from '../../../../common/views.js';
 import { ISCMService } from '../../../../contrib/scm/common/scm.js';
 import { IBrowserViewWorkbenchService } from '../../../../contrib/browserView/common/browserView.js';
-import { IVoiceModeOnboardingService } from '../../../../contrib/agentsVoice/browser/voiceModeOnboarding.js';
 import { IChatAccessibilityService, IChatWidget, IChatWidgetService } from '../../../../contrib/chat/browser/chat.js';
 import { IChatResponseFileChangesService } from '../../../../contrib/chat/browser/chatResponseFileChangesService.js';
 import { IChatPetService } from '../../../../contrib/chat/browser/chatPetService.js';
@@ -252,10 +250,6 @@ export function registerChatFixtureServices(reg: ServiceRegistration, options: I
 		override readonly onDidChangePreparingModel = Event.None;
 		override readonly state = ChatSpeechToTextState.Idle;
 		override readonly isPreparingModel = false;
-	}());
-	reg.defineInstance(IVoiceModeOnboardingService, new class extends mock<IVoiceModeOnboardingService>() {
-		override readonly isVisible = false;
-		override registerHost() { return Disposable.None; }
 	}());
 	reg.defineInstance(IChatInputNoticeHubService, new class extends mock<IChatInputNoticeHubService>() {
 		override registerHost() { return Disposable.None; }

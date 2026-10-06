@@ -18,7 +18,6 @@ import { basename } from '../../../../../../../base/common/resources.js';
 import { isFalsyOrWhitespace } from '../../../../../../../base/common/strings.js';
 import { hasKey, isDefined } from '../../../../../../../base/common/types.js';
 import { URI } from '../../../../../../../base/common/uri.js';
-import { generateUuid } from '../../../../../../../base/common/uuid.js';
 import { localize } from '../../../../../../../nls.js';
 import { IInstantiationService } from '../../../../../../../platform/instantiation/common/instantiation.js';
 import { ILogService } from '../../../../../../../platform/log/common/log.js';

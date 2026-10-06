@@ -53,7 +53,6 @@ import { FileOperation, FileOperationType, getKeyForChatSessionResource } from '
 import { IChatEditingExplanationModelManager, IExplanationDiffInfo, IExplanationGenerationHandle } from './chatEditingExplanationModelManager.js';
 import { ChatEditingSessionStorage, IChatEditingSessionStop, StoredSessionState } from './chatEditingSessionStorage.js';
 import { ChatEditingTextModelContentProvider } from './chatEditingTextModelContentProviders.js';
-import { getChatSessionType } from '../../common/model/chatUri.js';
 
 const enum NotExistBehavior {
 	Create,

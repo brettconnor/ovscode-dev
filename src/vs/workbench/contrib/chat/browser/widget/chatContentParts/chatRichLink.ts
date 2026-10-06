@@ -5,7 +5,6 @@
 
 import { getDefaultHoverDelegate } from '../../../../../../base/browser/ui/hover/hoverDelegateFactory.js';
 import { createPixelSpinner, IPixelSpinner } from '../../../../../../base/browser/ui/pixelSpinner/pixelSpinner.js';
-import { CancellationToken } from '../../../../../../base/common/cancellation.js';
 import { Disposable, DisposableStore, IDisposable } from '../../../../../../base/common/lifecycle.js';
 import { autorun, type IReader } from '../../../../../../base/common/observable.js';
 import { URI } from '../../../../../../base/common/uri.js';
@@ -128,11 +127,9 @@ export class ChatRichLinkDecorator extends Disposable {
 		authoredLabel.textContent = anchor.textContent || href;
 		const richLink = store.add(ChatRichLink.mount(anchor, authoredLabel));
 		let tooltip = href;
-		let kind: ChatLinkPresentationKind | undefined;
 		store.add(autorun(reader => {
 			const presentation = readPresentation(reader);
 			tooltip = presentation.tooltip ?? href;
-			kind = presentation.kind;
 			richLink.update(presentation);
 		}));
 		store.add(this._hoverService.setupManagedHover(getDefaultHoverDelegate('element'), anchor, () => {
@@ -154,18 +151,6 @@ export class ChatRichLinkDecorator extends Disposable {
 		const rule = this._linkPresentationService.getLinkPresentationRule(resource);
 		return rule ? this._linkPresentationService.createLinkPresentationWatcher(rule.id, resource) : undefined;
 	}
-}
-
-/**
- * The plain tooltip as an element, so a session link whose hover data cannot be
- * resolved still shows something (the managed hover's element factory has no way
- * to fall back to a string).
- */
-function plainTooltipElement(document: Document, tooltip: string): HTMLElement {
-	const element = document.createElement('div');
-	element.className = 'chat-rich-link-plain-hover';
-	element.textContent = tooltip;
-	return element;
 }
 
 interface IChatRichLinkStatusDom {
