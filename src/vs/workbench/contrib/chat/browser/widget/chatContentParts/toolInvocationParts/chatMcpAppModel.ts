@@ -20,7 +20,6 @@ import { hasKey, isDefined } from '../../../../../../../base/common/types.js';
 import { URI } from '../../../../../../../base/common/uri.js';
 import { generateUuid } from '../../../../../../../base/common/uuid.js';
 import { localize } from '../../../../../../../nls.js';
-import { toAgentHostUri } from '../../../../../../../platform/agentHost/common/agentHostUri.js';
 import { IInstantiationService } from '../../../../../../../platform/instantiation/common/instantiation.js';
 import { ILogService } from '../../../../../../../platform/log/common/log.js';
 import { IOpenerService } from '../../../../../../../platform/opener/common/opener.js';
@@ -58,16 +57,6 @@ export type McpAppLoadState =
 export class ChatMcpAppModel extends Disposable {
 	private static readonly heightCache = new WeakMap<IChatToolInvocation | IChatToolInvocationSerialized, number>();
 
-	/**
-	 * In-memory origin map for agent-host MCP servers. Agent-host server
-	 * ids embed the session id, so they're effectively single-use across
-	 * VS Code restarts — using {@link WebviewOriginStore} for them would
-	 * accumulate one persisted entry per agent-host session forever. The
-	 * in-memory map keeps origins stable for the lifetime of the app
-	 * (enough for webview state to persist across re-renders) without
-	 * touching application storage.
-	 */
-	private static readonly _agentHostOrigins = new Map<string, string>();
 
 	/** Origin store for persistent webview origins per server (local MCP only) */
 	private readonly _originStore: WebviewOriginStore;
@@ -596,44 +585,14 @@ export class ChatMcpAppModel extends Disposable {
 	 * agent-host servers use the per-session `serverId`.
 	 */
 	private _serverOriginId(): string {
-		return this.renderData.kind === 'agentHost'
-			? this.renderData.serverId
-			: this.renderData.serverDefinitionId;
+		return this.renderData.serverDefinitionId;
 	}
 
-	/**
-	 * Picks a stable webview origin for this server. Local MCP servers
-	 * get a persisted origin via {@link WebviewOriginStore} since their
-	 * server-definition id is stable across VS Code restarts. Agent-host
-	 * servers fall back to the static in-memory {@link _agentHostOrigins}
-	 * map keyed by `serverId`, so origins are stable within the app
-	 * lifetime without leaking entries into application storage for
-	 * every session.
-	 */
 	private _computeWebviewOrigin(): string {
-		if (this.renderData.kind !== 'agentHost') {
-			return this._originStore.getOrigin('mcpApp', this._serverOriginId());
-		}
-		const key = this._serverOriginId();
-		let origin = ChatMcpAppModel._agentHostOrigins.get(key);
-		if (!origin) {
-			origin = generateUuid();
-			ChatMcpAppModel._agentHostOrigins.set(key, origin);
-		}
-		return origin;
+		return this._originStore.getOrigin('mcpApp', this._serverOriginId());
 	}
 
-	/**
-	 * Resolves a server-relative resource URI into a workbench URI.
-	 * - Local servers: wrap in {@link McpResourceURI.fromServer} so it
-	 *   resolves through the MCP filesystem provider.
-	 * - Agent-host servers: wrap with the originating connection authority
-	 *   so the URI resolves against the server that supplied it.
-	 */
 	private _resolveServerResourceUri(serverUri: string): URI {
-		if (this.renderData.kind === 'agentHost') {
-			return toAgentHostUri(URI.parse(serverUri), this.renderData.connectionAuthority);
-		}
 		return McpResourceURI.fromServer({ id: this.renderData.serverDefinitionId, label: '' }, serverUri);
 	}
 

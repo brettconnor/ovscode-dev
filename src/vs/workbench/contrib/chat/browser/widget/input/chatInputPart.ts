@@ -9,7 +9,7 @@ import { DEFAULT_FONT_FAMILY } from '../../../../../../base/browser/fonts.js';
 import { IHistoryNavigationWidget } from '../../../../../../base/browser/history.js';
 import { hasModifierKeys, StandardKeyboardEvent } from '../../../../../../base/browser/keyboardEvent.js';
 import { IActionViewItem } from '../../../../../../base/browser/ui/actionbar/actionbar.js';
-import { ActionViewItem, BaseActionViewItem, IActionViewItemOptions } from '../../../../../../base/browser/ui/actionbar/actionViewItems.js';
+import { BaseActionViewItem, IActionViewItemOptions } from '../../../../../../base/browser/ui/actionbar/actionViewItems.js';
 import * as aria from '../../../../../../base/browser/ui/aria/aria.js';
 import { ButtonWithIcon } from '../../../../../../base/browser/ui/button/button.js';
 import { createInstantHoverDelegate } from '../../../../../../base/browser/ui/hover/hoverDelegateFactory.js';
@@ -62,7 +62,7 @@ import { MenuEntryActionViewItem } from '../../../../../../platform/actions/brow
 import { HiddenItemStrategy, MenuWorkbenchToolBar } from '../../../../../../platform/actions/browser/toolbar.js';
 import { MenuId, MenuItemAction } from '../../../../../../platform/actions/common/actions.js';
 import { IConfigurationService } from '../../../../../../platform/configuration/common/configuration.js';
-import { ContextKeyExpr, IContextKey, IContextKeyService, RawContextKey } from '../../../../../../platform/contextkey/common/contextkey.js';
+import { IContextKey, IContextKeyService } from '../../../../../../platform/contextkey/common/contextkey.js';
 import { IDialogService } from '../../../../../../platform/dialogs/common/dialogs.js';
 import { IFileService } from '../../../../../../platform/files/common/files.js';
 import { registerAndCreateHistoryNavigationContext } from '../../../../../../platform/history/browser/contextScopedHistoryWidget.js';
@@ -101,7 +101,7 @@ import { ChatModelSelectionDiagnostics } from './chatModelSelectionDiagnostics.j
 import { deserializeUntitledInputAttachments, deserializeUntitledInputState, serializeUntitledInputAttachments, serializeUntitledInputState } from './chatInputStatePersistence.js';
 import { ChatInputStateOrigin, IChatModel, IChatModelInputState, IChatRequestModeInfo, IChatRequestModel, IInputModel, IIntendedModelHolder, IntendedModelSlot, logChangesToStateModel } from '../../../common/model/chatModel.js';
 import { isInConversationModelChoice, ModelSelectionReason, resolveConfiguredModel, RestoredModelReason } from '../../../common/modelSelection.js';
-import { filterModelsForSession, hasModelsTargetingSession, isModelHiddenInPicker, isModelSupportedForInlineChat, isModelSupportedForMode, isNewConversation, isSessionStarted, mergeModelsWithCache, shouldDropAgnosticDraftModel, shouldResetOnModelListChange, shouldRestorePerTypeModelOnSessionSwitch } from './chatInputModelUtils.js';
+import { filterModelsForSession, isModelHiddenInPicker, isModelSupportedForInlineChat, isModelSupportedForMode, isNewConversation, isSessionStarted, mergeModelsWithCache, shouldDropAgnosticDraftModel, shouldResetOnModelListChange, shouldRestorePerTypeModelOnSessionSwitch } from './chatInputModelUtils.js';
 import { getChatSessionType, isUntitledChatSession, LocalChatSessionUri } from '../../../common/model/chatUri.js';
 import { IChatResponseViewModel, isResponseVM } from '../../../common/model/chatViewModel.js';
 import { IChatAgentService } from '../../../common/participants/chatAgents.js';
@@ -2316,19 +2316,6 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 	}
 
 	/**
-	 * Updates the widget lock state based on a session type.
-	 * Local sessions unlock from coding agent mode, while remote/cloud sessions lock to coding agent mode.
-	 */
-	private updateWidgetLockStateFromSessionType(sessionType: string): void {
-		if (sessionType === localChatSessionType) {
-			this._widget?.unlockFromCodingAgent();
-			return;
-		}
-
-		this._widget?.unlockFromCodingAgent();
-	}
-
-	/**
 	 * Resolves the session type of the active chat session for the delegation picker.
 	 */
 	/**
@@ -3208,7 +3195,7 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 						setPermissionLevel: (level: ChatPermissionLevel) => {
 							this.setPermissionLevel(level);
 						},
-						isSandboxToggleApplicable: () => this.getEffectiveSessionType(this.getCurrentSessionResource()) === SessionType.Local,
+						isSandboxToggleApplicable: () => this.getEffectiveSessionType(this.getCurrentSessionResource()) === localChatSessionType,
 					};
 					const createPicker = () => this.instantiationService.createInstance(PermissionPickerActionItem, action, delegate, getSecondaryPickerOptions(action.id));
 					secondaryOverflowPickerHandlers.set(action.id, anchor => showOverflowPicker(createPicker, anchor));

@@ -14,7 +14,7 @@ import { MockContextKeyService } from '../../../../../platform/keybinding/test/c
 import { IMarkdownRendererService } from '../../../../../platform/markdown/browser/markdownRenderer.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
 import { ChatEntitlement, IChatEntitlementService, IChatSentiment } from '../../../../services/chat/common/chatEntitlementService.js';
-import { ILifecycleService, LifecyclePhase } from '../../../../services/lifecycle/common/lifecycle.js';
+import { ILifecycleService } from '../../../../services/lifecycle/common/lifecycle.js';
 import { IStatusbarEntry, IStatusbarEntryAccessor, IStatusbarService, ToggleTooltipCommand } from '../../../../services/statusbar/browser/statusbar.js';
 import { workbenchInstantiationService } from '../../../../test/browser/workbenchTestServices.js';
 import { TestLifecycleService } from '../../../../test/common/workbenchTestServices.js';

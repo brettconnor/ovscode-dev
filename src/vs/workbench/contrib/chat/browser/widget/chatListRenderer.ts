@@ -47,8 +47,6 @@ import { IMarkdownRenderer } from '../../../../../platform/markdown/browser/mark
 import { isDark } from '../../../../../platform/theme/common/theme.js';
 import { IThemeService } from '../../../../../platform/theme/common/themeService.js';
 import { AccessibilitySignal, IAccessibilitySignalService } from '../../../../../platform/accessibilitySignal/browser/accessibilitySignalService.js';
-import { parseRemoteAgentHostSessionTypeAuthority } from '../../../../../platform/agentHost/common/agentHostSessionType.js';
-import { isCreateChatTool, isCreateSessionTool, isSendMessageTool } from '../../../../../platform/agentHost/common/openSessionLink.js';
 import { IChatEntitlementService } from '../../../../services/chat/common/chatEntitlementService.js';
 import { CodiconActionViewItem } from '../../../notebook/browser/view/cellParts/cellActionView.js';
 import { annotateSpecialMarkdownContent, extractSubAgentInvocationIdFromText, hasCodeblockUriTag, hasEditCodeblockUriTag } from '../../common/widget/annotations.js';
@@ -61,7 +59,7 @@ import { TerminalToolId } from '../../common/tools/terminalToolIds.js';
 import { ChatAgentVoteDirection, ChatErrorLevel, ChatRequestQueueKind, ElicitationState, IChatConfirmation, IChatContentReference, IChatDisabledClaudeHooksPart, IChatElicitationRequest, IChatElicitationRequestSerialized, IChatExtensionsContent, IChatExternalEdit, IChatFollowup, IChatHookPart, IChatMarkdownContent, IChatMcpServersStarting, IChatMcpServersStartingSerialized, IChatMultiDiffData, IChatMultiDiffDataSerialized, IChatPlanReview, IChatPlanReviewResult, IChatPullRequestContent, IChatQuestionAnswerValue, IChatQuestionAnswers, IChatQuestionCarousel, IChatService, IChatTask, IChatTaskSerialized, IChatThinkingPart, IChatToolInvocation, IChatToolInvocationSerialized, IChatTreeData, IChatUndoStop, IChatUsageModelTotal, isChatFollowup } from '../../common/chatService/chatService.js';
 import { ChatPlanReviewData } from '../../common/model/chatProgressTypes/chatPlanReviewData.js';
 import { ChatQuestionCarouselData } from '../../common/model/chatProgressTypes/chatQuestionCarouselData.js';
-import { localChatSessionType, SessionType } from '../../common/chatSessionsService.js';
+import { localChatSessionType } from '../../common/chatSessionsService.js';
 import { getChatSessionType } from '../../common/model/chatUri.js';
 import { getExplicitFileOrImageAttachmentSummary, IChatRequestVariableEntry, isExplicitFileOrImageVariableEntry, isPasteVariableEntry } from '../../common/attachments/chatVariableEntries.js';
 import { getStickyScrollTargetItem, IChatChangesSummaryPart, IChatCodeCitations, IChatErrorDetailsPart, IChatReferences, IChatRendererContent, IChatRequestViewModel, IChatResponseViewModel, IChatViewModel, IChatWorkingProgress, isRequestVM, isResponseVM, IChatPendingDividerViewModel, isPendingDividerVM, IChatTurnPillsPart } from '../../common/model/chatViewModel.js';
@@ -76,7 +74,6 @@ import { focusChatModelFeedbackSurveyAction } from '../actions/chatModelFeedback
 import { ChatTreeItem, IChatCodeBlockInfo, IChatFileTreeInfo, IChatListItemRendererOptions, IChatWidget, IChatWidgetService } from '../chat.js';
 import { getCompactCodicon } from '../chatIcons.js';
 import { ChatModelFeedbackSurveyWidget } from '../feedbackSurvey/chatModelFeedbackSurveyWidget.js';
-import { AgentHostSnapshotController } from '../agentSessions/agentHost/agentHostSnapshotController.js';
 import { RestoreCheckpointActionId, StartOverActionId } from '../chatEditing/chatEditingActions.js';
 import { ChatForkActionViewItem } from './chatForkActionViewItem.js';
 import { ChatRestoreCheckpointActionViewItem } from './chatRestoreCheckpointActionViewItem.js';
@@ -134,7 +131,6 @@ import { HookType } from '../../common/promptSyntax/hookTypes.js';
 import { AccessibilityWorkbenchSettingId } from '../../../accessibility/browser/accessibilityConfiguration.js';
 import { isAskQuestionsToolInvocation, isCarouselToolConfirmation, isMcpToolInvocation } from './chatContentParts/toolInvocationParts/chatToolPartUtilities.js';
 import { isToolResultInputOutputDetails } from '../../common/tools/languageModelToolsService.js';
-import { AgentSessionProviders, isAgentHostTarget } from '../agentSessions/agentSessions.js';
 
 const $ = dom.$;
 
@@ -677,15 +673,9 @@ export interface IChatRendererDelegate {
 const mostRecentResponseClassName = 'chat-most-recent-response';
 
 export function shouldHideChatUserIdentity(username: string, sessionResource: URI, isResponse: boolean, isSystemInitiatedRequest: boolean): boolean {
-	const sessionType = getChatSessionType(sessionResource);
-	return username === COPILOT_USERNAME ||
-		(isResponse && isAgentHostCopilotSessionType(sessionType)) ||
-		isSystemInitiatedRequest;
-}
-
-function isAgentHostCopilotSessionType(sessionType: string): boolean {
-	return sessionType === AgentSessionProviders.AgentHostCopilot ||
-		parseRemoteAgentHostSessionTypeAuthority(sessionType, SessionType.CopilotCLI) !== undefined;
+	void sessionResource;
+	void isResponse;
+	return username === COPILOT_USERNAME || isSystemInitiatedRequest;
 }
 
 function upvoteAnimationSettingToEnum(value: string | undefined): ClickAnimation | undefined {
@@ -1394,20 +1384,7 @@ export class ChatListItemRenderer extends Disposable implements ITreeRenderer<Ch
 			return false;
 		}
 
-		const requestId = isRequestVM(context) ? context.id : context.requestId;
-		const model = this.chatService.getSession(context.sessionResource);
-		const session = model?.editingSession;
-		if (!model || !(session instanceof AgentHostSnapshotController)) {
-			return false;
-		}
-
-		const requests = model.getRequests();
-		const index = requests.findIndex(request => request.id === requestId);
-		if (index === -1) {
-			return false;
-		}
-
-		return requests.slice(index).some(request => session.hasEditsInRequest(request.id));
+		return false;
 	}
 
 	renderElement(node: ITreeNode<ChatTreeItem, FuzzyScore>, index: number, templateData: IChatListItemTemplate, details?: IListElementRenderDetails): void {
@@ -2325,8 +2302,7 @@ export class ChatListItemRenderer extends Disposable implements ITreeRenderer<Ch
 		// edit groups — so skip the summary for those unless such a group is
 		// present.
 		const sessionType = getChatSessionType(element.sessionResource);
-		if (!isAgentHostTarget(sessionType) &&
-			!element.model.entireResponse.value.some(part => part.kind === 'textEditGroup' || part.kind === 'notebookEditGroup')) {
+		if (!element.model.entireResponse.value.some(part => part.kind === 'textEditGroup' || part.kind === 'notebookEditGroup')) {
 			return undefined;
 		}
 
@@ -3713,7 +3689,7 @@ export class ChatListItemRenderer extends Disposable implements ITreeRenderer<Ch
 	private shouldShowFileChangesSummary(element: IChatResponseViewModel): boolean {
 		// Only show file changes summary for local sessions - background sessions already have their own file changes part
 		const sessionType = getChatSessionType(element.sessionResource);
-		const isLocalSession = sessionType === localChatSessionType || isAgentHostTarget(sessionType);
+		const isLocalSession = sessionType === localChatSessionType;
 		return shouldShowFileChangesSummaryForSettings(
 			element.isComplete,
 			isLocalSession,
@@ -3722,10 +3698,7 @@ export class ChatListItemRenderer extends Disposable implements ITreeRenderer<Ch
 	}
 
 	private shouldShowPillsSummary(element: IChatResponseViewModel): boolean {
-		return shouldShowTurnPillsSummary(
-			element.isComplete,
-			isAgentHostTarget(getChatSessionType(element.sessionResource)),
-		);
+		return false;
 	}
 
 	private getDataForProgressiveRender(element: IChatResponseViewModel) {
@@ -3851,13 +3824,6 @@ export class ChatListItemRenderer extends Disposable implements ITreeRenderer<Ch
 			return false;
 		}
 
-		// Don't pin session-created tools (create_session / create_chat) — their
-		// "Open Session" button must stay visible, not hidden inside a collapsed
-		// thinking group. Keyed on toolId so this holds while the tool streams too
-		// (before `toolSpecificData` is set on completion).
-		if ((part.kind === 'toolInvocation' || part.kind === 'toolInvocationSerialized') && (isCreateSessionTool(part.toolId) || isCreateChatTool(part.toolId) || isSendMessageTool(part.toolId))) {
-			return false;
-		}
 
 		// Generated images are durable response outcomes. Keep them outside thinking from the
 		// moment the tool starts so completion can replace the compact progress rendering with

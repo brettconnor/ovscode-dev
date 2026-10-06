@@ -13,7 +13,6 @@ import { IMenuService, MenuId } from '../../../../../platform/actions/common/act
 import { IConfigurationService } from '../../../../../platform/configuration/common/configuration.js';
 import { TestConfigurationService } from '../../../../../platform/configuration/test/common/testConfigurationService.js';
 import { IChatWidget } from '../../../../contrib/chat/browser/chat.js';
-import { localChatSessionType } from '../../../../contrib/chat/common/chatSessionsService.js';
 import { ChatInputPart, IChatInputPartOptions, IChatInputStyles } from '../../../../contrib/chat/browser/widget/input/chatInputPart.js';
 import { IArtifactSourceGroup } from '../../../../contrib/chat/common/tools/chatArtifactsService.js';
 import { IChatInputNotification } from '../../../../contrib/chat/browser/widget/input/chatInputNotificationService.js';
@@ -193,11 +192,6 @@ export async function renderChatInput(context: ComponentFixtureContext, fixtureO
 		menus: { executeToolbar: MenuId.ChatExecute, telemetrySource: 'fixture' },
 		widgetViewKindTag: 'view',
 		inputEditorMinLines: 2,
-		// The sandbox toggle is specific to the local harness, so present the
-		// input as the local session type when exercising the sandboxed state.
-		sessionTypePickerDelegate: sandboxingEnabled
-			? { getActiveSessionProvider: () => localChatSessionType }
-			: undefined,
 	};
 	const styles: IChatInputStyles = {
 		overlayBackground: 'var(--vscode-editor-background)',

@@ -8,7 +8,6 @@ import { Codicon } from '../../../../../../base/common/codicons.js';
 import type { ThemeIcon } from '../../../../../../base/common/themables.js';
 import { URI } from '../../../../../../base/common/uri.js';
 import { localize } from '../../../../../../nls.js';
-import { AgentFusionPhaseStatus } from '../../../../../../platform/agentHost/common/meta/agentToolCallMeta.js';
 import { getSubagentIsActive } from '../../../common/chatService/chatService.js';
 import { getLanguageModelDisplayNameWithSubscriptionSource } from '../../../common/languageModelSourcePresentation.js';
 import { getLanguageModelDisplayNameWithProvider } from '../../../common/languageModels.js';
@@ -17,7 +16,7 @@ import { OpenSubagentChatActionViewItem, SubagentPillContext, type IOpenSubagent
 
 export interface ISubagentPhaseContext extends SubagentPillContext {
 	readonly presentation: 'phase';
-	readonly phaseStatus?: AgentFusionPhaseStatus;
+	readonly phaseStatus?: 'running' | 'succeeded' | 'failed' | 'cancelled';
 	readonly activityLabel?: string;
 	/** The phase's own chat, holding its tool calls and intermediate messages, when the host provides one. */
 	readonly chatResource?: string;

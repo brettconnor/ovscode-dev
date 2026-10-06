@@ -28,7 +28,7 @@ import type { ICodeBlockRenderOptions } from '../codeBlockPart.js';
 import { Action, IAction } from '../../../../../../../base/common/actions.js';
 import { ActionBar } from '../../../../../../../base/browser/ui/actionbar/actionbar.js';
 import { disposableTimeout, timeout } from '../../../../../../../base/common/async.js';
-import { IAhpTerminalCommandSource, IChatTerminalOutputSource, IChatTerminalToolProgressPart, ITerminalChatService, ITerminalConfigurationService, ITerminalEditorService, ITerminalGroupService, ITerminalInstance, ITerminalService } from '../../../../../terminal/browser/terminal.js';
+import { IChatTerminalOutputSource, IChatTerminalToolProgressPart, ITerminalChatService, ITerminalConfigurationService, ITerminalEditorService, ITerminalGroupService, ITerminalInstance, ITerminalService } from '../../../../../terminal/browser/terminal.js';
 import { Disposable, DisposableStore, MutableDisposable, toDisposable, type IDisposable } from '../../../../../../../base/common/lifecycle.js';
 import { Emitter, Event } from '../../../../../../../base/common/event.js';
 import { onUnexpectedError } from '../../../../../../../base/common/errors.js';
@@ -879,13 +879,6 @@ export class ChatTerminalToolProgressPart extends BaseChatToolInvocationSubPart 
 		const attachCommandDetection = async (commandDetection: ICommandDetectionCapability | undefined) => {
 			commandDetectionListener.clear();
 			if (!commandDetection) {
-				// Try AHP command source as fallback
-				const ahpSource = this._terminalData.terminalToolSessionId
-					? this._terminalChatService.getAhpCommandSource(this._terminalData.terminalToolSessionId)
-					: undefined;
-				if (ahpSource) {
-					this._attachAhpCommandSource(terminalInstance, ahpSource, commandDetectionListener);
-				}
 				await tryResolveCommand();
 				return;
 			}
@@ -974,70 +967,6 @@ export class ChatTerminalToolProgressPart extends BaseChatToolInvocationSubPart 
 			this._updateToolbarContextKeys(undefined, this._terminalData.terminalToolSessionId);
 			instanceListener.dispose();
 		}));
-	}
-
-	/**
-	 * Sets up listeners using an {@link IAhpTerminalCommandSource} when no local
-	 * `ICommandDetectionCapability` is available. Provides auto-expand, toolbar
-	 * context key updates, and command completion handling.
-	 */
-	private _attachAhpCommandSource(
-		terminalInstance: ITerminalInstance,
-		ahpSource: IAhpTerminalCommandSource,
-		commandDetectionListener: MutableDisposable<IDisposable>,
-	): void {
-		const store = new DisposableStore();
-
-		const hasRealOutput = (): boolean => {
-			// For AHP terminals, shell integration sequences are stripped server-side.
-			// Real output is simply whether the command has non-empty output.
-			const command = this._getResolvedCommand(terminalInstance);
-			if (command?.hasOutput()) {
-				return true;
-			}
-			return !!this._terminalData.terminalCommandOutput?.text?.trim();
-		};
-
-		const autoExpand = store.add(new TerminalToolAutoExpand({
-			onCommandExecuted: Event.map(ahpSource.onCommandExecuted, () => undefined),
-			onCommandFinished: Event.map(ahpSource.onCommandFinished, () => undefined),
-			onWillData: terminalInstance.onWillData,
-			shouldAutoExpand: () => this._shouldAutoExpand(),
-			hasRealOutput,
-		}));
-		store.add(autoExpand.onDidRequestExpand(() => {
-			if (this._usesCollapsibleWrapper) {
-				this.expandCollapsibleWrapper();
-			}
-			this._toggleOutput(true);
-		}));
-
-		store.add(ahpSource.onCommandExecuted(cmd => {
-			// Set terminalCommandId on tool invocation data for future lookups
-			if (!this._terminalData.terminalCommandId && cmd.id) {
-				this._terminalData.terminalCommandId = cmd.id;
-				this._updateToolbarContextKeys(terminalInstance, this._terminalData.terminalToolSessionId);
-			}
-			if (this._outputView.isExpanded) {
-				void this._toggleOutput(true);
-			}
-		}));
-
-		store.add(ahpSource.onCommandFinished(cmd => {
-			if (this._terminalData.terminalCommandId === cmd.id) {
-				this._updateToolbarContextKeys(terminalInstance, this._terminalData.terminalToolSessionId);
-				const resolvedCommand = this._getResolvedCommand(terminalInstance);
-				this._handleCommandCompletion(resolvedCommand);
-			}
-		}));
-
-		commandDetectionListener.value = store;
-
-		// Check if the command was already resolved (e.g. during content replay)
-		const resolvedCommand = this._resolveCommand(terminalInstance);
-		if (resolvedCommand?.endMarker) {
-			this._handleCommandCompletion(resolvedCommand);
-		}
 	}
 
 	/**
@@ -1299,19 +1228,6 @@ export class ChatTerminalToolProgressPart extends BaseChatToolInvocationSubPart 
 			const executing = commandDetection.executingCommandObject;
 			if (executing && executing.id === targetId) {
 				return executing;
-			}
-		}
-
-		// Fall back to AHP command source
-		const sessionId = this._terminalData.terminalToolSessionId;
-		if (sessionId) {
-			const ahpSource = this._terminalChatService.getAhpCommandSource(sessionId);
-			if (ahpSource) {
-				if (targetId) {
-					return ahpSource.getCommandById(targetId);
-				}
-				// No specific command ID — return executing or most recent
-				return ahpSource.executingCommandObject ?? ahpSource.commands[ahpSource.commands.length - 1];
 			}
 		}
 

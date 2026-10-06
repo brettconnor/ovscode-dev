@@ -96,7 +96,6 @@ import { ChatViewWelcomePart, IChatViewWelcomeContent } from '../viewsWelcome/ch
 import { IChatTipService } from '../chatTipService.js';
 import { ChatInputTipPresenter } from './input/chatInputTipPresenter.js';
 import { ChatProgressSubPart } from './chatContentParts/chatProgressContentPart.js';
-import { IAgentSessionsService } from '../agentSessions/agentSessionsService.js';
 import { IChatDebugService } from '../../common/chatDebugService.js';
 import { getChatSessionType } from '../../common/model/chatUri.js';
 import { ICustomizationHarnessService } from '../../common/customizationHarnessService.js';
@@ -601,7 +600,6 @@ export class ChatWidget extends Disposable implements IChatWidget {
 		@ILanguageModelToolsService private readonly toolsService: ILanguageModelToolsService,
 		@IChatLayoutService private readonly chatLayoutService: IChatLayoutService,
 		@IChatEntitlementService private readonly chatEntitlementService: IChatEntitlementService,
-		@IAgentSessionsService private readonly agentSessionsService: IAgentSessionsService,
 		@IChatTodoListService private readonly chatTodoListService: IChatTodoListService,
 		@ILifecycleService private readonly lifecycleService: ILifecycleService,
 		@IChatAttachmentResolveService private readonly chatAttachmentResolveService: IChatAttachmentResolveService,
@@ -1840,129 +1838,6 @@ export class ChatWidget extends Disposable implements IChatWidget {
 		}
 	}
 
-	async handleDelegationExitIfNeeded(sourceAgent: Pick<IChatAgentData, 'id' | 'name'> | undefined, targetAgent: IChatAgentData | undefined): Promise<void> {
-		if (!this._shouldExitAfterDelegation(sourceAgent, targetAgent)) {
-			return;
-		}
-
-		this.logService.debug(`[Delegation] Will exit after delegation: sourceAgent=${sourceAgent?.id}, targetAgent=${targetAgent?.id}`);
-		try {
-			await this._handleDelegationExit();
-		} catch (e) {
-			this.logService.error('[Delegation] Failed to handle delegation exit', e);
-		}
-	}
-
-	private _shouldExitAfterDelegation(sourceAgent: Pick<IChatAgentData, 'id' | 'name'> | undefined, targetAgent: IChatAgentData | undefined): boolean {
-		if (!targetAgent) {
-			this.logService.debug('[Delegation] _shouldExitAfterDelegation: false (no targetAgent)');
-			return false;
-		}
-
-		if (!this.configurationService.getValue<boolean>(ChatConfiguration.ExitAfterDelegation)) {
-			this.logService.debug('[Delegation] _shouldExitAfterDelegation: false (ExitAfterDelegation config disabled)');
-			return false;
-		}
-
-		// Never exit if the source and target are the same (that means that you're providing a follow up, etc.)
-		// NOTE: sourceAgent would be the chatWidget's 'lockedAgent'
-		if (sourceAgent && sourceAgent.id === targetAgent.id) {
-			this.logService.debug('[Delegation] _shouldExitAfterDelegation: false (source and target agents are the same)');
-			return false;
-		}
-
-		if (!isIChatViewViewContext(this.viewContext)) {
-			this.logService.debug('[Delegation] _shouldExitAfterDelegation: false (not in chat view context)');
-			return false;
-		}
-
-		this.logService.debug('[Delegation] _shouldExitAfterDelegation: false (Chat session providers are removed)');
-		return false;
-	}
-
-	/**
-	 * Handles the exit of the panel chat when a delegation to another session occurs.
-	 * Waits for the response to complete and any pending confirmations to be resolved,
-	 * then clears the widget unless the final message is an error.
-	 */
-	private async _handleDelegationExit(): Promise<void> {
-		const viewModel = this.viewModel;
-		if (!viewModel) {
-			this.logService.debug('[Delegation] _handleDelegationExit: no viewModel, returning');
-			return;
-		}
-
-		const parentSessionResource = viewModel.sessionResource;
-		this.logService.debug(`[Delegation] _handleDelegationExit: parentSessionResource=${parentSessionResource.toString()}`);
-
-		// Check if response is complete, not pending confirmation, and has no error
-		const checkIfShouldClear = (): boolean => {
-			const items = viewModel.getItems();
-			const lastItem = items[items.length - 1];
-			if (lastItem && isResponseVM(lastItem) && lastItem.model && lastItem.isComplete && !lastItem.model.isPendingConfirmation.get()) {
-				const hasError = Boolean(lastItem.result?.errorDetails);
-				return !hasError;
-			}
-			return false;
-		};
-
-		if (checkIfShouldClear()) {
-			this.logService.debug('[Delegation] Response complete, archiving session before clearing');
-			// Archive BEFORE clearing to ensure session still exists in agentSessionsService
-			await this.archiveLocalParentSession(parentSessionResource);
-			await this.clear();
-			return;
-		}
-
-		this.logService.debug('[Delegation] Waiting for response to complete...');
-		const shouldClear = await new Promise<boolean>(resolve => {
-			const disposable = viewModel.onDidChange(() => {
-				const result = checkIfShouldClear();
-				if (result) {
-					cleanup();
-					resolve(true);
-				}
-			});
-			const timeout = setTimeout(() => {
-				this.logService.debug('[Delegation] Timeout waiting for response to complete');
-				cleanup();
-				resolve(false);
-			}, 30_000); // 30 second timeout
-			const cleanup = () => {
-				clearTimeout(timeout);
-				disposable.dispose();
-			};
-		});
-
-		if (shouldClear) {
-			this.logService.debug('[Delegation] Response completed, archiving session before clearing');
-			await this.archiveLocalParentSession(parentSessionResource);
-			await this.clear();
-		} else {
-			this.logService.debug('[Delegation] Not clearing (timeout or error)');
-		}
-	}
-
-	private async archiveLocalParentSession(sessionResource: URI): Promise<void> {
-		// In the regular workbench, only archive local chat sessions.
-		// In the sessions window, allow archiving any session type after delegation.
-		if (getChatSessionType(sessionResource) !== localChatSessionType) {
-			return;
-		}
-
-		this.logService.debug(`[Delegation] archiveLocalParentSession: archiving session ${sessionResource.toString()}`);
-
-		// Implicitly keep parent session's changes as they've now been delegated to the new agent.
-		await this.chatService.getSession(sessionResource)?.editingSession?.accept();
-
-		const session = this.agentSessionsService.getSession(sessionResource);
-		if (session) {
-			session.setArchived(true);
-			this.logService.debug('[Delegation] archiveLocalParentSession: session archived successfully');
-		} else {
-			this.logService.warn(`[Delegation] archiveLocalParentSession: session not found in agentSessionsService for ${sessionResource.toString()}`);
-		}
-	}
 
 	/**
 	 * Mark the chat shown in this widget as read-only (non-interactive) or not.
@@ -2849,10 +2724,6 @@ export class ChatWidget extends Disposable implements IChatWidget {
 				// Only show if response wasn't canceled
 				this.renderChatSuggestNextWidget();
 
-				// Mark the session as read when the request completes and the widget is visible
-				if (this.visible && this.viewModel?.sessionResource) {
-					this.agentSessionsService.getSession(this.viewModel.sessionResource)?.setRead(true);
-				}
 			}
 		}));
 
@@ -3537,7 +3408,6 @@ export class ChatWidget extends Disposable implements IChatWidget {
 			// Not a user submission; listeners would consume draft state. Also skips editor pinning.
 			this._onDidSubmitAgent.fire({ agent: sent.data.agent, slashCommand: sent.data.slashCommand });
 		}
-		this.handleDelegationExitIfNeeded(this._lockedAgent, sent.data.agent);
 
 		// If the session was replaced (untitled -> real contributed session), swap the widget's model
 		if (sent.newSessionResource) {

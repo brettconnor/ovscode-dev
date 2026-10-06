@@ -513,9 +513,7 @@ suite('ChatSubmitAction', () => {
 	test('passes acceptInputOptions to the widget', async () => {
 		let acceptedOptions: unknown;
 		const widget = {
-			input: {
-				pendingDelegationTarget: undefined,
-			} as IChatWidget['input'],
+			input: {} as IChatWidget['input'],
 			acceptInput: async (_query: string | undefined, options: IChatAcceptInputOptions | undefined) => {
 				acceptedOptions = options;
 				return undefined;

@@ -785,38 +785,16 @@ export function isLegacyChatTerminalToolInvocationData(data: unknown): data is I
  * - `local`: resolves the MCP server via {@link IMcpService} from a
  *   `serverDefinitionId` + `collectionId`. Used for locally-configured
  *   MCP servers whose state lives in the workbench.
- * - `agentHost`: routes through {@link IAgentHostService.handleMcpRequest}
- *   on an AHP `mcp://` side channel. Used for MCP servers owned by an
- *   agent host (e.g. Copilot CLI).
  */
-export type ChatMcpAppData =
-	| {
-		kind: 'local';
-		/** URI of the UI resource for rendering (e.g., "ui://weather-server/dashboard") */
-		resourceUri: string;
-		/** Reference to the server definition for reconnection */
-		serverDefinitionId: string;
-		/** Reference to the collection containing the server */
-		collectionId: string;
-	}
-	| {
-		kind: 'agentHost';
-		/** URI of the UI resource for rendering (e.g., "ui://weather-server/dashboard") */
-		resourceUri: string;
-		/** Sanitized connection identifier used to resolve App-provided resource URIs. */
-		connectionAuthority: string;
-		/** AHP `mcp://` channel URI for the originating server. */
-		channel: string;
-		/**
-		 * Stable identifier for the originating server, used as the
-		 * additional key when computing the webview origin. Typically the
-		 * AHP customization id. For top-level (bare) MCP servers this id
-		 * is currently session-scoped, so see {@link ChatMcpAppModel} for
-		 * how it avoids growing persistent application storage on every
-		 * new session.
-		 */
-		serverId: string;
-	};
+export type ChatMcpAppData = {
+	kind: 'local';
+	/** URI of the UI resource for rendering (e.g., "ui://weather-server/dashboard") */
+	resourceUri: string;
+	/** Reference to the server definition for reconnection */
+	serverDefinitionId: string;
+	/** Reference to the collection containing the server */
+	collectionId: string;
+};
 
 export interface IChatToolInputInvocationData {
 	kind: 'input';

@@ -62,9 +62,6 @@ function mcpAppRenderDataEquals(a: IMcpAppRenderData | undefined, b: IMcpAppRend
 	if (a.kind !== b.kind || a.resourceUri !== b.resourceUri || a.input !== b.input || a.sessionResource.toString() !== b.sessionResource.toString()) {
 		return false;
 	}
-	if (a.kind === 'agentHost' && b.kind === 'agentHost') {
-		return a.serverId === b.serverId && a.channel === b.channel && a.connectionAuthority === b.connectionAuthority;
-	}
 	if (a.kind === 'local' && b.kind === 'local') {
 		return a.serverDefinitionId === b.serverDefinitionId && a.collectionId === b.collectionId;
 	}
