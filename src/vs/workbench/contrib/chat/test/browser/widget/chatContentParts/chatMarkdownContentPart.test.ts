@@ -35,7 +35,7 @@ import { IChatOutputRendererService, type RenderedOutputPart } from '../../../..
 import { IChatOutputPartStateCache, IOutputPartState } from '../../../../browser/widget/chatContentParts/chatOutputPartStateCache.js';
 import { IChatResponseViewModel } from '../../../../common/model/chatViewModel.js';
 import { IChatContentInlineReference } from '../../../../common/chatService/chatService.js';
-import { ILinkPresentationService } from '../../../../../../platform/dataChannel/common/dataChannel.js';
+import { ILinkPresentationService } from '../../../../../platform/dataChannel/common/dataChannel.js';
 import { ChatConfiguration } from '../../../../common/constants.js';
 import { IAiEditTelemetryService } from '../../../../../editTelemetry/browser/telemetry/aiEditTelemetry/aiEditTelemetryService.js';
 import { IViewDescriptorService } from '../../../../../../common/views.js';
