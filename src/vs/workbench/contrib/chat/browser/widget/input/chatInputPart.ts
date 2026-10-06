@@ -3508,14 +3508,8 @@ export class ChatInputPart extends Disposable implements IHistoryNavigationWidge
 		this.renderAttachedContext();
 	}
 
-	/**
-	 * The attachments that are rendered as pills in the input. Agent-host
-	 * completion entries (skills/commands) live in the model so their `_meta`
-	 * reaches the outgoing message, but they are shown as inline decorations
-	 * rather than pills, so they are excluded here.
-	 */
 	private getRenderableAttachments(): IChatRequestVariableEntry[] {
-		return this.attachmentModel.attachments;
+		return [...this.attachmentModel.attachments];
 	}
 
 	private handleAttachmentOpen(index: number, attachment: IChatRequestVariableEntry): void {

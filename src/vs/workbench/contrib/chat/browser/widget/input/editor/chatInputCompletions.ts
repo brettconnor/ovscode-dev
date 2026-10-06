@@ -892,7 +892,7 @@ class BuiltinDynamicCompletions extends Disposable {
 				}));
 
 			return { suggestions, incomplete: true };
-		}, BuiltinDynamicCompletions.VariableNameDef, true, attachedContextCompletionAdditionalTriggerCharacters);
+		}, BuiltinDynamicCompletions.VariableNameDef, attachedContextCompletionAdditionalTriggerCharacters);
 
 		// File/Folder completions in one go and m
 		const fileWordPattern = new RegExp(`[${escapeForCharClass(chatVariableLeader)}${escapeForCharClass(chatAgentLeader)}][^\\s]*`, 'g');

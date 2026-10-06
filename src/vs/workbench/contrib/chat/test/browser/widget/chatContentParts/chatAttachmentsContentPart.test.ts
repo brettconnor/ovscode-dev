@@ -17,7 +17,7 @@ import { TestFileService, workbenchInstantiationService } from '../../../../../.
 import { DEFAULT_LABELS_CONTAINER, ResourceLabels } from '../../../../../../browser/labels.js';
 import { getEffectiveImageOmittedState, ImageAttachmentWidget } from '../../../../browser/attachments/chatAttachmentWidgets.js';
 import { ChatAttachmentsContentPart } from '../../../../browser/widget/chatContentParts/chatAttachmentsContentPart.js';
-import { AgentHostCompletionReferenceKind, IChatRequestVariableEntry, OmittedState, toAgentHostCompletionVariableEntry } from '../../../../common/attachments/chatVariableEntries.js';
+import { IChatRequestVariableEntry, OmittedState } from '../../../../common/attachments/chatVariableEntries.js';
 import { ILanguageModelChatMetadata, ILanguageModelsService } from '../../../../common/languageModels.js';
 
 suite('ChatAttachmentsContentPart', () => {
@@ -261,44 +261,6 @@ suite('ChatAttachmentsContentPart', () => {
 			assert.strictEqual(attachments.length, 2, 'Should render 2 file attachments');
 		});
 
-		test('should not render agent host completion references as attachments', () => {
-			const variables: IChatRequestVariableEntry[] = [
-				createFileEntry('file1.ts'),
-				toAgentHostCompletionVariableEntry(AgentHostCompletionReferenceKind.Command, '/rename', 'rename', undefined),
-				toAgentHostCompletionVariableEntry(AgentHostCompletionReferenceKind.Skill, '/agent-host-docs', 'file:///skills/agent-host-docs/SKILL.md', undefined),
-			];
-
-			const part = store.add(instantiationService.createInstance(
-				ChatAttachmentsContentPart,
-				{ variables }
-			));
-
-			mainWindow.document.body.appendChild(part.domNode!);
-			disposables.add(toDisposable(() => part.domNode?.remove()));
-
-			const attachments = part.domNode!.querySelectorAll('.chat-attached-context-attachment');
-			assert.strictEqual(attachments.length, 1, 'Should only render the file attachment');
-		});
-
-		test('should not count agent host completion references in show more label', () => {
-			const variables: IChatRequestVariableEntry[] = [
-				createFileEntry('file1.ts'),
-				toAgentHostCompletionVariableEntry(AgentHostCompletionReferenceKind.Command, '/rename', 'rename', undefined),
-				toAgentHostCompletionVariableEntry(AgentHostCompletionReferenceKind.Skill, '/agent-host-docs', 'file:///skills/agent-host-docs/SKILL.md', undefined),
-				createFileEntry('file2.ts'),
-			];
-
-			const part = store.add(instantiationService.createInstance(
-				ChatAttachmentsContentPart,
-				{ variables, limit: 1 }
-			));
-
-			mainWindow.document.body.appendChild(part.domNode!);
-			disposables.add(toDisposable(() => part.domNode?.remove()));
-
-			const showMoreLabel = part.domNode!.querySelector('.chat-attachments-show-more-button .chat-attached-context-custom-text')?.textContent;
-			assert.strictEqual(showMoreLabel, '1 more');
-		});
 
 		test('should have chat-attached-context class on domNode', () => {
 			const variables: IChatRequestVariableEntry[] = [createFileEntry('file.ts')];
