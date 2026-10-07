@@ -14,23 +14,14 @@ import { isImageVariableEntry } from '../attachments/chatVariableEntries.js';
 import { ChatAgentLocation, ChatModeKind, ChatPermissionLevel } from '../constants.js';
 import { ILanguageModelsService } from '../languageModels.js';
 import { chatSessionResourceToId, getChatSessionType } from '../model/chatUri.js';
-import { isAgentHostSessionResource, isRemoteAgentHostSessionType, parseRemoteAgentHostHarness } from '../chatSessionsService.js';
 
-type ChatSessionModeEvent = {
-	isAgentHostSession: boolean;
-};
-
-type ChatSessionModeClassification = {
-	isAgentHostSession: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'Whether the action was performed in an Agent Host-backed chat session.' };
-};
-
-type ChatVoteEvent = ChatSessionModeEvent & {
+type ChatVoteEvent = {
 	direction: 'up' | 'down';
 	agentId: string;
 	command: string | undefined;
 };
 
-type ChatVoteClassification = ChatSessionModeClassification & {
+type ChatVoteClassification = {
 	direction: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'Whether the user voted up or down.' };
 	agentId: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The ID of the chat agent that this vote is for.' };
 	command: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The name of the slash command that this vote is for.' };
@@ -38,13 +29,13 @@ type ChatVoteClassification = ChatSessionModeClassification & {
 	comment: 'Provides insight into the performance of Chat agents.';
 };
 
-type ChatCopyEvent = ChatSessionModeEvent & {
+type ChatCopyEvent = {
 	copyKind: 'action' | 'toolbar';
 	agentId: string;
 	command: string | undefined;
 };
 
-type ChatCopyClassification = ChatSessionModeClassification & {
+type ChatCopyClassification = {
 	copyKind: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'How the copy was initiated.' };
 	agentId: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The ID of the chat agent that the copy acted on.' };
 	command: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The name of the slash command the copy acted on.' };
@@ -52,13 +43,13 @@ type ChatCopyClassification = ChatSessionModeClassification & {
 	comment: 'Provides insight into the usage of Chat features.';
 };
 
-type ChatInsertEvent = ChatSessionModeEvent & {
+type ChatInsertEvent = {
 	newFile: boolean;
 	agentId: string;
 	command: string | undefined;
 };
 
-type ChatInsertClassification = ChatSessionModeClassification & {
+type ChatInsertClassification = {
 	newFile: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'Whether the code was inserted into a new untitled file.' };
 	agentId: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The ID of the chat agent that this insertion is for.' };
 	command: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The name of the slash command that this insertion is for.' };
@@ -66,7 +57,7 @@ type ChatInsertClassification = ChatSessionModeClassification & {
 	comment: 'Provides insight into the usage of Chat features.';
 };
 
-type ChatApplyEvent = ChatSessionModeEvent & {
+type ChatApplyEvent = {
 	newFile: boolean;
 	agentId: string;
 	command: string | undefined;
@@ -74,7 +65,7 @@ type ChatApplyEvent = ChatSessionModeEvent & {
 	editsProposed: boolean;
 };
 
-type ChatApplyClassification = ChatSessionModeClassification & {
+type ChatApplyClassification = {
 	newFile: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'Whether the code was inserted into a new untitled file.' };
 	agentId: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The ID of the chat agent that this insertion is for.' };
 	command: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The name of the slash command that this insertion is for.' };
@@ -84,25 +75,25 @@ type ChatApplyClassification = ChatSessionModeClassification & {
 	comment: 'Provides insight into the usage of Chat features.';
 };
 
-type ChatFollowupEvent = ChatSessionModeEvent & {
+type ChatFollowupEvent = {
 	agentId: string;
 	command: string | undefined;
 };
 
-type ChatFollowupClassification = ChatSessionModeClassification & {
+type ChatFollowupClassification = {
 	agentId: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The ID of the related chat agent.' };
 	command: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The name of the related slash command.' };
 	owner: 'roblourens';
 	comment: 'Provides insight into the usage of Chat features.';
 };
 
-type ChatTerminalEvent = ChatSessionModeEvent & {
+type ChatTerminalEvent = {
 	languageId: string;
 	agentId: string;
 	command: string | undefined;
 };
 
-type ChatTerminalClassification = ChatSessionModeClassification & {
+type ChatTerminalClassification = {
 	languageId: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The language of the code that was run in the terminal.' };
 	agentId: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The ID of the related chat agent.' };
 	command: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The name of the related slash command.' };
@@ -110,13 +101,13 @@ type ChatTerminalClassification = ChatSessionModeClassification & {
 	comment: 'Provides insight into the usage of Chat features.';
 };
 
-type ChatFollowupsRetrievedEvent = ChatSessionModeEvent & {
+type ChatFollowupsRetrievedEvent = {
 	agentId: string;
 	command: string | undefined;
 	numFollowups: number;
 };
 
-type ChatFollowupsRetrievedClassification = ChatSessionModeClassification & {
+type ChatFollowupsRetrievedClassification = {
 	agentId: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The ID of the related chat agent.' };
 	command: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The name of the related slash command.' };
 	numFollowups: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The number of followup prompts returned by the agent.' };
@@ -124,7 +115,7 @@ type ChatFollowupsRetrievedClassification = ChatSessionModeClassification & {
 	comment: 'Provides insight into the usage of Chat features.';
 };
 
-type ChatEditSessionEvent = ChatSessionModeEvent & {
+type ChatEditSessionEvent = {
 	agentId: string;
 	outcome: 'accepted' | 'rejected' | 'userModified';
 	hasRemainingEdits: boolean;
@@ -133,7 +124,7 @@ type ChatEditSessionEvent = ChatSessionModeEvent & {
 	modeId: string;
 };
 
-type ChatEditSessionClassification = ChatSessionModeClassification & {
+type ChatEditSessionClassification = {
 	agentId: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The ID of the related chat agent.' };
 	outcome: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The outcome of the edited file action.' };
 	hasRemainingEdits: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'Whether there are remaining edits in the file after this action.' };
@@ -144,7 +135,7 @@ type ChatEditSessionClassification = ChatSessionModeClassification & {
 	comment: 'Provides insight into the usage of Chat features.';
 };
 
-type ChatEditHunkEvent = ChatSessionModeEvent & {
+type ChatEditHunkEvent = {
 	agentId: string;
 	outcome: 'accepted' | 'rejected';
 	lineCount: number;
@@ -154,7 +145,7 @@ type ChatEditHunkEvent = ChatSessionModeEvent & {
 	modeId: string;
 };
 
-type ChatEditHunkClassification = ChatSessionModeClassification & {
+type ChatEditHunkClassification = {
 	agentId: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The ID of the related chat agent.' };
 	outcome: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The outcome of the edit hunk action.' };
 	lineCount: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The number of lines in the relevant change.' };
@@ -166,7 +157,7 @@ type ChatEditHunkClassification = ChatSessionModeClassification & {
 	comment: 'Provides insight into the usage of Chat features.';
 };
 
-export type ChatProviderInvokedEvent = ChatSessionModeEvent & {
+export type ChatProviderInvokedEvent = {
 	requestIndex: number;
 	timeToFirstProgress: number | undefined;
 	totalTime: number | undefined;
@@ -187,22 +178,18 @@ export type ChatProviderInvokedEvent = ChatSessionModeEvent & {
 	permissionLevel: ChatPermissionLevel | undefined;
 	chatMode: string | undefined;
 	sessionType: string | undefined;
-	harness: string | undefined;
 	sessionTypeSelectionReason: string | undefined;
 	isVirtualWorkspace: boolean;
-	settingDefaultToCopilotHarness: boolean;
-	settingPreferCopilotHarness: boolean;
-	settingLocalAgentEnabled: boolean;
 };
 
-export type ChatProviderInvokedClassification = ChatSessionModeClassification & {
+export type ChatProviderInvokedClassification = {
 	requestIndex: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; isMeasurement: true; comment: 'The zero-based index of the request within the chat session.' };
 	timeToFirstProgress: { classification: 'SystemMetaData'; purpose: 'PerformanceAndHealth'; comment: 'The time in milliseconds from invoking the provider to getting the first data.' };
 	totalTime: { classification: 'SystemMetaData'; purpose: 'PerformanceAndHealth'; comment: 'The total time it took to run the provider\'s `provideResponseWithProgress`.' };
 	result: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'Whether invoking the ChatProvider resulted in an error.' };
 	requestType: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The type of request that the user made.' };
 	chatSessionId: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'A random ID for the session.' };
-	requestId: { classification: 'SystemMetaData'; purpose: 'PerformanceAndHealth'; comment: 'The identifier of the chat request, used to correlate workbench and agent host telemetry.' };
+	requestId: { classification: 'SystemMetaData'; purpose: 'PerformanceAndHealth'; comment: 'The identifier of the chat request.' };
 	agent: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The type of agent used.' };
 	agentExtensionId: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The extension that contributed the agent.' };
 	slashCommand?: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The type of slashCommand used.' };
@@ -216,12 +203,8 @@ export type ChatProviderInvokedClassification = ChatSessionModeClassification & 
 	permissionLevel: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The tool auto-approval permission level selected in the permission picker (default, assisted, autoApprove, or autopilot). Undefined when the picker is not applicable (e.g. ask mode or API-driven requests).' };
 	chatMode: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The chat mode used for the request. Built-in modes (ask, agent, edit), extension-contributed names (e.g. Plan), or a hashed identifier for user-created custom agents.' };
 	sessionType: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The session type scheme (e.g. vscodeLocalChatSession for local, or remote session scheme).' };
-	harness: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'For remote agent host sessions, the underlying harness/provider (e.g. copilotcli, claude, codex) so remote activity can be split by harness. Undefined for non-remote sessions.' };
 	sessionTypeSelectionReason: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'Why the session type was selected when the session was created. Undefined for restored or reused sessions.' };
 	isVirtualWorkspace: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'Whether the chat request was made in a virtual workspace.' };
-	settingDefaultToCopilotHarness: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The effective value of the chat.defaultToCopilotHarness setting when the request started.' };
-	settingPreferCopilotHarness: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The effective value of the chat.editor.preferCopilotHarness setting when the request started.' };
-	settingLocalAgentEnabled: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The effective value of the chat.editor.localAgent.enabled setting when the request started.' };
 	owner: 'roblourens';
 	comment: 'Provides insight into the performance of Chat agents.';
 };
@@ -232,31 +215,26 @@ export class ChatServiceTelemetry {
 	) { }
 
 	notifyUserAction(action: IChatUserActionEvent): void {
-		const isAgentHostSession = getIsAgentHostSessionForTelemetry(action.sessionResource);
 		if (action.action.kind === 'vote') {
 			this.telemetryService.publicLog2<ChatVoteEvent, ChatVoteClassification>('interactiveSessionVote', {
-				isAgentHostSession,
 				direction: action.action.direction === ChatAgentVoteDirection.Up ? 'up' : 'down',
 				agentId: action.agentId ?? '',
 				command: action.command,
 			});
 		} else if (action.action.kind === 'copy') {
 			this.telemetryService.publicLog2<ChatCopyEvent, ChatCopyClassification>('interactiveSessionCopy', {
-				isAgentHostSession,
 				copyKind: action.action.copyKind === ChatCopyKind.Action ? 'action' : 'toolbar',
 				agentId: action.agentId ?? '',
 				command: action.command,
 			});
 		} else if (action.action.kind === 'insert') {
 			this.telemetryService.publicLog2<ChatInsertEvent, ChatInsertClassification>('interactiveSessionInsert', {
-				isAgentHostSession,
 				newFile: !!action.action.newFile,
 				agentId: action.agentId ?? '',
 				command: action.command,
 			});
 		} else if (action.action.kind === 'apply') {
 			this.telemetryService.publicLog2<ChatApplyEvent, ChatApplyClassification>('interactiveSessionApply', {
-				isAgentHostSession,
 				newFile: !!action.action.newFile,
 				codeMapper: action.action.codeMapper,
 				agentId: action.agentId ?? '',
@@ -265,20 +243,17 @@ export class ChatServiceTelemetry {
 			});
 		} else if (action.action.kind === 'runInTerminal') {
 			this.telemetryService.publicLog2<ChatTerminalEvent, ChatTerminalClassification>('interactiveSessionRunInTerminal', {
-				isAgentHostSession,
 				languageId: action.action.languageId ?? '',
 				agentId: action.agentId ?? '',
 				command: action.command,
 			});
 		} else if (action.action.kind === 'followUp') {
 			this.telemetryService.publicLog2<ChatFollowupEvent, ChatFollowupClassification>('chatFollowupClicked', {
-				isAgentHostSession,
 				agentId: action.agentId ?? '',
 				command: action.command,
 			});
 		} else if (action.action.kind === 'chatEditingSessionAction') {
 			this.telemetryService.publicLog2<ChatEditSessionEvent, ChatEditSessionClassification>('chatEditSession', {
-				isAgentHostSession,
 				agentId: action.agentId ?? '',
 				outcome: action.action.outcome,
 				hasRemainingEdits: action.action.hasRemainingEdits,
@@ -288,7 +263,6 @@ export class ChatServiceTelemetry {
 			});
 		} else if (action.action.kind === 'chatEditingHunkAction') {
 			this.telemetryService.publicLog2<ChatEditHunkEvent, ChatEditHunkClassification>('chatEditHunk', {
-				isAgentHostSession,
 				agentId: action.agentId ?? '',
 				outcome: action.action.outcome,
 				lineCount: action.action.lineCount,
@@ -300,9 +274,8 @@ export class ChatServiceTelemetry {
 		}
 	}
 
-	retrievedFollowups(sessionResource: URI, agentId: string, command: string | undefined, numFollowups: number): void {
+	retrievedFollowups(agentId: string, command: string | undefined, numFollowups: number): void {
 		this.telemetryService.publicLog2<ChatFollowupsRetrievedEvent, ChatFollowupsRetrievedClassification>('chatFollowupsRetrieved', {
-			isAgentHostSession: getIsAgentHostSessionForTelemetry(sessionResource),
 			agentId,
 			command,
 			numFollowups,
@@ -347,9 +320,6 @@ export class ChatRequestTelemetry {
 		options: IChatSendRequestOptions | undefined;
 		enableCommandDetection: boolean;
 		isVirtualWorkspace: boolean;
-		settingDefaultToCopilotHarness: boolean;
-		settingPreferCopilotHarness: boolean;
-		settingLocalAgentEnabled: boolean;
 	},
 		@ITelemetryService private readonly telemetryService: ITelemetryService,
 		@ILanguageModelsService private readonly languageModelsService: ILanguageModelsService
@@ -390,13 +360,8 @@ export class ChatRequestTelemetry {
 			model: this.resolveModelId(this.opts.options?.userSelectedModelId),
 			permissionLevel: this.opts.options?.modeInfo?.kind === ChatModeKind.Ask ? undefined : this.opts.options?.modeInfo?.permissionLevel,
 			chatMode: this.opts.options?.modeInfo?.telemetryModeName ?? this.opts.options?.modeInfo?.telemetryModeId,
-			sessionType: getChatSessionTypeForTelemetry(this.opts.sessionResource),
-			harness: getHarnessForTelemetry(this.opts.sessionResource),
-			isAgentHostSession: getIsAgentHostSessionForTelemetry(this.opts.sessionResource),
+			sessionType: getChatSessionTelemetryContext(this.opts.sessionResource).sessionType,
 			isVirtualWorkspace: this.opts.isVirtualWorkspace,
-			settingDefaultToCopilotHarness: this.opts.settingDefaultToCopilotHarness,
-			settingPreferCopilotHarness: this.opts.settingPreferCopilotHarness,
-			settingLocalAgentEnabled: this.opts.settingLocalAgentEnabled,
 		});
 	}
 
@@ -446,41 +411,16 @@ export class ChatRequestTelemetry {
 interface IChatSessionTelemetryContext {
 	readonly chatSessionId: string;
 	readonly sessionType: string;
-	readonly harness: string | undefined;
 }
 
-/** Returns telemetry-safe session context, excluding remote Agent Host connection authorities. */
+/** Returns the session context needed to route chat interaction telemetry. */
 export function getChatSessionTelemetryContext(sessionResource: URI): IChatSessionTelemetryContext {
+	const sessionType = getChatSessionType(sessionResource);
+	const isRemoteSession = sessionType.startsWith('remote-');
 	return {
-		chatSessionId: getChatSessionIdForTelemetry(sessionResource),
-		sessionType: getChatSessionTypeForTelemetry(sessionResource),
-		harness: getHarnessForTelemetry(sessionResource),
+		chatSessionId: isRemoteSession
+			? sessionResource.path.slice(1) + (sessionResource.fragment ? `#${sessionResource.fragment}` : '')
+			: chatSessionResourceToId(sessionResource),
+		sessionType: isRemoteSession ? 'remote' : sessionType,
 	};
-}
-
-function getChatSessionIdForTelemetry(sessionResource: URI): string {
-	const sessionType = getChatSessionType(sessionResource);
-	return isRemoteAgentHostSessionType(sessionType)
-		? sessionResource.path.slice(1) + (sessionResource.fragment ? `#${sessionResource.fragment}` : '')
-		: chatSessionResourceToId(sessionResource);
-}
-
-function getChatSessionTypeForTelemetry(sessionResource: URI): string {
-	const sessionType = getChatSessionType(sessionResource);
-	// Collapse the high-cardinality, host-specific authority into a single
-	// value (the authority is PII); the harness is reported separately.
-	return isRemoteAgentHostSessionType(sessionType) ? 'remote-agent-host' : sessionType;
-}
-
-function getIsAgentHostSessionForTelemetry(sessionResource: URI): boolean {
-	return isAgentHostSessionResource(sessionResource);
-}
-
-/**
- * For remote agent host sessions, the underlying harness/provider so remote
- * activity can be split by harness (the collapsed sessionType cannot). See
- * telemetry gap #2 in #8209. Undefined for non-remote sessions.
- */
-function getHarnessForTelemetry(sessionResource: URI): string | undefined {
-	return parseRemoteAgentHostHarness(getChatSessionType(sessionResource));
 }

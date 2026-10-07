@@ -10,6 +10,7 @@ import { upcastPartial } from '../../../../../base/test/common/mock.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import { ExtensionIdentifier } from '../../../../../platform/extensions/common/extensions.js';
 import { ChatUserInteractionTimingResult, isChatFirstVisibleProgress } from '../../browser/chatUserInteractionTelemetry.js';
+import { LocalChatSessionUri } from '../../common/model/chatUri.js';
 import { IChatProgress, IChatToolInvocation, IChatToolInvocationSerialized } from '../../common/chatService/chatService.js';
 import { getChatSessionTelemetryContext } from '../../common/chatService/chatServiceTelemetry.js';
 import { ChatAgentLocation, ChatModeKind, ChatPermissionLevel } from '../../common/constants.js';
@@ -20,9 +21,9 @@ import { createChatUserInteractionTestHarness } from './chatUserInteractionTestU
 suite('ChatUserInteractionTelemetry', () => {
 	const disposables = ensureNoDisposablesAreLeakedInTestSuite();
 
-	test('retains the remote routing identity before a response without exporting it', () => {
+	test('retains the local routing identity before a response without exporting it', () => {
 		const h = createChatUserInteractionTestHarness(disposables);
-		const resource = URI.parse('remote-example-copilot:/session');
+		const resource = LocalChatSessionUri.forSession('session');
 		const timer = h.createInteraction({
 			context: getChatSessionTelemetryContext(resource),
 			getSessionResource: () => resource,
@@ -33,7 +34,7 @@ suite('ChatUserInteractionTelemetry', () => {
 			payloadContainsResource: JSON.stringify(h.otel).includes(resource.toString()),
 			telemetryContainsAuthority: JSON.stringify(h.events).includes('example'),
 		}, {
-			routes: [{ resource, sessionType: 'remote-agent-host' }],
+			routes: [{ resource, sessionType: 'local' }],
 			payloadContainsResource: false,
 			telemetryContainsAuthority: false,
 		});
@@ -42,13 +43,21 @@ suite('ChatUserInteractionTelemetry', () => {
 
 	test('uses the committed response routing identity instead of the original submission', () => {
 		const h = createChatUserInteractionTestHarness(disposables);
-		const resource = URI.parse('remote-example-copilot:/committed');
+		const resource = LocalChatSessionUri.forSession('committed');
 		const response = h.createResponse(resource);
-		const timer = h.createInteraction({ getSessionResource: () => URI.parse('agent-host-copilot:/original') });
+		const timer = h.createInteraction({ getSessionResource: () => LocalChatSessionUri.forSession('original') });
 		timer.observeResponse(response.response, () => undefined);
 		timer.cancel('hidden');
-		assert.deepStrictEqual(h.otelRoutes, [{ resource, sessionType: 'remote-agent-host' }]);
+		assert.deepStrictEqual(h.otelRoutes, [{ resource, sessionType: 'local' }]);
 		h.assertFinished('hidden');
+	});
+
+	test('normalizes remote session telemetry without exporting the authority', () => {
+		const session = URI.from({ scheme: 'remote-private-host', authority: 'private-authority', path: '/session-id', query: 'private-query' });
+		assert.deepStrictEqual(getChatSessionTelemetryContext(session), {
+			chatSessionId: 'session-id',
+			sessionType: 'remote',
+		});
 	});
 
 	test('uses provider-neutral meaningful progress semantics', () => {
@@ -111,10 +120,10 @@ suite('ChatUserInteractionTelemetry', () => {
 		const data = {
 			timeToFirstProgress: 250, timeToTermination: undefined, result: 'success', interactionKind: 'turn',
 			requestPhase: 'first', firstProgressKind: 'text',
-			requestId: 'request-id', chatSessionId: 'agent-host-copilotcli:/session',
+			requestId: 'request-id', chatSessionId: 'session',
 			agent: 'agent-id', agentExtensionId: 'publisher.extension', location: ChatAgentLocation.Chat,
 			model: 'model-id', permissionLevel: ChatPermissionLevel.AutoApprove, chatMode: 'agent',
-			sessionType: 'agent-host-copilotcli', harness: undefined, windowVisible: true, windowFocused: false,
+			sessionType: 'local', windowVisible: true, windowFocused: false,
 		};
 		assert.deepStrictEqual({ events: h.events, logs: h.logs, finished, observing: response.hasListeners() }, {
 			events: [{ name: 'chat.userPerceivedTimeToFirstProgress', data }],
@@ -207,15 +216,6 @@ suite('ChatUserInteractionTelemetry', () => {
 			h.assertFinished(outcome);
 		});
 	}
-
-	test('preserves remote peer chat identity without connection or query information', () => {
-		const session = URI.from({ scheme: 'remote-private-host-copilot', authority: 'private-authority', path: '/session-id', query: 'private-query' });
-		assert.deepStrictEqual(['', 'peer-one', 'peer-two'].map(fragment => getChatSessionTelemetryContext(session.with({ fragment }))), [
-			{ chatSessionId: 'session-id', sessionType: 'remote-agent-host', harness: 'copilot' },
-			{ chatSessionId: 'session-id#peer-one', sessionType: 'remote-agent-host', harness: 'copilot' },
-			{ chatSessionId: 'session-id#peer-two', sessionType: 'remote-agent-host', harness: 'copilot' },
-		]);
-	});
 
 	for (const result of ['cancelled', 'error', 'completedWithoutProgress', 'notDispatched', 'queued', 'navigated', 'hidden', 'disposed'] satisfies Exclude<ChatUserInteractionTimingResult, 'success'>[]) {
 		test(`reports ${result} with only a termination duration`, () => {

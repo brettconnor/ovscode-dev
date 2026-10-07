@@ -1973,8 +1973,6 @@ export interface IChatSendRequestOptions {
 	rejectedConfirmationData?: any[];
 	attachedContext?: IChatRequestVariableEntry[];
 	resolvedVariables?: IChatRequestVariableEntry[];
-	agentHostSessionConfig?: Record<string, unknown>;
-	/** Original actor when resending an Agent Host pending message. */
 	/** Provider-specific request metadata, separate from the prompt. */
 	metadata?: Record<string, unknown>;
 

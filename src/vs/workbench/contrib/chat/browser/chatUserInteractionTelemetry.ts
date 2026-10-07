@@ -30,7 +30,6 @@ export interface IChatUserInteractionTelemetryContext {
 	readonly permissionLevel?: ChatPermissionLevel;
 	readonly chatMode?: string;
 	readonly sessionType?: string;
-	readonly harness?: string;
 }
 
 export interface IChatUserInteractionOptions {
@@ -273,16 +272,15 @@ type ChatUserPerceivedTimeToFirstProgressClassification = {
 	requestPhase: { classification: 'SystemMetaData'; purpose: 'PerformanceAndHealth'; comment: 'Whether this is the first request in the chat history or a followup; unknown if no response was created or its request cannot be located. Does not imply a cold or warm provider process.' };
 	firstProgressKind?: { classification: 'SystemMetaData'; purpose: 'PerformanceAndHealth'; comment: 'Kind of meaningful progress that triggered the successful render acknowledgement: text, reasoning, or tool. Absent on unsuccessful observations.' };
 	interactionKind: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The chat interaction kind. This event measures turn submissions, not fork navigation.' };
-	requestId?: { classification: 'SystemMetaData'; purpose: 'PerformanceAndHealth'; comment: 'The chat request identifier, when created. For Agent Host turns, this matches agentHost.turnCompleted turnId.' };
-	chatSessionId?: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The non-content chat session identifier. Remote Agent Host connection authorities are excluded.' };
+	requestId?: { classification: 'SystemMetaData'; purpose: 'PerformanceAndHealth'; comment: 'The chat request identifier, when created.' };
+	chatSessionId?: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The non-content chat session identifier.' };
 	agent?: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The chat agent handling the request.' };
 	agentExtensionId?: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The extension that contributed the chat agent.' };
 	location?: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The location where the chat interaction occurred.' };
 	model?: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The selected language model identifier. For Auto, this is the Auto identifier rather than the resolved model.' };
 	permissionLevel?: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The tool auto-approval permission level selected for the request.' };
 	chatMode?: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The chat mode used for the request.' };
-	sessionType?: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The normalized chat session type.' };
-	harness?: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'For remote Agent Host sessions, the underlying harness/provider. Undefined for non-remote sessions.' };
+	sessionType?: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'The chat session type, with remote session types normalized.' };
 	windowVisible: { classification: 'SystemMetaData'; purpose: 'PerformanceAndHealth'; isMeasurement: true; comment: 'Whether the source window was visible when the interaction ended.' };
 	windowFocused: { classification: 'SystemMetaData'; purpose: 'PerformanceAndHealth'; isMeasurement: true; comment: 'Whether the source window was focused when the interaction ended.' };
 	owner: 'roblourens';

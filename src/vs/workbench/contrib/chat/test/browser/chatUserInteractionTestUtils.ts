@@ -18,6 +18,7 @@ import { ChatUserInteraction, ChatUserInteractionTimingResult, IChatUserInteract
 import { IChatUserInteractionOTelService } from '../../browser/chatUserInteractionOTel.js';
 import { IChatUserInteractionTiming } from '../../../../../platform/otel/common/chatUserInteraction.js';
 import { ChatResponseModelChangeReason, IChatModel, IChatProgressResponseContent, IChatRequestModel, IChatResponseModel, IResponse } from '../../common/model/chatModel.js';
+import { LocalChatSessionUri } from '../../common/model/chatUri.js';
 import { IChatViewModel } from '../../common/model/chatViewModel.js';
 
 export function createChatUserInteractionTestHarness(disposables: Pick<DisposableStore, 'add'>) {
@@ -76,7 +77,7 @@ export function createChatUserInteractionTestHarness(disposables: Pick<Disposabl
 		? disposables.add(createInstance(ChatUserInteraction, { ...args[0] as IChatUserInteractionOptions, now: () => now }))
 		: createInstance(ctor, ...args));
 
-	function createResponse(resource = URI.parse('agent-host-copilotcli:/session'), properties: Partial<IChatResponseModel> = {}) {
+	function createResponse(resource = LocalChatSessionUri.forSession('session'), properties: Partial<IChatResponseModel> = {}) {
 		const requestId = properties.requestId ?? `request-${resource.path}`;
 		const changed = disposables.add(new Emitter<ChatResponseModelChangeReason>());
 		const disposed = disposables.add(new Emitter<void>());
