@@ -24,7 +24,7 @@ import { InstallLocalExtensionsInRemoteAction, InstallRemoteExtensionsInLocalAct
 import { IExtensionManagementService, ILocalExtension } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IWorkbenchExtensionEnablementService, IExtensionManagementServerService, IExtensionManagementServer } from '../../../services/extensionManagement/common/extensionManagement.js';
 import { ExtensionsInput } from '../common/extensionsInput.js';
-import { ExtensionsListView, EnabledExtensionsView, DisabledExtensionsView, RecommendedExtensionsView, WorkspaceRecommendedExtensionsView, ServerInstalledExtensionsView, DefaultRecommendedExtensionsView, UntrustedWorkspaceUnsupportedExtensionsView, UntrustedWorkspacePartiallySupportedExtensionsView, VirtualWorkspaceUnsupportedExtensionsView, VirtualWorkspacePartiallySupportedExtensionsView, DefaultPopularExtensionsView, DeprecatedExtensionsView, SearchMarketplaceExtensionsView, RecentlyUpdatedExtensionsView, OutdatedExtensionsView, StaticQueryExtensionsView, NONE_CATEGORY, AbstractExtensionsListView } from './extensionsViews.js';
+import { ExtensionsListView, EnabledExtensionsView, DisabledExtensionsView, RecommendedExtensionsView, WorkspaceRecommendedExtensionsView, ServerInstalledExtensionsView, DefaultRecommendedExtensionsView, UntrustedWorkspaceUnsupportedExtensionsView, UntrustedWorkspacePartiallySupportedExtensionsView, VirtualWorkspaceUnsupportedExtensionsView, VirtualWorkspacePartiallySupportedExtensionsView, DefaultPopularExtensionsView, DeprecatedExtensionsView, RecentlyUpdatedExtensionsView, OutdatedExtensionsView, StaticQueryExtensionsView, NONE_CATEGORY, AbstractExtensionsListView } from './extensionsViews.js';
 import { IProgressService, ProgressLocation } from '../../../../platform/progress/common/progress.js';
 import { IEditorGroupsService } from '../../../services/editor/common/editorGroupsService.js';
 import Severity from '../../../../base/common/severity.js';
@@ -67,7 +67,6 @@ import { IExtensionGalleryManifest, IExtensionGalleryManifestService, ExtensionG
 import { URI } from '../../../../base/common/uri.js';
 
 export const ExtensionsSortByContext = new RawContextKey<string>('extensionsSortByValue', '');
-export const SearchMarketplaceExtensionsContext = new RawContextKey<boolean>('searchMarketplaceExtensions', false);
 export const SearchHasTextContext = new RawContextKey<boolean>('extensionSearchHasText', false);
 const InstalledExtensionsContext = new RawContextKey<boolean>('installedExtensions', false);
 const SearchInstalledExtensionsContext = new RawContextKey<boolean>('searchInstalledExtensions', false);
@@ -128,40 +127,8 @@ export class ExtensionsViewletViewsContribution extends Disposable implements IW
 		/* Other Local Filtered extensions views */
 		viewDescriptors.push(...this.createOtherLocalFilteredExtensionsViewDescriptors());
 
-
-		viewDescriptors.push({
-			id: 'workbench.views.extensions.marketplaceAccess',
-			name: localize2('marketPlace', "Marketplace"),
-			ctorDescriptor: new SyncDescriptor(class extends ViewPane {
-				public override shouldShowWelcome() {
-					return true;
-				}
-			}),
-			when: ContextKeyExpr.and(
-				ContextKeyExpr.or(
-					ContextKeyExpr.has('searchMarketplaceExtensions'), ContextKeyExpr.and(DefaultViewsContext)
-				),
-				ContextKeyExpr.or(
-					CONTEXT_EXTENSIONS_GALLERY_STATUS.isEqualTo(ExtensionGalleryManifestStatus.RequiresSignIn),
-					CONTEXT_EXTENSIONS_GALLERY_STATUS.isEqualTo(ExtensionGalleryManifestStatus.AccessDenied)
-				)
-			),
-			order: -1,
-		});
-
 		const viewRegistry = Registry.as<IViewsRegistry>(Extensions.ViewsRegistry);
 		viewRegistry.registerViews(viewDescriptors, this.container);
-
-		viewRegistry.registerViewWelcomeContent('workbench.views.extensions.marketplaceAccess', {
-			content: localize('sign in', "[Sign in to access Extensions Marketplace]({0})", `command:workbench.extensions.actions.gallery.signIn`),
-			when: CONTEXT_EXTENSIONS_GALLERY_STATUS.isEqualTo(ExtensionGalleryManifestStatus.RequiresSignIn)
-		});
-
-		// Access denied applies to every provider (microsoft/github/default), so gate on status alone.
-		viewRegistry.registerViewWelcomeContent('workbench.views.extensions.marketplaceAccess', {
-			content: localize('access denied', "Your account does not have access to the Extensions Marketplace. Please contact your administrator."),
-			when: CONTEXT_EXTENSIONS_GALLERY_STATUS.isEqualTo(ExtensionGalleryManifestStatus.AccessDenied)
-		});
 	}
 
 	private createDefaultExtensionsViewDescriptors(): IViewDescriptor[] {
@@ -321,16 +288,6 @@ export class ExtensionsViewletViewsContribution extends Disposable implements IW
 
 	private createSearchExtensionsViewDescriptors(): IViewDescriptor[] {
 		const viewDescriptors: IViewDescriptor[] = [];
-
-		/*
-		 * View used for searching Marketplace
-		 */
-		viewDescriptors.push({
-			id: 'workbench.views.extensions.marketplace',
-			name: localize2('marketPlace', "Marketplace"),
-			ctorDescriptor: new SyncDescriptor(SearchMarketplaceExtensionsView, [{}]),
-			when: ContextKeyExpr.and(ContextKeyExpr.has('searchMarketplaceExtensions'), CONTEXT_HAS_GALLERY)
-		});
 
 		/*
 		 * View used for searching all installed extensions
@@ -521,7 +478,6 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 	private readonly extensionsSearchValueContextKey: IContextKey<string>;
 	private readonly defaultViewsContextKey: IContextKey<boolean>;
 	private readonly sortByContextKey: IContextKey<string>;
-	private readonly searchMarketplaceExtensionsContextKey: IContextKey<boolean>;
 	private readonly searchMcpServersContextKey: IContextKey<boolean>;
 	private readonly searchAgentPluginsContextKey: IContextKey<boolean>;
 	private readonly searchHasTextContextKey: IContextKey<boolean>;
@@ -578,7 +534,6 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 		this.extensionsSearchValueContextKey = ExtensionsSearchValueContext.bindTo(contextKeyService);
 		this.defaultViewsContextKey = DefaultViewsContext.bindTo(contextKeyService);
 		this.sortByContextKey = ExtensionsSortByContext.bindTo(contextKeyService);
-		this.searchMarketplaceExtensionsContextKey = SearchMarketplaceExtensionsContext.bindTo(contextKeyService);
 		this.searchMcpServersContextKey = SearchMcpServersContext.bindTo(contextKeyService);
 		this.searchAgentPluginsContextKey = SearchAgentPluginsContext.bindTo(contextKeyService);
 		this.searchHasTextContextKey = SearchHasTextContext.bindTo(contextKeyService);
@@ -727,8 +682,7 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 		clearNode(this.notificationContainer);
 		this.notificationDisposables.value = new DisposableStore();
 		const status = this.extensionsWorkbenchService.getExtensionsNotification();
-		const query = status?.query ?? status?.extensions.map(extension => `@id:${extension.identifier.id}`).join(' ');
-		if (status && (query === this.searchBox?.getValue() || !this.searchMarketplaceExtensionsContextKey.get())) {
+		if (status) {
 			const messagePlainText = isMarkdownString(status.message) ? renderAsPlaintext(status.message) : status.message;
 			this.notificationContainer.setAttribute('aria-label', messagePlainText);
 			this.notificationContainer.classList.remove('hidden');
@@ -864,7 +818,6 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 			this.recommendedExtensionsContextKey.set(isRecommendedExtensionsQuery);
 			this.searchMcpServersContextKey.set(!!value && /@mcp\s?.*/i.test(value));
 			this.searchAgentPluginsContextKey.set(!!value && /@agentPlugins\s?.*/i.test(value));
-			this.searchMarketplaceExtensionsContextKey.set(!!value && !ExtensionsListView.isLocalExtensionsQuery(value) && !isRecommendedExtensionsQuery && !this.searchMcpServersContextKey.get() && !this.searchAgentPluginsContextKey.get());
 			this.sortByUpdateDateContextKey.set(ExtensionsListView.isSortUpdateDateQuery(value));
 			this.defaultViewsContextKey.set(!value || ExtensionsListView.isSortInstalledExtensionsQuery(value));
 		});

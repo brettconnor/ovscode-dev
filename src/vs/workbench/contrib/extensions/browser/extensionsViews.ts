@@ -33,7 +33,7 @@ import { alert } from '../../../../base/browser/ui/aria/aria.js';
 import { CancellationToken, CancellationTokenSource } from '../../../../base/common/cancellation.js';
 import { ActionRunner } from '../../../../base/common/actions.js';
 import { ExtensionIdentifier, ExtensionIdentifierMap, ExtensionUntrustedWorkspaceSupportType, ExtensionVirtualWorkspaceSupportType, IExtensionDescription, IExtensionIdentifier, isLanguagePackExtension } from '../../../../platform/extensions/common/extensions.js';
-import { CancelablePromise, createCancelablePromise, ThrottledDelayer } from '../../../../base/common/async.js';
+import { CancelablePromise, createCancelablePromise } from '../../../../base/common/async.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { SeverityIcon } from '../../../../base/browser/ui/severityIcon/severityIcon.js';
 import { IContextKeyService } from '../../../../platform/contextkey/common/contextkey.js';
@@ -1455,24 +1455,6 @@ export class VirtualWorkspacePartiallySupportedExtensionsView extends Extensions
 export class DeprecatedExtensionsView extends ExtensionsListView {
 	override async show(query: string): Promise<IPagedModel<IExtension>> {
 		return ExtensionsListView.isSearchDeprecatedExtensionsQuery(query) ? super.show(query) : this.showEmptyModel();
-	}
-}
-
-export class SearchMarketplaceExtensionsView extends ExtensionsListView {
-
-	private readonly reportSearchFinishedDelayer = this._register(new ThrottledDelayer(2000));
-	private searchWaitPromise: Promise<void> = Promise.resolve();
-
-	override async show(query: string): Promise<IPagedModel<IExtension>> {
-		const queryPromise = super.show(query);
-		this.reportSearchFinishedDelayer.trigger(() => this.reportSearchFinished());
-		this.searchWaitPromise = queryPromise.then(null, null);
-		return queryPromise;
-	}
-
-	private async reportSearchFinished(): Promise<void> {
-		await this.searchWaitPromise;
-		this.telemetryService.publicLog2('extensionsView:MarketplaceSearchFinished');
 	}
 }
 
