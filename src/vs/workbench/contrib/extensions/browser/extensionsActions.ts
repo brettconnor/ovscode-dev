@@ -883,103 +883,6 @@ export class UninstallAction extends ExtensionAction {
 	}
 }
 
-export class UpdateAction extends ExtensionAction {
-
-	private static readonly EnabledClass = `${this.LABEL_ACTION_CLASS} update`;
-	private static readonly DisabledClass = `${this.EnabledClass} disabled`;
-
-	private readonly updateThrottler = this._register(new Throttler());
-
-	constructor(
-		private readonly verbose: boolean,
-		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
-		@IDialogService private readonly dialogService: IDialogService,
-		@IOpenerService private readonly openerService: IOpenerService,
-		@IInstantiationService private readonly instantiationService: IInstantiationService,
-	) {
-		super(`extensions.update`, localize('update', "Update"), UpdateAction.DisabledClass, false);
-		this.update();
-	}
-
-	update(): void {
-		this.updateThrottler.queue(() => this.computeAndUpdateEnablement());
-		if (this.extension) {
-			this.label = this.verbose ? localize('update to', "Update to v{0}", this.extension.latestVersion) : localize('update', "Update");
-		}
-	}
-
-	private async computeAndUpdateEnablement(): Promise<void> {
-		this.enabled = false;
-		this.class = UpdateAction.DisabledClass;
-
-		if (!this.extension) {
-			return;
-		}
-
-		if (this.extension.deprecationInfo) {
-			return;
-		}
-
-		const canInstall = await this.extensionsWorkbenchService.canInstall(this.extension);
-		const isInstalled = this.extension.state === ExtensionState.Installed;
-
-		this.enabled = canInstall === true && isInstalled && this.extension.outdated;
-		this.class = this.enabled ? UpdateAction.EnabledClass : UpdateAction.DisabledClass;
-	}
-
-	override async run(): Promise<any> {
-		if (!this.extension) {
-			return;
-		}
-
-		const consent = await this.extensionsWorkbenchService.shouldRequireConsentToUpdate(this.extension);
-		if (consent) {
-			const { result } = await this.dialogService.prompt<'update' | 'review' | 'cancel'>({
-				type: 'warning',
-				title: localize('updateExtensionConsentTitle', "Update {0} Extension", this.extension.displayName),
-				message: localize('updateExtensionConsent', "{0}\n\nWould you like to update the extension?", consent),
-				buttons: [{
-					label: localize('update', "Update"),
-					run: () => 'update'
-				}, {
-					label: localize('review', "Review"),
-					run: () => 'review'
-				}, {
-					label: localize('cancel', "Cancel"),
-					run: () => 'cancel'
-				}]
-			});
-			if (result === 'cancel') {
-				return;
-			}
-			if (result === 'review') {
-				if (this.extension.hasChangelog()) {
-					return this.extensionsWorkbenchService.open(this.extension, { tab: ExtensionEditorTab.Changelog });
-				}
-				if (this.extension.repository) {
-					return this.openerService.open(this.extension.repository);
-				}
-				return this.extensionsWorkbenchService.open(this.extension);
-			}
-		}
-
-		const installOptions: InstallOptions = {};
-		if (this.extension.local?.source === 'vsix' && this.extension.local.pinned) {
-			installOptions.pinned = false;
-		}
-		if (this.extension.local?.preRelease) {
-			installOptions.installPreReleaseVersion = true;
-		}
-		try {
-			alert(localize('updateExtensionStart', "Updating extension {0} to version {1} started.", this.extension.displayName, this.extension.latestVersion));
-			await this.extensionsWorkbenchService.install(this.extension, installOptions);
-			alert(localize('updateExtensionComplete', "Updating extension {0} to version {1} completed.", this.extension.displayName, this.extension.latestVersion));
-		} catch (err) {
-			this.instantiationService.createInstance(PromptExtensionInstallFailureAction, this.extension, installOptions, InstallOperation.Update, err).run();
-		}
-	}
-}
-
 export class ToggleAutoUpdateForExtensionAction extends ExtensionAction {
 
 	static readonly ID = 'workbench.extensions.action.toggleAutoUpdateForExtension';
@@ -2701,30 +2604,6 @@ export class ExtensionStatusAction extends ExtensionAction {
 			return;
 		}
 
-		if (this.extension.outdated) {
-			let hasConsentWarning = false;
-			const message = await this.extensionsWorkbenchService.shouldRequireConsentToUpdate(this.extension);
-			if (message) {
-				hasConsentWarning = true;
-				const markdown = new MarkdownString();
-				markdown.appendMarkdown(`${message} `);
-				markdown.appendMarkdown(
-					localize('auto update message', "Please [review the extension]({0}) and update it manually.",
-						this.extension.hasChangelog()
-							? createCommandUri('extension.open', this.extension.identifier.id, ExtensionEditorTab.Changelog).toString()
-							: this.extension.repository
-								? this.extension.repository
-								: createCommandUri('extension.open', this.extension.identifier.id).toString()
-					));
-				this.updateStatus({ icon: warningIcon, message: markdown }, true);
-			}
-			if (this.extensionsWorkbenchService.isAutoUpdateDelayed(this.extension)) {
-				const delay = fromNow(Date.now() - this.extensionsWorkbenchService.getAutoUpdateDelay(), false, true);
-				const updateAt = fromNow(Date.now() + this.extensionsWorkbenchService.getAutoUpdateDelayRemaining(this.extension), false, true);
-				// Do not override the higher-priority warning class with the info class.
-				this.updateStatus({ icon: infoIcon, message: new MarkdownString(localize('autoUpdateDelayed', "This extension is not updated yet because new versions are auto updated {0} after they are published. It will be auto updated {1}.", delay, updateAt)) }, !hasConsentWarning);
-			}
-		}
 
 		if (this.extension.gallery && this.extension.state === ExtensionState.Uninstalled) {
 			const result = await this.extensionsWorkbenchService.canInstall(this.extension);
