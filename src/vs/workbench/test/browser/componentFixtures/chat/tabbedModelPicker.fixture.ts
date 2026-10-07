@@ -60,7 +60,6 @@ interface IFixtureModelOptions {
 	readonly isBYOK?: boolean;
 	readonly promoDiscount?: number;
 	readonly retiring?: boolean;
-	readonly byokModelIdentifier?: string;
 	readonly modelGroupId?: string;
 }
 
@@ -106,7 +105,6 @@ function createModel(id: string, name: string, options: IFixtureModelOptions = {
 			category: options.category,
 			priceCategory: options.priceCategory,
 			isBYOK: options.isBYOK,
-			byokModelIdentifier: options.byokModelIdentifier,
 			modelGroup: options.modelGroupId ? { id: options.modelGroupId } : undefined,
 			promo: options.promoDiscount ? { id: 'promo', discountPercent: options.promoDiscount, message: 'Discounted for a limited time.' } : undefined,
 			warningText: options.retiring ? { model_pending_deprecation: 'This model is retiring soon.' } : undefined,
@@ -195,7 +193,7 @@ const COPILOT_ONLY_MODELS = [AUTO_MODEL, ...COPILOT_MODELS];
 /** How the Copilot agent host relays models: its own vendor, BYOK stamped on everything. */
 const RELAYED_MODELS = [
 	createModel('auto', 'Auto', { vendor: 'agent-host-copilotcli', isBYOK: true, modelGroupId: 'copilot', detail: '10% off', effortValues: [...REASONING_EFFORTS], effortLabels: [...REASONING_EFFORTS], effortDefault: REASONING_EFFORTS[1] }),
-	createModel('gpt-5-5', 'GPT-5.5', { vendor: 'agent-host-copilotcli', isBYOK: true, byokModelIdentifier: 'copilot/gpt-5-5', modelGroupId: 'copilot', category: 'powerful', priceCategory: 'high' }),
+	createModel('gpt-5-5', 'GPT-5.5', { vendor: 'agent-host-copilotcli', isBYOK: true, modelGroupId: 'copilot', category: 'powerful', priceCategory: 'high' }),
 	createModel('claude-sonnet-5', 'Claude Sonnet 5', { vendor: 'agent-host-copilotcli', isBYOK: true, modelGroupId: 'copilot', category: 'powerful' }),
 	createModel('llama-3-70b', 'Llama 3 70B', { vendor: 'agent-host-copilotcli', isBYOK: true, modelGroupId: 'ollama' }),
 ];
