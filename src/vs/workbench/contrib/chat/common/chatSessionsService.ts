@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { URI } from '../../../../base/common/uri.js';
 
 /** Session identifiers still used by the workbench while Agent Host is being removed. */
 export namespace SessionType {
@@ -44,10 +43,6 @@ export function isRemoteAgentHostTarget(target: string): boolean {
 
 export function isAgentHostTarget(target: string): boolean {
 	return isLocalAgentHostTarget(target) || isRemoteAgentHostTarget(target);
-}
-
-export function isAgentHostSessionResource(resource: URI): boolean {
-	return isAgentHostTarget(resource.scheme);
 }
 
 export const enum ChatSessionStatus {

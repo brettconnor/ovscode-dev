@@ -625,10 +625,6 @@ export function shouldShowFileChangesSummaryForSettings(isComplete: boolean, isL
 	return isComplete && isLocalSession && showFileChanges;
 }
 
-export function shouldShowTurnPillsSummary(isComplete: boolean, isAgentHostSession: boolean): boolean {
-	return isComplete && isAgentHostSession;
-}
-
 export function shouldPinToolInvocationToThinking(state: IChatToolInvocation.StateKind, hasConfirmationMessages: boolean, hasMcpAppData: boolean): boolean {
 	return !hasMcpAppData
 		&& state !== IChatToolInvocation.StateKind.WaitingForConfirmation

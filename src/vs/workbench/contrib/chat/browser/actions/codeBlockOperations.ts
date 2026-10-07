@@ -36,7 +36,6 @@ import { CellKind, ICellEditOperation, NOTEBOOK_EDITOR_ID } from '../../../noteb
 import { INotebookService } from '../../../notebook/common/notebookService.js';
 import { ICodeMapperCodeBlock, ICodeMapperRequest, ICodeMapperResponse, ICodeMapperService } from '../../common/editing/chatCodeMapperService.js';
 import { ChatUserAction, IChatService } from '../../common/chatService/chatService.js';
-import { isAgentHostSessionResource } from '../../common/chatSessionsService.js';
 import { chatSessionResourceToId } from '../../common/model/chatUri.js';
 import { IChatRequestViewModel, isRequestVM, isResponseVM } from '../../common/model/chatViewModel.js';
 import { ICodeBlockActionContext } from '../widget/chatContentParts/codeBlockPart.js';
@@ -95,7 +94,6 @@ export class InsertCodeBlockOperation {
 				source: undefined,
 				sourceRequestId: requestId,
 				chatSessionId: chatSessionResourceToId(context.element.sessionResource),
-				isAgentHostSession: isAgentHostSessionResource(context.element.sessionResource),
 			});
 		}
 	}
