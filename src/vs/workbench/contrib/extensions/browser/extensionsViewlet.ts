@@ -22,7 +22,7 @@ import { IExtensionService } from '../../../services/extensions/common/extension
 import { IExtensionsWorkbenchService, IExtensionsViewPaneContainer, VIEWLET_ID, CloseExtensionDetailsOnViewChangeKey, extensionsSearchActionsMenu, AutoRestartConfigurationKey, ExtensionRuntimeActionType, SearchMcpServersContext, SearchAgentPluginsContext, DefaultViewsContext } from '../common/extensions.js';
 import { InstallLocalExtensionsInRemoteAction, InstallRemoteExtensionsInLocalAction } from './extensionsActions.js';
 import { IExtensionManagementService, ILocalExtension } from '../../../../platform/extensionManagement/common/extensionManagement.js';
-import { IWorkbenchExtensionEnablementService, IExtensionManagementServerService, IExtensionManagementServer } from '../../../services/extensionManagement/common/extensionManagement.js';
+import { IExtensionManagementServerService, IExtensionManagementServer } from '../../../services/extensionManagement/common/extensionManagement.js';
 import { ExtensionsInput } from '../common/extensionsInput.js';
 import { ExtensionsListView, EnabledExtensionsView, DisabledExtensionsView, ServerInstalledExtensionsView, UntrustedWorkspaceUnsupportedExtensionsView, UntrustedWorkspacePartiallySupportedExtensionsView, VirtualWorkspaceUnsupportedExtensionsView, VirtualWorkspacePartiallySupportedExtensionsView, DeprecatedExtensionsView, RecentlyUpdatedExtensionsView, StaticQueryExtensionsView, AbstractExtensionsListView } from './extensionsViews.js';
 import { IProgressService, ProgressLocation } from '../../../../platform/progress/common/progress.js';
@@ -839,7 +839,6 @@ export class StatusUpdater extends Disposable implements IWorkbenchContribution 
 	constructor(
 		@IActivityService private readonly activityService: IActivityService,
 		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
-		@IWorkbenchExtensionEnablementService private readonly extensionEnablementService: IWorkbenchExtensionEnablementService,
 		@IConfigurationService private readonly configurationService: IConfigurationService
 	) {
 		super();
@@ -858,16 +857,9 @@ export class StatusUpdater extends Disposable implements IWorkbenchContribution 
 
 		if (!badge) {
 			const actionRequired = this.configurationService.getValue(AutoRestartConfigurationKey) === true ? [] : this.extensionsWorkbenchService.installed.filter(e => e.runtimeState !== undefined);
-			const outdated = this.extensionsWorkbenchService.outdated.reduce((r, e) => r + (this.extensionEnablementService.isEnabled(e.local!) && !actionRequired.includes(e) && !this.extensionsWorkbenchService.isAutoUpdateDelayed(e) ? 1 : 0), 0);
-			const newBadgeNumber = outdated + actionRequired.length;
+			const newBadgeNumber = actionRequired.length;
 			if (newBadgeNumber > 0) {
 				let msg = '';
-				if (outdated) {
-					msg += outdated === 1 ? localize('extensionToUpdate', '{0} requires update', outdated) : localize('extensionsToUpdate', '{0} require update', outdated);
-				}
-				if (outdated > 0 && actionRequired.length > 0) {
-					msg += ', ';
-				}
 				if (actionRequired.length) {
 					msg += actionRequired.length === 1 ? localize('extensionToReload', '{0} requires restart', actionRequired.length) : localize('extensionsToReload', '{0} require restart', actionRequired.length);
 				}

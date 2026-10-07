@@ -6,7 +6,7 @@
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
 import { Event } from '../../../../base/common/event.js';
 import { IPager } from '../../../../base/common/paging.js';
-import { IQueryOptions, ILocalExtension, IGalleryExtension, IExtensionIdentifier, IExtensionInfo, IExtensionQueryOptions, IDeprecationInfo, InstallExtensionResult, InstallOptions } from '../../../../platform/extensionManagement/common/extensionManagement.js';
+import { IQueryOptions, ILocalExtension, IGalleryExtension, IExtensionIdentifier, IExtensionInfo, IExtensionQueryOptions, IDeprecationInfo, InstallOptions } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { EnablementState, IExtensionManagementServer, IResourceExtension } from '../../../services/extensionManagement/common/extensionManagement.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { Disposable, IDisposable } from '../../../../base/common/lifecycle.js';
@@ -131,7 +131,6 @@ export interface IExtensionsWorkbenchService {
 	readonly onReset: Event<void>;
 	readonly local: IExtension[];
 	readonly installed: IExtension[];
-	readonly outdated: IExtension[];
 	readonly whenInitialized: Promise<void>;
 	queryLocal(server?: IExtensionManagementServer): Promise<IExtension[]>;
 	queryGallery(token: CancellationToken): Promise<IPager<IExtension>>;
@@ -150,19 +149,9 @@ export interface IExtensionsWorkbenchService {
 	canSetLanguage(extension: IExtension): boolean;
 	setLanguage(extension: IExtension): Promise<void>;
 	setEnablement(extensions: IExtension | IExtension[], enablementState: EnablementState): Promise<void>;
-	isAutoUpdateEnabledFor(extensionOrPublisher: IExtension | string): boolean;
-	updateAutoUpdateEnablementFor(extensionOrPublisher: IExtension | string, enable: boolean): Promise<void>;
-	shouldRequireConsentToUpdate(extension: IExtension): Promise<string | undefined>;
-	updateAutoUpdateForAllExtensions(value: boolean): Promise<void>;
 	open(extension: IExtension | string, options?: IExtensionEditorOptions): Promise<void>;
 	openSearch(searchValue: string, focus?: boolean): Promise<void>;
-	getAutoUpdateValue(): AutoUpdateConfigurationValue;
-	isAutoUpdateDelayed(extension: IExtension): boolean;
-	getAutoUpdateDelayRemaining(extension: IExtension): number;
-	getAutoUpdateDelay(): number;
-	checkForUpdates(): Promise<void>;
 	getExtensionRuntimeStatus(extension: IExtension): IExtensionRuntimeStatus | undefined;
-	updateAll(): Promise<InstallExtensionResult[]>;
 	updateRunningExtensions(message?: string): Promise<void>;
 
 	readonly onDidChangeExtensionsNotification: Event<IExtensionsNotification | undefined>;
@@ -183,18 +172,11 @@ export const enum ExtensionEditorTab {
 }
 
 export const ConfigurationKey = 'extensions';
-export const AutoUpdateConfigurationKey = 'extensions.autoUpdate';
-export const AutoUpdateDelayConfigurationKey = 'extensions.autoUpdateDelay';
-export const AutoCheckUpdatesConfigurationKey = 'extensions.autoCheckUpdates';
 export const CloseExtensionDetailsOnViewChangeKey = 'extensions.closeExtensionDetailsOnViewChange';
 export const AutoRestartConfigurationKey = 'extensions.autoRestart';
 
-export type AutoUpdateConfigurationValue = 'on' | 'off';
 
 export interface IExtensionsConfiguration {
-	autoUpdate: AutoUpdateConfigurationValue;
-	autoUpdateDelay: number;
-	autoCheckUpdates: boolean;
 	ignoreRecommendations: boolean;
 	closeExtensionDetailsOnViewChange: boolean;
 }
@@ -251,7 +233,6 @@ export const LIST_WORKSPACE_UNSUPPORTED_EXTENSIONS_COMMAND_ID = 'workbench.exten
 
 // Context Keys
 export const DefaultViewsContext = new RawContextKey<boolean>('defaultExtensionViews', true);
-export const HasOutdatedExtensionsContext = new RawContextKey<boolean>('hasOutdatedExtensions', false);
 export const CONTEXT_HAS_GALLERY = new RawContextKey<boolean>('hasGallery', false);
 export const CONTEXT_EXTENSIONS_GALLERY_STATUS = new RawContextKey<string>('extensionsGalleryStatus', ExtensionGalleryManifestStatus.Unavailable);
 export const ExtensionResultsListFocused = new RawContextKey<boolean>('extensionResultListFocused ', true);

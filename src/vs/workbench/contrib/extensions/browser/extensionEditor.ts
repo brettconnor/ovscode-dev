@@ -61,7 +61,6 @@ import {
 	SetFileIconThemeAction,
 	SetLanguageAction,
 	SetProductIconThemeAction,
-	ToggleAutoUpdateForExtensionAction,
 	UninstallAction,
 	WebInstallAction,
 } from './extensionsActions.js';
@@ -341,7 +340,6 @@ export class ExtensionEditor extends EditorPane {
 					this.instantiationService.createInstance(InstallAnotherVersionAction, null, true),
 				]
 			]),
-			this.instantiationService.createInstance(ToggleAutoUpdateForExtensionAction),
 			new ExtensionEditorManageExtensionAction(this.scopedContextKeyService || this.contextKeyService, this.instantiationService),
 		];
 

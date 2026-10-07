@@ -7,7 +7,7 @@ import * as nls from '../../../../nls.js';
 import * as semver from '../../../../base/common/semver/semver.js';
 import { Event, Emitter } from '../../../../base/common/event.js';
 import { index } from '../../../../base/common/arrays.js';
-import { CancelablePromise, Promises, ThrottledDelayer, createCancelablePromise, disposableTimeout } from '../../../../base/common/async.js';
+import { CancelablePromise, createCancelablePromise } from '../../../../base/common/async.js';
 import { CancellationError, getErrorMessage, isCancellationError } from '../../../../base/common/errors.js';
 import { Disposable, MutableDisposable, toDisposable } from '../../../../base/common/lifecycle.js';
 import { IPager, singlePagePager } from '../../../../base/common/paging.js';
@@ -15,7 +15,7 @@ import { ITelemetryService } from '../../../../platform/telemetry/common/telemet
 import {
 	IExtensionGalleryService, ILocalExtension, IGalleryExtension, IQueryOptions,
 	InstallExtensionEvent, DidUninstallExtensionEvent, InstallOperation, WEB_EXTENSION_TAG, InstallExtensionResult,
-	IExtensionsControlManifest, IExtensionInfo, IExtensionQueryOptions, IDeprecationInfo, isTargetPlatformCompatible, InstallExtensionInfo, EXTENSION_IDENTIFIER_REGEX,
+	IExtensionsControlManifest, IExtensionInfo, IExtensionQueryOptions, IDeprecationInfo, isTargetPlatformCompatible,
 	InstallOptions, IProductVersion,
 	UninstallExtensionInfo,
 	TargetPlatformToString,
@@ -34,7 +34,7 @@ import { IInstantiationService } from '../../../../platform/instantiation/common
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { IHostService } from '../../../services/host/browser/host.js';
 import { URI } from '../../../../base/common/uri.js';
-import { IExtension, ExtensionState, IExtensionsWorkbenchService, AutoUpdateConfigurationKey, AutoUpdateDelayConfigurationKey, AutoCheckUpdatesConfigurationKey, HasOutdatedExtensionsContext, AutoUpdateConfigurationValue, InstallExtensionOptions, ExtensionRuntimeState, ExtensionRuntimeActionType, AutoRestartConfigurationKey, VIEWLET_ID, IExtensionsViewPaneContainer, IExtensionsNotification } from '../common/extensions.js';
+import { IExtension, ExtensionState, IExtensionsWorkbenchService, InstallExtensionOptions, ExtensionRuntimeState, ExtensionRuntimeActionType, AutoRestartConfigurationKey, VIEWLET_ID, IExtensionsViewPaneContainer, IExtensionsNotification } from '../common/extensions.js';
 import { ACTIVE_GROUP, IEditorService, MODAL_GROUP, SIDE_GROUP } from '../../../services/editor/common/editorService.js';
 import { IURLService, IURLHandler, IOpenURLOptions } from '../../../../platform/url/common/url.js';
 import { ExtensionsInput, IExtensionEditorOptions } from '../common/extensionsInput.js';
@@ -51,7 +51,6 @@ import { IProductService } from '../../../../platform/product/common/productServ
 import { FileAccess } from '../../../../base/common/network.js';
 import { IIgnoredExtensionsManagementService } from '../../../../platform/userDataSync/common/ignoredExtensions.js';
 import { IUserDataAutoSyncService, IUserDataSyncEnablementService, SyncResource } from '../../../../platform/userDataSync/common/userDataSync.js';
-import { IContextKey, IContextKeyService } from '../../../../platform/contextkey/common/contextkey.js';
 import { isDefined, isString, isUndefined } from '../../../../base/common/types.js';
 import { IExtensionManifestPropertiesService } from '../../../services/extensions/common/extensionManifestPropertiesService.js';
 import { IExtensionService, IExtensionsStatus as IExtensionRuntimeStatus, toExtension, toExtensionDescription } from '../../../services/extensions/common/extensions.js';
@@ -75,7 +74,6 @@ import { ExtensionGalleryResourceType, ExtensionGalleryServiceUrlConfigKey, getE
 import { fromNow } from '../../../../base/common/date.js';
 import { hash } from '../../../../base/common/hash.js';
 import { IUserDataProfilesService } from '../../../../platform/userDataProfile/common/userDataProfile.js';
-import { IMeteredConnectionService } from '../../../../platform/meteredConnection/common/meteredConnection.js';
 
 interface IExtensionStateProvider<T> {
 	(extension: Extension): T;
@@ -587,8 +585,6 @@ ${this.description}
 	}
 }
 
-const EXTENSIONS_AUTO_UPDATE_KEY = 'extensions.autoUpdate';
-const EXTENSIONS_DONOT_AUTO_UPDATE_KEY = 'extensions.donotAutoUpdate';
 const EXTENSIONS_DISMISSED_NOTIFICATIONS_KEY = 'extensions.dismissedNotifications';
 
 class Extensions extends Disposable {
@@ -974,18 +970,12 @@ class Extensions extends Disposable {
 
 export class ExtensionsWorkbenchService extends Disposable implements IExtensionsWorkbenchService, IURLHandler {
 
-	private static readonly UpdatesCheckInterval = 1000 * 60 * 60 * 12; // 12 hours
 	declare readonly _serviceBrand: undefined;
-
-	private hasOutdatedExtensionsContextKey: IContextKey<boolean>;
 
 	private readonly localExtensions: Extensions | null = null;
 	private readonly remoteExtensions: Extensions | null = null;
 	private readonly webExtensions: Extensions | null = null;
 	private readonly extensionsServers: Extensions[] = [];
-
-	private updatesCheckDelayer: ThrottledDelayer<void>;
-	private autoUpdateDelayer: ThrottledDelayer<void>;
 
 	private readonly _onChange = this._register(new Emitter<IExtension | undefined>());
 	get onChange(): Event<IExtension | undefined> { return this._onChange.event; }
@@ -999,7 +989,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 
 	private installing: IExtension[] = [];
 	private tasksInProgress: CancelablePromise<any>[] = [];
-	private readonly delayedAutoUpdateCheckTimer = this._register(new MutableDisposable());
 
 	readonly whenInitialized: Promise<void>;
 
@@ -1021,7 +1010,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		@IIgnoredExtensionsManagementService private readonly extensionsSyncManagementService: IIgnoredExtensionsManagementService,
 		@IUserDataAutoSyncService private readonly userDataAutoSyncService: IUserDataAutoSyncService,
 		@IProductService private readonly productService: IProductService,
-		@IContextKeyService contextKeyService: IContextKeyService,
 		@IExtensionManifestPropertiesService private readonly extensionManifestPropertiesService: IExtensionManifestPropertiesService,
 		@ILogService private readonly logService: ILogService,
 		@IExtensionService private readonly extensionService: IExtensionService,
@@ -1039,12 +1027,10 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		@IViewsService private readonly viewsService: IViewsService,
 		@IFileDialogService private readonly fileDialogService: IFileDialogService,
 		@IQuickInputService private readonly quickInputService: IQuickInputService,
-		@IAllowedExtensionsService private readonly allowedExtensionsService: IAllowedExtensionsService,
-		@IMeteredConnectionService private readonly meteredConnectionService: IMeteredConnectionService
+		@IAllowedExtensionsService private readonly allowedExtensionsService: IAllowedExtensionsService
 	) {
 		super();
 
-		this.hasOutdatedExtensionsContextKey = HasOutdatedExtensionsContext.bindTo(contextKeyService);
 		if (extensionManagementServerService.localExtensionManagementServer) {
 			this.localExtensions = this._register(instantiationService.createInstance(Extensions,
 				extensionManagementServerService.localExtensionManagementServer,
@@ -1079,13 +1065,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 			this.extensionsServers.push(this.webExtensions);
 		}
 
-		this.updatesCheckDelayer = new ThrottledDelayer<void>(ExtensionsWorkbenchService.UpdatesCheckInterval);
-		this.autoUpdateDelayer = new ThrottledDelayer<void>(1000);
-		this._register(toDisposable(() => {
-			this.updatesCheckDelayer.cancel();
-			this.autoUpdateDelayer.cancel();
-		}));
-
 		urlService.registerHandler(this);
 
 		this.whenInitialized = this.initialize();
@@ -1105,7 +1084,7 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 			return;
 		}
 
-		this.initializeAutoUpdate();
+		this.initializeAutoRestart();
 		this.extensionGalleryManifestService.getExtensionGalleryManifest()
 			.then(manifest => {
 				if (this._store.isDisposed) {
@@ -1118,8 +1097,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		this.updateExtensionsNotificaiton();
 		this.reportInstalledExtensionsTelemetry();
 		this._register(this.storageService.onDidChangeValue(StorageScope.PROFILE, EXTENSIONS_DISMISSED_NOTIFICATIONS_KEY, this._store)(e => this.onDidDismissedNotificationsValueChange()));
-		this._register(this.storageService.onDidChangeValue(StorageScope.APPLICATION, EXTENSIONS_AUTO_UPDATE_KEY, this._store)(e => this.onDidSelectedExtensionToAutoUpdateValueChange()));
-		this._register(this.storageService.onDidChangeValue(StorageScope.APPLICATION, EXTENSIONS_DONOT_AUTO_UPDATE_KEY, this._store)(e => this.onDidSelectedExtensionToAutoUpdateValueChange()));
 		this._register(Event.debounce(this.onChange, () => undefined, 100)(() => {
 			this.updateExtensionsNotificaiton();
 			this.reportProgressFromOtherSources();
@@ -1131,82 +1108,7 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		}));
 	}
 
-	private initializeAutoUpdate(): void {
-		// Register listeners for auto updates
-		this._register(this.configurationService.onDidChangeConfiguration(e => {
-			if (e.affectsConfiguration(AutoUpdateConfigurationKey)) {
-				if (!this.isAutoUpdateEnabled()) {
-					// Auto update disabled — cancel any pending delayed re-check
-					this.delayedAutoUpdateCheckTimer.value = undefined;
-				} else {
-					this.eventuallyAutoUpdateExtensions();
-				}
-				// The auto update value affects whether an extension is shown as delayed
-				this._onChange.fire(undefined);
-			}
-			if (e.affectsConfiguration(AutoUpdateDelayConfigurationKey)) {
-				// The delay affects when delayed updates are applied — cancel any pending
-				// delayed re-check and re-run the scheduling path with the new delay.
-				this.delayedAutoUpdateCheckTimer.value = undefined;
-				if (this.isAutoUpdateEnabled()) {
-					this.eventuallyAutoUpdateExtensions();
-				}
-				// The delay affects whether an extension is shown as delayed
-				this._onChange.fire(undefined);
-			}
-			if (e.affectsConfiguration(AutoCheckUpdatesConfigurationKey)) {
-				if (this.isAutoCheckUpdatesEnabled()) {
-					this.checkForUpdates(`Enabled auto check updates`);
-				}
-			}
-		}));
-		this._register(this.extensionEnablementService.onEnablementChanged(platformExtensions => {
-			if (this.isAutoCheckUpdatesEnabled() && this.getAutoUpdateValue() === 'on' && platformExtensions.some(e => this.extensionEnablementService.isEnabled(e))) {
-				this.checkForUpdates('Extension enablement changed');
-			}
-		}));
-		this._register(Event.debounce(this.onChange, () => undefined, 100)(() => this.hasOutdatedExtensionsContextKey.set(this.outdated.length > 0)));
-		this._register(this.updateService.onStateChange(e => {
-			if ((e.type === StateType.CheckingForUpdates && e.explicit) || e.type === StateType.AvailableForDownload || e.type === StateType.Downloaded) {
-				this.telemetryService.publicLog2<{}, {
-					owner: 'sandy081';
-					comment: 'Report when update check is triggered on product update';
-				}>('extensions:updatecheckonproductupdate');
-				if (this.isAutoCheckUpdatesEnabled()) {
-					this.checkForUpdates('Product update');
-				}
-			}
-		}));
-
-		this._register(this.allowedExtensionsService.onDidChangeAllowedExtensionsConfigValue(() => {
-			if (this.isAutoCheckUpdatesEnabled()) {
-				this.checkForUpdates('Allowed extensions changed');
-			}
-		}));
-
-		this._register(this.meteredConnectionService.onDidChangeIsConnectionMetered(() => {
-			if (this.isAutoCheckUpdatesEnabled()) {
-				this.checkForUpdates('Connection is no longer metered');
-			}
-			if (isWeb && !this.isAutoUpdateEnabled()) {
-				this.autoUpdateBuiltinExtensions();
-			}
-		}));
-
-		// Update AutoUpdate Contexts
-		this.hasOutdatedExtensionsContextKey.set(this.outdated.length > 0);
-
-		// Check for updates
-		this.eventuallyCheckForUpdates(true);
-
-		if (isWeb) {
-			this.syncPinnedBuiltinExtensions();
-			// Always auto update builtin extensions in web
-			if (!this.isAutoUpdateEnabled()) {
-				this.autoUpdateBuiltinExtensions();
-			}
-		}
-
+	private initializeAutoRestart(): void {
 		this.registerAutoRestartListener();
 		this._register(this.configurationService.onDidChangeConfiguration(e => {
 			if (e.affectsConfiguration(AutoRestartConfigurationKey)) {
@@ -1219,91 +1121,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 	private updateExtensionGalleryManifest(manifest: IExtensionGalleryManifest | null): void {
 		this.extensionGalleryManifest = manifest;
 		this.updateExtensionsNotificaiton();
-	}
-
-	private isAutoUpdateEnabled(): boolean {
-		if (this.meteredConnectionService.isConnectionMetered) {
-			return false;
-		}
-		return this.getAutoUpdateValue() !== 'off';
-	}
-
-	getAutoUpdateValue(): AutoUpdateConfigurationValue {
-		const autoUpdate = this.configurationService.getValue<AutoUpdateConfigurationValue | boolean | 'onlyEnabledExtensions' | 'onlySelectedExtensions' | 'delayed'>(AutoUpdateConfigurationKey);
-		if (autoUpdate === 'off' || autoUpdate === false || autoUpdate === 'onlySelectedExtensions') {
-			return 'off';
-		}
-		return 'on';
-	}
-
-	isAutoUpdateDelayed(extension: IExtension): boolean {
-		if (!extension.outdated) {
-			return false;
-		}
-		if (!this.shouldAutoUpdateExtension(extension)) {
-			return false;
-		}
-		return this.getAutoUpdateDelayRemaining(extension) > 0;
-	}
-
-	getAutoUpdateDelayRemaining(extension: IExtension): number {
-		// Extensions from publishers trusted by the product are auto updated without delay.
-		if (this.isFromTrustedPublisher(extension)) {
-			return 0;
-		}
-		const lastUpdated = extension.gallery?.lastUpdated;
-		if (!Number.isFinite(lastUpdated) || !lastUpdated) {
-			return 0;
-		}
-		const elapsed = Date.now() - lastUpdated;
-		if (elapsed < 0) {
-			// Future timestamp (clock skew) — treat as not delayed
-			return 0;
-		}
-		const delayPeriod = this.getAutoUpdateDelay();
-		return Math.max(0, delayPeriod - elapsed);
-	}
-
-	getAutoUpdateDelay(): number {
-		const delayHours = this.configurationService.getValue<number>(AutoUpdateDelayConfigurationKey) ?? 12;
-		return delayHours * 60 * 60 * 1000; // Convert hours to milliseconds
-	}
-
-	private isFromTrustedPublisher(extension: IExtension): boolean {
-		const trustedPublishers = this.productService.trustedExtensionPublishers;
-		if (!trustedPublishers?.length) {
-			return false;
-		}
-		const publisher = extension.publisher.toLowerCase();
-		return trustedPublishers.includes(publisher)
-			|| trustedPublishers.includes(extension.publisherDisplayName.toLowerCase());
-	}
-
-	async updateAutoUpdateForAllExtensions(isAutoUpdateEnabled: boolean): Promise<void> {
-		const wasAutoUpdateEnabled = this.isAutoUpdateEnabled();
-		if (wasAutoUpdateEnabled === isAutoUpdateEnabled) {
-			return;
-		}
-
-		const result = await this.dialogService.confirm({
-			title: nls.localize('confirmEnableDisableAutoUpdate', "Auto Update Extensions"),
-			message: isAutoUpdateEnabled
-				? nls.localize('confirmEnableAutoUpdate', "Do you want to enable auto update for extensions?")
-				: nls.localize('confirmDisableAutoUpdate', "Do you want to disable auto update for extensions?"),
-			detail: nls.localize('confirmEnableDisableAutoUpdateDetail', "This will reset any auto update settings you have set for individual extensions."),
-		});
-		if (!result.confirmed) {
-			return;
-		}
-
-		// Reset extensions enabled for auto update first to prevent them from being updated
-		this.setEnabledAutoUpdateExtensions([]);
-
-		await this.configurationService.updateValue(AutoUpdateConfigurationKey, isAutoUpdateEnabled ? 'on' : 'off');
-
-		this.setDisabledAutoUpdateExtensions([]);
-		await this.updateExtensionsPinnedState(!isAutoUpdateEnabled);
-		this._onChange.fire(undefined);
 	}
 
 	private readonly autoRestartListenerDisposable = this._register(new MutableDisposable());
@@ -1359,13 +1176,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		}
 	}
 
-	private updateExtensionsPinnedState(pinned: boolean): Promise<void> {
-		return this.progressService.withProgress({
-			location: ProgressLocation.Extensions,
-			title: nls.localize('updatingExtensions', "Updating Extensions Auto Update State"),
-		}, () => this.extensionManagementService.resetPinnedStateForAllUserExtensions(pinned));
-	}
-
 	private reset(): void {
 		for (const task of this.tasksInProgress) {
 			task.cancel();
@@ -1409,10 +1219,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 			}
 		}
 		return this._installed;
-	}
-
-	get outdated(): IExtension[] {
-		return this.installed.filter(e => e.outdated && e.local && e.state === ExtensionState.Installed);
 	}
 
 	async queryLocal(server?: IExtensionManagementServer): Promise<IExtension[]> {
@@ -2036,83 +1842,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		return ExtensionState.Uninstalled;
 	}
 
-	async checkForUpdates(reason?: string, onlyBuiltin?: boolean): Promise<void> {
-		if (reason) {
-			this.logService.trace(`[Extensions]: Checking for updates. Reason: ${reason}`);
-		} else {
-			this.logService.trace(`[Extensions]: Checking for updates`);
-		}
-		if (!this.galleryService.isEnabled()) {
-			return;
-		}
-		const extensions: Extensions[] = [];
-		if (this.localExtensions) {
-			extensions.push(this.localExtensions);
-		}
-		if (this.remoteExtensions) {
-			extensions.push(this.remoteExtensions);
-		}
-		if (this.webExtensions) {
-			extensions.push(this.webExtensions);
-		}
-		if (!extensions.length) {
-			return;
-		}
-		const infos: IExtensionInfo[] = [];
-		for (const installed of this.local) {
-			if (onlyBuiltin && !installed.isBuiltin) {
-				// Skip if check updates only for builtin extensions and current extension is not builtin.
-				continue;
-			}
-			if (!installed.local?.forceAutoUpdate && installed.isBuiltin && !installed.local?.pinned && (installed.type === ExtensionType.System || !installed.local?.identifier.uuid)) {
-				// Skip checking updates for a builtin extension if it is a system extension or if it does not have a Marketplace identifier
-				continue;
-			}
-			if (installed.local?.source === 'resource') {
-				continue;
-			}
-			infos.push({ ...installed.identifier, preRelease: !!installed.local?.preRelease, currentVersion: installed.isBuiltin ? installed.version : undefined });
-		}
-		if (infos.length) {
-			const targetPlatform = await extensions[0].server.extensionManagementService.getTargetPlatform();
-			type GalleryServiceUpdatesCheckClassification = {
-				owner: 'sandy081';
-				comment: 'Report when a request is made to check for updates of extensions';
-				count: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'Number of extensions to check update' };
-			};
-			type GalleryServiceUpdatesCheckEvent = {
-				count: number;
-			};
-			this.telemetryService.publicLog2<GalleryServiceUpdatesCheckEvent, GalleryServiceUpdatesCheckClassification>('galleryService:checkingForUpdates', {
-				count: infos.length,
-			});
-			this.logService.trace(`Checking updates for extensions`, infos.map(e => e.id).join(', '));
-			const galleryExtensions = await this.galleryService.getExtensions(infos, { targetPlatform, compatible: true, productVersion: this.getProductVersion() }, CancellationToken.None);
-			if (galleryExtensions.length) {
-				await this.syncInstalledExtensionsWithGallery(galleryExtensions, infos);
-			}
-		}
-	}
-
-	async updateAll(): Promise<InstallExtensionResult[]> {
-		const toUpdate: InstallExtensionInfo[] = [];
-		this.outdated.forEach((extension) => {
-			if (extension.gallery) {
-				toUpdate.push({
-					extension: extension.gallery,
-					options: {
-						operation: InstallOperation.Update,
-						installPreReleaseVersion: extension.local?.isPreReleaseVersion,
-						profileLocation: this.userDataProfileService.currentProfile.extensionsResource,
-						isApplicationScoped: extension.local?.isApplicationScoped,
-						context: { [EXTENSION_INSTALL_SKIP_PUBLISHER_TRUST_CONTEXT]: true }
-					}
-				});
-			}
-		});
-		return this.extensionManagementService.installGalleryExtensions(toUpdate);
-	}
-
 	async downloadVSIX(extensionId: string, versionKind: 'prerelease' | 'release' | 'any'): Promise<void> {
 		let version: IGalleryExtensionVersion | undefined;
 		if (versionKind === 'any') {
@@ -2216,116 +1945,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 			return;
 		}
 		await Promise.allSettled(extensions.map(extensions => extensions.syncInstalledExtensionsWithGallery(gallery, this.getProductVersion(), flagExtensionsMissingFromGallery)));
-		if (this.outdated.length) {
-			this.logService.info(`Auto updating outdated extensions.`, this.outdated.map(e => e.identifier.id).join(', '));
-			this.eventuallyAutoUpdateExtensions();
-		}
-	}
-
-	private isAutoCheckUpdatesEnabled(): boolean {
-		if (this.meteredConnectionService.isConnectionMetered) {
-			return false;
-		}
-		return this.configurationService.getValue(AutoCheckUpdatesConfigurationKey);
-	}
-
-	private eventuallyCheckForUpdates(immediate = false): void {
-		this.updatesCheckDelayer.cancel();
-		this.updatesCheckDelayer.trigger(async () => {
-			if (this.isAutoCheckUpdatesEnabled()) {
-				await this.checkForUpdates();
-			}
-			this.eventuallyCheckForUpdates();
-		}, immediate ? 0 : this.getUpdatesCheckInterval()).then(undefined, err => null);
-	}
-
-	private getUpdatesCheckInterval(): number {
-		if (this.productService.quality === 'insider' && this.getProductUpdateVersion()) {
-			return 1000 * 60 * 60 * 1; // 1 hour
-		}
-		return ExtensionsWorkbenchService.UpdatesCheckInterval;
-	}
-
-	private eventuallyAutoUpdateExtensions(): void {
-		this.autoUpdateDelayer.trigger(() => this.autoUpdateExtensions())
-			.then(undefined, err => null);
-	}
-
-	private async autoUpdateBuiltinExtensions(): Promise<void> {
-		if (this.meteredConnectionService.isConnectionMetered) {
-			return;
-		}
-		await this.checkForUpdates(undefined, true);
-		const toUpdate = this.outdated.filter(e => e.isBuiltin);
-		await Promises.settled(toUpdate.map(e => this.install(e, e.local?.preRelease ? { installPreReleaseVersion: true } : undefined)));
-	}
-
-	private async syncPinnedBuiltinExtensions(): Promise<void> {
-		const infos: IExtensionInfo[] = [];
-		for (const installed of this.local) {
-			if (installed.isBuiltin && installed.local?.pinned && installed.local?.identifier.uuid) {
-				infos.push({ ...installed.identifier, version: installed.version });
-			}
-		}
-		if (infos.length) {
-			const galleryExtensions = await this.galleryService.getExtensions(infos, CancellationToken.None);
-			if (galleryExtensions.length) {
-				await this.syncInstalledExtensionsWithGallery(galleryExtensions);
-			}
-		}
-	}
-
-	private async autoUpdateExtensions(): Promise<void> {
-		if (this.meteredConnectionService.isConnectionMetered) {
-			this.logService.trace('[Extensions]: Skipping auto-update because connection is metered');
-			return;
-		}
-
-		const toUpdate: IExtension[] = [];
-		const disabledAutoUpdate = [];
-		const consentRequired = [];
-		let soonestDelayRemaining = Number.MAX_SAFE_INTEGER;
-		for (const extension of this.outdated) {
-			if (!this.shouldAutoUpdateExtension(extension)) {
-				disabledAutoUpdate.push(extension.identifier.id);
-				continue;
-			}
-			// New versions are auto updated only after the delay window has passed since they were published.
-			if (!extension.local?.forceAutoUpdate) {
-				const delayRemaining = this.getAutoUpdateDelayRemaining(extension);
-				if (delayRemaining > 0) {
-					this.logService.trace('Auto update delayed for extension', extension.identifier.id);
-					soonestDelayRemaining = Math.min(soonestDelayRemaining, delayRemaining);
-					continue;
-				}
-			}
-			if (await this.shouldRequireConsentToUpdate(extension)) {
-				consentRequired.push(extension.identifier.id);
-				continue;
-			}
-			toUpdate.push(extension);
-		}
-
-		if (soonestDelayRemaining < Number.MAX_SAFE_INTEGER) {
-			this.delayedAutoUpdateCheckTimer.value = disposableTimeout(() => this.eventuallyCheckForUpdates(true), soonestDelayRemaining);
-		} else {
-			this.delayedAutoUpdateCheckTimer.value = undefined;
-		}
-
-		if (disabledAutoUpdate.length) {
-			this.logService.trace('Auto update disabled for extensions', disabledAutoUpdate.join(', '));
-		}
-
-		if (consentRequired.length) {
-			this.logService.info('Auto update consent required for extensions', consentRequired.join(', '));
-		}
-
-		if (!toUpdate.length) {
-			return;
-		}
-
-		const productVersion = this.getProductVersion();
-		await Promises.settled(toUpdate.map(e => this.install(e, e.local?.preRelease ? { installPreReleaseVersion: true, productVersion } : { productVersion })));
 	}
 
 	private getProductVersion(): IProductVersion {
@@ -2349,223 +1968,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 			}
 		}
 		return undefined;
-	}
-
-	private shouldAutoUpdateExtension(extension: IExtension): boolean {
-		if (extension.deprecationInfo?.disallowInstall) {
-			return false;
-		}
-
-		if (extension.local?.forceAutoUpdate) {
-			// Extensions marked for auto-update are always auto-updated
-			return true;
-		}
-
-		const autoUpdateValue = this.getAutoUpdateValue();
-
-		if (autoUpdateValue === 'off') {
-			const extensionsToAutoUpdate = this.getEnabledAutoUpdateExtensions();
-			const extensionId = extension.identifier.id.toLowerCase();
-			if (extensionsToAutoUpdate.includes(extensionId)) {
-				return true;
-			}
-			if (this.isAutoUpdateEnabledForPublisher(extension.publisher) && !extensionsToAutoUpdate.includes(`-${extensionId}`)) {
-				return true;
-			}
-			return false;
-		}
-
-		if (extension.pinned) {
-			return false;
-		}
-
-		const disabledAutoUpdateExtensions = this.getDisabledAutoUpdateExtensions();
-		if (disabledAutoUpdateExtensions.includes(extension.identifier.id.toLowerCase())) {
-			return false;
-		}
-
-		// Auto-update is on; only update enabled extensions.
-		return extension.enablementState !== EnablementState.DisabledGlobally && extension.enablementState !== EnablementState.DisabledWorkspace;
-	}
-
-	async shouldRequireConsentToUpdate(extension: IExtension): Promise<string | undefined> {
-		if (!extension.outdated) {
-			return;
-		}
-
-		if (!extension.gallery || !extension.local) {
-			return;
-		}
-
-		if (extension.local.identifier.uuid && extension.local.identifier.uuid !== extension.gallery.identifier.uuid) {
-			return nls.localize('consentRequiredToUpdateRepublishedExtension', "The marketplace metadata of this extension changed, likely due to a re-publish.");
-		}
-
-		if (!extension.local.manifest.engines.vscode || extension.local.manifest.main || extension.local.manifest.browser) {
-			return;
-		}
-
-		if (isDefined(extension.gallery.properties?.executesCode)) {
-			if (!extension.gallery.properties.executesCode) {
-				return;
-			}
-		} else {
-			const manifest = extension instanceof Extension
-				? await extension.getGalleryManifest()
-				: await this.galleryService.getManifest(extension.gallery, CancellationToken.None);
-			if (!manifest?.main && !manifest?.browser) {
-				return;
-			}
-		}
-
-		return nls.localize('consentRequiredToUpdate', "The update for {0} extension introduces executable code, which is not present in the currently installed version.", extension.displayName);
-	}
-
-	isAutoUpdateEnabledFor(extensionOrPublisher: IExtension | string): boolean {
-		if (isString(extensionOrPublisher)) {
-			if (EXTENSION_IDENTIFIER_REGEX.test(extensionOrPublisher)) {
-				throw new Error('Expected publisher string, found extension identifier');
-			}
-			if (this.isAutoUpdateEnabled()) {
-				return true;
-			}
-			return this.isAutoUpdateEnabledForPublisher(extensionOrPublisher);
-		}
-		return this.shouldAutoUpdateExtension(extensionOrPublisher);
-	}
-
-	private isAutoUpdateEnabledForPublisher(publisher: string): boolean {
-		const publishersToAutoUpdate = this.getPublishersToAutoUpdate();
-		return publishersToAutoUpdate.includes(publisher.toLowerCase());
-	}
-
-	async updateAutoUpdateEnablementFor(extensionOrPublisher: IExtension | string, enable: boolean): Promise<void> {
-		if (this.isAutoUpdateEnabled()) {
-			if (isString(extensionOrPublisher)) {
-				throw new Error('Expected extension, found publisher string');
-			}
-			const disabledAutoUpdateExtensions = this.getDisabledAutoUpdateExtensions();
-			const extensionId = extensionOrPublisher.identifier.id.toLowerCase();
-			const extensionIndex = disabledAutoUpdateExtensions.indexOf(extensionId);
-			if (enable) {
-				if (extensionIndex !== -1) {
-					disabledAutoUpdateExtensions.splice(extensionIndex, 1);
-				}
-			}
-			else {
-				if (extensionIndex === -1) {
-					disabledAutoUpdateExtensions.push(extensionId);
-				}
-			}
-			this.setDisabledAutoUpdateExtensions(disabledAutoUpdateExtensions);
-			if (enable && extensionOrPublisher.local && extensionOrPublisher.pinned) {
-				await this.extensionManagementService.updateMetadata(extensionOrPublisher.local, { pinned: false });
-			}
-			this._onChange.fire(extensionOrPublisher);
-		}
-
-		else {
-			const enabledAutoUpdateExtensions = this.getEnabledAutoUpdateExtensions();
-			if (isString(extensionOrPublisher)) {
-				if (EXTENSION_IDENTIFIER_REGEX.test(extensionOrPublisher)) {
-					throw new Error('Expected publisher string, found extension identifier');
-				}
-				extensionOrPublisher = extensionOrPublisher.toLowerCase();
-				if (this.isAutoUpdateEnabledFor(extensionOrPublisher) !== enable) {
-					if (enable) {
-						enabledAutoUpdateExtensions.push(extensionOrPublisher);
-					} else {
-						if (enabledAutoUpdateExtensions.includes(extensionOrPublisher)) {
-							enabledAutoUpdateExtensions.splice(enabledAutoUpdateExtensions.indexOf(extensionOrPublisher), 1);
-						}
-					}
-				}
-				this.setEnabledAutoUpdateExtensions(enabledAutoUpdateExtensions);
-				for (const e of this.installed) {
-					if (e.publisher.toLowerCase() === extensionOrPublisher) {
-						this._onChange.fire(e);
-					}
-				}
-			} else {
-				const extensionId = extensionOrPublisher.identifier.id.toLowerCase();
-				const enableAutoUpdatesForPublisher = this.isAutoUpdateEnabledFor(extensionOrPublisher.publisher.toLowerCase());
-				const enableAutoUpdatesForExtension = enabledAutoUpdateExtensions.includes(extensionId);
-				const disableAutoUpdatesForExtension = enabledAutoUpdateExtensions.includes(`-${extensionId}`);
-
-				if (enable) {
-					if (disableAutoUpdatesForExtension) {
-						enabledAutoUpdateExtensions.splice(enabledAutoUpdateExtensions.indexOf(`-${extensionId}`), 1);
-					}
-					if (enableAutoUpdatesForPublisher) {
-						if (enableAutoUpdatesForExtension) {
-							enabledAutoUpdateExtensions.splice(enabledAutoUpdateExtensions.indexOf(extensionId), 1);
-						}
-					} else {
-						if (!enableAutoUpdatesForExtension) {
-							enabledAutoUpdateExtensions.push(extensionId);
-						}
-					}
-				}
-				// Disable Auto Updates
-				else {
-					if (enableAutoUpdatesForExtension) {
-						enabledAutoUpdateExtensions.splice(enabledAutoUpdateExtensions.indexOf(extensionId), 1);
-					}
-					if (enableAutoUpdatesForPublisher) {
-						if (!disableAutoUpdatesForExtension) {
-							enabledAutoUpdateExtensions.push(`-${extensionId}`);
-						}
-					} else {
-						if (disableAutoUpdatesForExtension) {
-							enabledAutoUpdateExtensions.splice(enabledAutoUpdateExtensions.indexOf(`-${extensionId}`), 1);
-						}
-					}
-				}
-				this.setEnabledAutoUpdateExtensions(enabledAutoUpdateExtensions);
-				this._onChange.fire(extensionOrPublisher);
-			}
-		}
-
-		if (enable) {
-			this.autoUpdateExtensions();
-		}
-	}
-
-	private onDidSelectedExtensionToAutoUpdateValueChange(): void {
-		if (
-			this.enabledAuotUpdateExtensionsValue !== this.getEnabledAutoUpdateExtensionsValue() /* This checks if current window changed the value or not */
-			|| this.disabledAutoUpdateExtensionsValue !== this.getDisabledAutoUpdateExtensionsValue() /* This checks if current window changed the value or not */
-		) {
-			const userExtensions = this.installed.filter(e => !e.isBuiltin);
-			const groupBy = (extensions: IExtension[]): IExtension[][] => {
-				const shouldAutoUpdate: IExtension[] = [];
-				const shouldNotAutoUpdate: IExtension[] = [];
-				for (const extension of extensions) {
-					if (this.shouldAutoUpdateExtension(extension)) {
-						shouldAutoUpdate.push(extension);
-					} else {
-						shouldNotAutoUpdate.push(extension);
-					}
-				}
-				return [shouldAutoUpdate, shouldNotAutoUpdate];
-			};
-
-			const [wasShouldAutoUpdate, wasShouldNotAutoUpdate] = groupBy(userExtensions);
-			this._enabledAutoUpdateExtensionsValue = undefined;
-			this._disabledAutoUpdateExtensionsValue = undefined;
-			const [shouldAutoUpdate, shouldNotAutoUpdate] = groupBy(userExtensions);
-
-			for (const e of wasShouldAutoUpdate ?? []) {
-				if (shouldNotAutoUpdate?.includes(e)) {
-					this._onChange.fire(e);
-				}
-			}
-			for (const e of wasShouldNotAutoUpdate ?? []) {
-				if (shouldAutoUpdate?.includes(e)) {
-					this._onChange.fire(e);
-				}
-			}
-		}
 	}
 
 	async canInstall(extension: IExtension): Promise<true | IMarkdownString> {
@@ -3077,7 +2479,7 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		if (existingExtension) {
 			installOptions = installOptions || {};
 			if (existingExtension.latestVersion === manifest.version) {
-				installOptions.pinned = installOptions.pinned ?? (existingExtension.local?.pinned || !this.shouldAutoUpdateExtension(existingExtension));
+				installOptions.pinned = installOptions.pinned ?? existingExtension.local?.pinned ?? false;
 			} else {
 				installOptions.installGivenVersion = true;
 			}
@@ -3087,7 +2489,7 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 
 	private installFromGallery(extension: IExtension, gallery: IGalleryExtension, installOptions: InstallExtensionOptions, servers: IExtensionManagementServer[] | undefined): Promise<ILocalExtension> {
 		installOptions = installOptions ?? {};
-		installOptions.pinned = installOptions.pinned ?? (extension.local?.pinned || !this.shouldAutoUpdateExtension(extension));
+		installOptions.pinned = installOptions.pinned ?? extension.local?.pinned ?? false;
 		if (extension.local && !servers) {
 			installOptions.productVersion = this.getProductVersion();
 			installOptions.operation = InstallOperation.Update;
@@ -3320,86 +2722,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 				await this.open(extension);
 			}
 		}).then(undefined, error => this.onError(error));
-	}
-
-	private getPublishersToAutoUpdate(): string[] {
-		return this.getEnabledAutoUpdateExtensions().filter(id => !EXTENSION_IDENTIFIER_REGEX.test(id));
-	}
-
-	getEnabledAutoUpdateExtensions(): string[] {
-		try {
-			const parsedValue = JSON.parse(this.enabledAuotUpdateExtensionsValue);
-			if (Array.isArray(parsedValue)) {
-				return parsedValue;
-			}
-		} catch (e) { /* Ignore */ }
-		return [];
-	}
-
-	private setEnabledAutoUpdateExtensions(enabledAutoUpdateExtensions: string[]): void {
-		this.enabledAuotUpdateExtensionsValue = JSON.stringify(enabledAutoUpdateExtensions);
-	}
-
-	private _enabledAutoUpdateExtensionsValue: string | undefined;
-	private get enabledAuotUpdateExtensionsValue(): string {
-		if (!this._enabledAutoUpdateExtensionsValue) {
-			this._enabledAutoUpdateExtensionsValue = this.getEnabledAutoUpdateExtensionsValue();
-		}
-
-		return this._enabledAutoUpdateExtensionsValue;
-	}
-
-	private set enabledAuotUpdateExtensionsValue(enabledAuotUpdateExtensionsValue: string) {
-		if (this.enabledAuotUpdateExtensionsValue !== enabledAuotUpdateExtensionsValue) {
-			this._enabledAutoUpdateExtensionsValue = enabledAuotUpdateExtensionsValue;
-			this.setEnabledAutoUpdateExtensionsValue(enabledAuotUpdateExtensionsValue);
-		}
-	}
-
-	private getEnabledAutoUpdateExtensionsValue(): string {
-		return this.storageService.get(EXTENSIONS_AUTO_UPDATE_KEY, StorageScope.APPLICATION, '[]');
-	}
-
-	private setEnabledAutoUpdateExtensionsValue(value: string): void {
-		this.storageService.store(EXTENSIONS_AUTO_UPDATE_KEY, value, StorageScope.APPLICATION, StorageTarget.USER);
-	}
-
-	getDisabledAutoUpdateExtensions(): string[] {
-		try {
-			const parsedValue = JSON.parse(this.disabledAutoUpdateExtensionsValue);
-			if (Array.isArray(parsedValue)) {
-				return parsedValue;
-			}
-		} catch (e) { /* Ignore */ }
-		return [];
-	}
-
-	private setDisabledAutoUpdateExtensions(disabledAutoUpdateExtensions: string[]): void {
-		this.disabledAutoUpdateExtensionsValue = JSON.stringify(disabledAutoUpdateExtensions);
-	}
-
-	private _disabledAutoUpdateExtensionsValue: string | undefined;
-	private get disabledAutoUpdateExtensionsValue(): string {
-		if (!this._disabledAutoUpdateExtensionsValue) {
-			this._disabledAutoUpdateExtensionsValue = this.getDisabledAutoUpdateExtensionsValue();
-		}
-
-		return this._disabledAutoUpdateExtensionsValue;
-	}
-
-	private set disabledAutoUpdateExtensionsValue(disabledAutoUpdateExtensionsValue: string) {
-		if (this.disabledAutoUpdateExtensionsValue !== disabledAutoUpdateExtensionsValue) {
-			this._disabledAutoUpdateExtensionsValue = disabledAutoUpdateExtensionsValue;
-			this.setDisabledAutoUpdateExtensionsValue(disabledAutoUpdateExtensionsValue);
-		}
-	}
-
-	private getDisabledAutoUpdateExtensionsValue(): string {
-		return this.storageService.get(EXTENSIONS_DONOT_AUTO_UPDATE_KEY, StorageScope.APPLICATION, '[]');
-	}
-
-	private setDisabledAutoUpdateExtensionsValue(value: string): void {
-		this.storageService.store(EXTENSIONS_DONOT_AUTO_UPDATE_KEY, value, StorageScope.APPLICATION, StorageTarget.USER);
 	}
 
 	private getDismissedNotifications(): string[] {

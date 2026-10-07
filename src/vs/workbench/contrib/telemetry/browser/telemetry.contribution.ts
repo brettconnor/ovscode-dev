@@ -31,7 +31,7 @@ import { mainWindow } from '../../../../base/browser/window.js';
 import { IConfigurationRegistry, Extensions as ConfigurationExtensions } from '../../../../platform/configuration/common/configurationRegistry.js';
 import { isBoolean, isNumber, isString } from '../../../../base/common/types.js';
 import { LayoutSettings } from '../../../services/layout/browser/layoutService.js';
-import { AutoRestartConfigurationKey, AutoUpdateConfigurationKey } from '../../extensions/common/extensions.js';
+import { AutoRestartConfigurationKey } from '../../extensions/common/extensions.js';
 import { IUserDataProfilesService } from '../../../../platform/userDataProfile/common/userDataProfile.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { Action2, registerAction2 } from '../../../../platform/actions/common/actions.js';
@@ -364,15 +364,6 @@ class ConfigurationTelemetryContribution extends Disposable implements IWorkbenc
 					settingValue: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'value of the setting' };
 					source: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'source of the setting' };
 				}>('window.density.layout', { settingValue: this.getValueToReport(key, target), source });
-				return;
-
-			case AutoUpdateConfigurationKey:
-				this.telemetryService.publicLog2<UpdatedSettingEvent, {
-					owner: 'sandy081';
-					comment: 'This is used to know if extensions are getting auto updated or not';
-					settingValue: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'value of the setting' };
-					source: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'source of the setting' };
-				}>('extensions.autoUpdate', { settingValue: this.getValueToReport(key, target), source });
 				return;
 
 			case 'editor.stickyScroll.enabled':

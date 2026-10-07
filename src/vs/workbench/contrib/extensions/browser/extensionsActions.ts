@@ -11,7 +11,7 @@ import { Emitter, Event } from '../../../../base/common/event.js';
 import * as json from '../../../../base/common/json.js';
 import { IContextMenuService } from '../../../../platform/contextview/browser/contextView.js';
 import { disposeIfDisposable } from '../../../../base/common/lifecycle.js';
-import { IExtension, ExtensionState, IExtensionsWorkbenchService, IExtensionContainer, TOGGLE_IGNORE_EXTENSION_ACTION_ID, THEME_ACTIONS_GROUP, INSTALL_ACTIONS_GROUP, UPDATE_ACTIONS_GROUP, ExtensionEditorTab, ExtensionRuntimeActionType, IExtensionArg, AutoUpdateConfigurationKey } from '../common/extensions.js';
+import { IExtension, ExtensionState, IExtensionsWorkbenchService, IExtensionContainer, TOGGLE_IGNORE_EXTENSION_ACTION_ID, THEME_ACTIONS_GROUP, INSTALL_ACTIONS_GROUP, UPDATE_ACTIONS_GROUP, ExtensionEditorTab, ExtensionRuntimeActionType, IExtensionArg } from '../common/extensions.js';
 import { ExtensionsConfigurationInitialContent } from '../common/extensionsFileTemplate.js';
 import { IGalleryExtension, IExtensionGalleryService, ILocalExtension, InstallOptions, InstallOperation, ExtensionManagementErrorCode, IAllowedExtensionsService, shouldRequireRepositorySignatureFor } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IWorkbenchExtensionEnablementService, EnablementState, IExtensionManagementServerService, IExtensionManagementServer, IWorkbenchExtensionManagementService } from '../../../services/extensionManagement/common/extensionManagement.js';
@@ -883,99 +883,6 @@ export class UninstallAction extends ExtensionAction {
 	}
 }
 
-export class ToggleAutoUpdateForExtensionAction extends ExtensionAction {
-
-	static readonly ID = 'workbench.extensions.action.toggleAutoUpdateForExtension';
-	static readonly LABEL = localize2('enableAutoUpdateLabel', "Auto Update");
-
-	private static readonly EnabledClass = `${ExtensionAction.EXTENSION_ACTION_CLASS} auto-update`;
-	private static readonly DisabledClass = `${this.EnabledClass} hide`;
-
-	constructor(
-		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
-		@IWorkbenchExtensionEnablementService private readonly extensionEnablementService: IWorkbenchExtensionEnablementService,
-		@IAllowedExtensionsService private readonly allowedExtensionsService: IAllowedExtensionsService,
-		@IConfigurationService configurationService: IConfigurationService,
-	) {
-		super(ToggleAutoUpdateForExtensionAction.ID, ToggleAutoUpdateForExtensionAction.LABEL.value, ToggleAutoUpdateForExtensionAction.DisabledClass);
-		this._register(configurationService.onDidChangeConfiguration(e => {
-			if (e.affectsConfiguration(AutoUpdateConfigurationKey)) {
-				this.update();
-			}
-		}));
-		this._register(allowedExtensionsService.onDidChangeAllowedExtensionsConfigValue(e => this.update()));
-		this.update();
-	}
-
-	override update() {
-		this.enabled = false;
-		this.class = ToggleAutoUpdateForExtensionAction.DisabledClass;
-		if (!this.extension) {
-			return;
-		}
-		if (this.extension.isBuiltin) {
-			return;
-		}
-		if (this.extension.deprecationInfo?.disallowInstall) {
-			return;
-		}
-
-		const extension = this.extension.local ?? this.extension.gallery;
-		if (extension && this.allowedExtensionsService.isAllowed(extension) !== true) {
-			return;
-		}
-		if (this.extensionsWorkbenchService.getAutoUpdateValue() === 'on' && !this.extensionEnablementService.isEnabledEnablementState(this.extension.enablementState)) {
-			return;
-		}
-		this.enabled = true;
-		this.class = ToggleAutoUpdateForExtensionAction.EnabledClass;
-		this.checked = this.extensionsWorkbenchService.isAutoUpdateEnabledFor(this.extension);
-	}
-
-	override async run(): Promise<any> {
-		if (!this.extension) {
-			return;
-		}
-
-		const enableAutoUpdate = !this.extensionsWorkbenchService.isAutoUpdateEnabledFor(this.extension);
-		await this.extensionsWorkbenchService.updateAutoUpdateEnablementFor(this.extension, enableAutoUpdate);
-
-		if (enableAutoUpdate) {
-			alert(localize('enableAutoUpdate', "Enabled auto updates for", this.extension.displayName));
-		} else {
-			alert(localize('disableAutoUpdate', "Disabled auto updates for", this.extension.displayName));
-		}
-	}
-}
-
-export class ToggleAutoUpdatesForPublisherAction extends ExtensionAction {
-
-	static readonly ID = 'workbench.extensions.action.toggleAutoUpdatesForPublisher';
-	static readonly LABEL = localize('toggleAutoUpdatesForPublisherLabel', "Auto Update All (From Publisher)");
-
-	constructor(
-		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService
-	) {
-		super(ToggleAutoUpdatesForPublisherAction.ID, ToggleAutoUpdatesForPublisherAction.LABEL);
-	}
-
-	override update() { }
-
-	override async run(): Promise<any> {
-		if (!this.extension) {
-			return;
-		}
-		alert(localize('ignoreExtensionUpdatePublisher', "Ignoring updates published by {0}.", this.extension.publisherDisplayName));
-		const enableAutoUpdate = !this.extensionsWorkbenchService.isAutoUpdateEnabledFor(this.extension.publisher);
-		await this.extensionsWorkbenchService.updateAutoUpdateEnablementFor(this.extension.publisher, enableAutoUpdate);
-		if (enableAutoUpdate) {
-			alert(localize('enableAutoUpdate', "Enabled auto updates for", this.extension.displayName));
-		} else {
-			alert(localize('disableAutoUpdate', "Disabled auto updates for", this.extension.displayName));
-		}
-	}
-}
-
 export class MigrateDeprecatedExtensionAction extends ExtensionAction {
 
 	private static readonly EnabledClass = `${ExtensionAction.LABEL_ACTION_CLASS} migrate`;
@@ -1312,10 +1219,6 @@ export class MenuItemExtensionAction extends ExtensionAction {
 		}
 		if (this.action.id === TOGGLE_IGNORE_EXTENSION_ACTION_ID) {
 			this.checked = !this.extensionsWorkbenchService.isExtensionIgnoredToSync(this.extension);
-		} else if (this.action.id === ToggleAutoUpdateForExtensionAction.ID) {
-			this.checked = this.extensionsWorkbenchService.isAutoUpdateEnabledFor(this.extension);
-		} else if (this.action.id === ToggleAutoUpdatesForPublisherAction.ID) {
-			this.checked = this.extensionsWorkbenchService.isAutoUpdateEnabledFor(this.extension.publisher);
 		} else {
 			this.checked = this.action.checked;
 		}
@@ -1563,7 +1466,6 @@ class EnableAIFeaturesGloballyAction extends ExtensionAction {
 
 	constructor(
 		@IProductService private readonly productService: IProductService,
-		@IConfigurationService private readonly configurationService: IConfigurationService,
 	) {
 		super(EnableAIFeaturesGloballyAction.ID, EnableAIFeaturesGloballyAction.LABEL, ExtensionAction.LABEL_ACTION_CLASS);
 		this.tooltip = localize('enableAIGloballyActionToolTip', "Enable AI features");
@@ -2532,18 +2434,12 @@ export class ExtensionStatusAction extends ExtensionAction {
 		@IWorkbenchExtensionEnablementService private readonly workbenchExtensionEnablementService: IWorkbenchExtensionEnablementService,
 		@IExtensionFeaturesManagementService private readonly extensionFeaturesManagementService: IExtensionFeaturesManagementService,
 		@IExtensionGalleryManifestService private readonly extensionGalleryManifestService: IExtensionGalleryManifestService,
-		@IConfigurationService private readonly configurationService: IConfigurationService,
 	) {
 		super('extensions.status', '', `${ExtensionStatusAction.CLASS} hide`, false);
 		this._register(this.labelService.onDidChangeFormatters(() => this.update(), this));
 		this._register(this.extensionService.onDidChangeExtensions(() => this.update()));
 		this._register(this.extensionFeaturesManagementService.onDidChangeAccessData(() => this.update()));
 		this._register(allowedExtensionsService.onDidChangeAllowedExtensionsConfigValue(() => this.update()));
-		this._register(this.configurationService.onDidChangeConfiguration(e => {
-			if (e.affectsConfiguration(AutoUpdateConfigurationKey)) {
-				this.update();
-			}
-		}));
 		this.update();
 	}
 
@@ -2554,7 +2450,7 @@ export class ExtensionStatusAction extends ExtensionAction {
 	/**
 	 * Recomputes the status and returns a promise that resolves when the
 	 * computation is done. Use this when callers need to await time-sensitive
-	 * status content (e.g. the delayed auto-update message) before reading it.
+	 * status content before reading it.
 	 */
 	recomputeStatus(): Promise<void> {
 		return this.updateThrottler.queue(() => this.computeAndUpdateStatus());

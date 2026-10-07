@@ -26,7 +26,7 @@ import { IRequestService } from '../../../../../../platform/request/common/reque
 import { IStorageService, InMemoryStorageService, StorageScope, StorageTarget } from '../../../../../../platform/storage/common/storage.js';
 import { IWorkspaceTrustManagementService } from '../../../../../../platform/workspace/common/workspaceTrust.js';
 import { IEnvironmentService } from '../../../../../../platform/environment/common/environment.js';
-import { AutoUpdateConfigurationValue, IExtensionsWorkbenchService } from '../../../../extensions/common/extensions.js';
+import { IExtensionsWorkbenchService } from '../../../../extensions/common/extensions.js';
 import { ChatConfiguration } from '../../../common/constants.js';
 import { IAgentPluginRepositoryService } from '../../../common/plugins/agentPluginRepositoryService.js';
 import { IMarketplacePlugin, IMarketplaceReference, IPluginSourceDescriptor, MarketplaceReferenceKind, MarketplaceType, PluginMarketplaceService, PluginSourceKind, extraKnownMarketplacesToConfigDict, getPluginSourceLabel, parseMarketplaceReference, parseMarketplaceReferences, parsePluginSource, readConfiguredMarketplaces } from '../../../common/plugins/pluginMarketplaceService.js';
@@ -597,7 +597,7 @@ suite('PluginMarketplaceService - getMarketplacePluginMetadata', () => {
 
 	const marketplaceRef = parseMarketplaceReference('microsoft/plugins')!;
 
-	function createService(autoUpdate: AutoUpdateConfigurationValue = 'on', extraMarketplaces: Record<string, unknown> = {}): PluginMarketplaceService {
+	function createService(extraMarketplaces: Record<string, unknown> = {}): PluginMarketplaceService {
 		const instantiationService = store.add(new TestInstantiationService());
 
 		instantiationService.stub(IConfigurationService, new TestConfigurationService({
@@ -619,9 +619,7 @@ suite('PluginMarketplaceService - getMarketplacePluginMetadata', () => {
 			isWorkspaceTrusted: () => true,
 			onDidChangeTrust: Event.None,
 		} as Partial<IWorkspaceTrustManagementService> as IWorkspaceTrustManagementService);
-		instantiationService.stub(IExtensionsWorkbenchService, {
-			getAutoUpdateValue: () => autoUpdate,
-		} as Partial<IExtensionsWorkbenchService> as IExtensionsWorkbenchService);
+		instantiationService.stub(IExtensionsWorkbenchService, {} as Partial<IExtensionsWorkbenchService> as IExtensionsWorkbenchService);
 		stubMeteredConnectionService(instantiationService);
 
 		return store.add(instantiationService.createInstance(PluginMarketplaceService));
@@ -659,8 +657,8 @@ suite('PluginMarketplaceService - getMarketplacePluginMetadata', () => {
 		assert.strictEqual(result, undefined);
 	});
 
-	test('managed marketplace autoUpdate overrides the global setting by canonical identity', () => {
-		const service = createService('off', {
+	test('managed marketplace autoUpdate controls updates while unspecified marketplaces default to enabled', () => {
+		const service = createService({
 			always: '{"source":"microsoft/always","autoUpdate":true}',
 			never: '{"source":"microsoft/never","autoUpdate":false}',
 			inherited: 'microsoft/inherited',
@@ -674,8 +672,8 @@ suite('PluginMarketplaceService - getMarketplacePluginMetadata', () => {
 		}, {
 			always: true,
 			never: false,
-			inherited: false,
-			unmanaged: false,
+			inherited: true,
+			unmanaged: true,
 		});
 	});
 });

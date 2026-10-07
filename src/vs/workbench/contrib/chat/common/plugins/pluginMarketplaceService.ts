@@ -24,7 +24,7 @@ import { ObservableMemento, observableMemento } from '../../../../../platform/ob
 import { asJson, IRequestService } from '../../../../../platform/request/common/request.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
 import type { Dto } from '../../../../services/extensions/common/proxyIdentifier.js';
-import { AutoUpdateConfigurationKey, IExtensionsWorkbenchService } from '../../../extensions/common/extensions.js';
+import { IExtensionsWorkbenchService } from '../../../extensions/common/extensions.js';
 import { ChatConfiguration } from '../constants.js';
 import { IAgentPluginRepositoryService } from './agentPluginRepositoryService.js';
 import { FileBackedInstalledPluginsStore, IStoredInstalledPlugin } from './fileBackedInstalledPluginsStore.js';
@@ -413,8 +413,7 @@ export class PluginMarketplaceService extends Disposable implements IPluginMarke
 			this._scheduleUpdateCheck();
 			this._register(Event.filter(
 				_configurationService.onDidChangeConfiguration,
-				e => e.affectsConfiguration(AutoUpdateConfigurationKey)
-					|| e.affectsConfiguration(ChatConfiguration.ExtraMarketplaces)
+				e => e.affectsConfiguration(ChatConfiguration.ExtraMarketplaces)
 					|| e.affectsConfiguration(ChatConfiguration.StrictMarketplaces),
 			)(() => {
 				this._marketplacesWithUpdates.set(new Set(), undefined);
@@ -707,7 +706,7 @@ export class PluginMarketplaceService extends Disposable implements IPluginMarke
 	isMarketplaceAutoUpdateEnabled(ref: IMarketplaceReference): boolean {
 		const { extraValues } = readConfiguredMarketplaces(this._configurationService);
 		const managedRef = parseMarketplaceReferences(extraValues).find(candidate => candidate.canonicalId === ref.canonicalId);
-		return managedRef?.autoUpdate ?? this._extensionsWorkbenchService.getAutoUpdateValue() !== 'off';
+		return managedRef?.autoUpdate ?? true;
 	}
 
 	private _isMarketplaceAllowedByStrictPolicy(ref: IMarketplaceReference): boolean {
@@ -831,9 +830,6 @@ export class PluginMarketplaceService extends Disposable implements IPluginMarke
 	// --- Periodic update check ------------------------------------------------
 
 	private _hasAutoUpdateEnabledMarketplace(): boolean {
-		if (this._extensionsWorkbenchService.getAutoUpdateValue() !== 'off') {
-			return true;
-		}
 		const { extraValues } = readConfiguredMarketplaces(this._configurationService);
 		return parseMarketplaceReferences(extraValues).some(ref => ref.autoUpdate === true);
 	}
