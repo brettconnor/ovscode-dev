@@ -310,16 +310,6 @@ export interface ILanguageModelChatMetadata {
 		readonly sourceId?: string;
 	};
 	/**
-	 * For an agent-host copy of an extension-provided BYOK model, the identifier the
-	 * original model is registered under in the renderer's LM service
-	 * (`toModelIdentifier(vendor, group, id)` — `<vendor>/<group>/<id>` or `<vendor>/<id>`).
-	 * This is exactly the id the "Manage Models" view keys visibility by; it is carried
-	 * across the agent-host bridge and surfaced here so the model picker can honour the
-	 * model's visibility toggle. Absent for native agent-host models and non-agent-host
-	 * models.
-	 */
-	readonly byokModelIdentifier?: string;
-	/**
 	 * An optional JSON schema describing the per-model configuration options.
 	 * Used to validate user-provided per-model configuration in `chatLanguageModels.json`.
 	 */
@@ -434,23 +424,6 @@ export namespace ILanguageModelChatMetadata {
 		return `${base} ${learnMore}`;
 	}
 
-	/**
-	 * The "Manage Models" identifier that an agent-host copy of an extension-provided
-	 * BYOK model is toggled under, or `undefined` when the model is not such a copy.
-	 *
-	 * Agent-host BYOK models make a round trip that rewrites their id (the node agent host
-	 * re-advertises the extension model under the agent-host vendor). Their original LM
-	 * service identifier — `toModelIdentifier(vendor, group, id)`, i.e. `<vendor>/<group>/<id>`
-	 * or `<vendor>/<id>`, which is what the Manage Models view stores when hiding the model —
-	 * is carried across the bridge and surfaced on {@link ILanguageModelChatMetadata.byokModelIdentifier}.
-	 * This returns it, so callers can match the copy against the user's visibility toggles.
-	 *
-	 * Returns `undefined` for models that are not agent-host BYOK copies (native harness
-	 * models and non-agent-host models), which are matched by their own identifier instead.
-	 */
-	export function getAgentHostByokManageModelsIdentifier(metadata: ILanguageModelChatMetadata): string | undefined {
-		return metadata.byokModelIdentifier;
-	}
 }
 
 export interface ILanguageModelChatResponse {
@@ -761,15 +734,14 @@ export function getLanguageModelProviderDisplayName(languageModelsService: ILang
 
 export function getLanguageModelDisplayNameWithProvider(model: ILanguageModelChatMetadataAndIdentifier, languageModelsService: ILanguageModelsService): string {
 	const { metadata } = model;
-	if (!metadata.isBYOK && !metadata.byokModelIdentifier) {
+	if (!metadata.isBYOK) {
 		return metadata.name;
 	}
 
-	const originalIdentifier = metadata.byokModelIdentifier ?? model.identifier;
-	const originalMetadata = metadata.byokModelIdentifier ? languageModelsService.lookupLanguageModel(originalIdentifier) : metadata;
-	const providerVendor = originalMetadata?.vendor ?? metadata.modelGroup?.id ?? metadata.vendor;
+	const originalIdentifier = model.identifier;
+	const providerVendor = metadata.modelGroup?.id ?? metadata.vendor;
 	const providerName = getLanguageModelProviderDisplayName(languageModelsService, providerVendor);
-	const identifierSuffix = originalMetadata?.id;
+	const identifierSuffix = metadata.id;
 	const modelName = identifierSuffix && metadata.name.endsWith(` (${identifierSuffix})`)
 		? metadata.name.slice(0, -identifierSuffix.length - 3)
 		: metadata.name;
@@ -932,9 +904,9 @@ export function isAutoLanguageModel(model: ILanguageModelChatMetadataAndIdentifi
 }
 
 /**
- * Whether a model can be hidden from the picker. The default provider's `Auto` and
- * agent-host BYOK copies have no row in Manage Language Models, so hiding them would
- * be permanent. `metadata` is undefined before models resolve, hence the id check.
+ * Whether a model can be hidden from the picker. The default provider's `Auto` has
+ * no row in Manage Language Models, so hiding it would be permanent. `metadata` is
+ * undefined before models resolve, hence the id check.
  */
 export function canHideModel(identifier: string, metadata: ILanguageModelChatMetadata | undefined): boolean {
 	if (identifier === AUTO_MODEL_IDENTIFIER) {
@@ -946,7 +918,7 @@ export function canHideModel(identifier: string, metadata: ILanguageModelChatMet
 	if (metadata.vendor === COPILOT_VENDOR_ID && metadata.id === AUTO_RAW_MODEL_ID) {
 		return false;
 	}
-	return ILanguageModelChatMetadata.getAgentHostByokManageModelsIdentifier(metadata) === undefined;
+	return true;
 }
 
 const CHAT_PARTICIPANT_NAME_REGISTRY_STORAGE_KEY = 'chat.participantNameRegistry';

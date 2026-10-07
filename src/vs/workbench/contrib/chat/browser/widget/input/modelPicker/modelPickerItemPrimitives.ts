@@ -86,11 +86,10 @@ export function getProviderGroupForModel(
 	languageModelsService: ILanguageModelsService,
 ): IProviderGroupInfo {
 	if (model.metadata.modelGroup) {
-		const byokGroup = model.metadata.byokModelIdentifier ? modelToGroup.get(model.metadata.byokModelIdentifier) : undefined;
 		const sourcePresentation = model.metadata.modelGroup.sourceId
 			? languageModelSourcePresentationRegistry.get(model.metadata.vendor, model.metadata.modelGroup.sourceId)
 			: undefined;
-		return byokGroup ?? {
+		return {
 			vendor: model.metadata.vendor,
 			groupName: sourcePresentation?.label ?? getLanguageModelProviderDisplayName(languageModelsService, model.metadata.modelGroup.id),
 		};

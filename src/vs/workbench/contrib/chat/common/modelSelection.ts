@@ -3,8 +3,7 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ILanguageModelChatMetadata, ILanguageModelChatMetadataAndIdentifier, ILanguageModelsService, isLanguageModelVendorAbsenceConclusive } from './languageModels.js';
-import { isAgentHostTarget } from './chatSessionsService.js';
+import { ILanguageModelChatMetadataAndIdentifier, ILanguageModelsService, isLanguageModelVendorAbsenceConclusive } from './languageModels.js';
 
 export type ModelIdentifierResolution =
 	| { readonly kind: 'notRequested' }
@@ -50,20 +49,11 @@ export function resolveModelIdentifierFromCatalog(
 	const separator = identifier.search(/[/:]/);
 	const vendor = separator === -1 ? undefined : identifier.substring(0, separator);
 	const hasLive = vendor ? vendorResolution.hasLiveModels(vendor) : false;
-	// Agent-host vendors publish their models asynchronously after the agent host connects, so an
-	// empty (not-yet-populated) list is transient: keep the remembered/restored model `pending`
-	// (wait) rather than `unavailable` (give up). The same holds while the host has only mirrored
-	// the workbench's BYOK models into its pool and its own catalog is still in flight, which is
-	// why `hasLiveModels` reports whether the vendor published models of its OWN (see
-	// `hasOwnLiveModels`). Once it has, an absent model is genuinely gone, so stay conclusive.
-	// This grace is scoped to restore *resolution* only — cache-retention (`mergeModelsWithCache`)
-	// and send-availability keep treating a resolved-empty list as authoritative. The vendor id
-	// equals the session type for agent-host models, so `isAgentHostTarget` classifies it directly.
-	const isAbsenceConclusive = !vendor || (isLanguageModelVendorAbsenceConclusive(
+	const isAbsenceConclusive = !vendor || isLanguageModelVendorAbsenceConclusive(
 		vendor,
 		hasLive,
 		vendorResolution.hasResolved(vendor),
-	) && (hasLive || !isAgentHostTarget(vendor)));
+	);
 	return resolveModelIdentifier(models, identifier, isAbsenceConclusive);
 }
 
@@ -76,7 +66,7 @@ export function getRegisteredLanguageModels(languageModelsService: Pick<ILanguag
 		.filter(model => model !== undefined);
 }
 
-/** Filters a target's model catalog using both host-specific and underlying BYOK visibility. */
+/** Filters a target's model catalog using its model visibility settings. */
 export function getVisibleLanguageModelsForTarget(
 	models: readonly ILanguageModelChatMetadataAndIdentifier[],
 	targetChatSessionType: string,
@@ -86,20 +76,8 @@ export function getVisibleLanguageModelsForTarget(
 		if (model.metadata.targetChatSessionType !== targetChatSessionType || languageModelsService.isModelHidden(model.identifier)) {
 			return false;
 		}
-		const manageModelsIdentifier = ILanguageModelChatMetadata.getAgentHostByokManageModelsIdentifier(model.metadata);
-		return manageModelsIdentifier === undefined || !languageModelsService.isModelHidden(manageModelsIdentifier);
+		return true;
 	});
-}
-
-/**
- * Whether a vendor has published models of its own, ignoring copies bridged in from another
- * provider. An agent host mirrors the workbench's BYOK models into its pool as soon as the bridge
- * is up, but its own catalog only arrives once the host has connected and authenticated — so a pool
- * that is nothing but bridged copies is a half-published catalog. Counting it as live makes a
- * restored session's model look permanently gone and swaps it for an arbitrary bridged model.
- */
-function hasOwnLiveModels(models: readonly ILanguageModelChatMetadataAndIdentifier[], vendor: string): boolean {
-	return models.some(model => model.metadata.vendor === vendor && model.metadata.byokModelIdentifier === undefined);
 }
 
 export function resolveModelIdentifierFromLanguageModels(
@@ -109,7 +87,7 @@ export function resolveModelIdentifierFromLanguageModels(
 	allModels: readonly ILanguageModelChatMetadataAndIdentifier[],
 ): ModelIdentifierResolution {
 	return resolveModelIdentifierFromCatalog(models, identifier, {
-		hasLiveModels: vendor => hasOwnLiveModels(allModels, vendor),
+		hasLiveModels: vendor => allModels.some(model => model.metadata.vendor === vendor),
 		hasResolved: vendor => languageModelsService.hasResolvedVendor(vendor),
 	});
 }

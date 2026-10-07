@@ -576,7 +576,7 @@ suite('ChatSubagentContentPart', () => {
 				['registered-main-model', upcastPartial<ILanguageModelChatMetadata>({ id: 'model-a', name: 'Main Model', targetChatSessionType: sessionType })],
 				['registered-byok-model', upcastPartial<ILanguageModelChatMetadata>({
 					id: 'openrouter/model-b', name: 'Review Model', targetChatSessionType: sessionType,
-					byokModelIdentifier: 'openrouter/model-b', modelGroup: { id: 'openrouter' },
+					modelGroup: { id: 'openrouter' },
 				})],
 			]);
 			const changed = store.add(new Emitter<string>());

@@ -6,7 +6,7 @@
 import { ChatAgentLocation, ChatModeKind } from '../../../common/constants.js';
 import { ILanguageModelChatMetadata, ILanguageModelChatMetadataAndIdentifier, isLanguageModelVendorAbsenceConclusive } from '../../../common/languageModels.js';
 import { URI } from '../../../../../../base/common/uri.js';
-import { isAgentHostTarget, localChatSessionType } from '../../../common/chatSessionsService.js';
+import { localChatSessionType } from '../../../common/chatSessionsService.js';
 import { isByokModel } from '../../../common/chatSelectedModel.js';
 import { getChatSessionType, isUntitledChatSession } from '../../../common/model/chatUri.js';
 
@@ -15,11 +15,6 @@ import { getChatSessionType, isUntitledChatSession } from '../../../common/model
  * Supplied by the surface so these rules do not have to be restated in terms of its inputs.
  */
 export type IsModelSupportedHere = (model: ILanguageModelChatMetadataAndIdentifier) => boolean;
-
-/** Whether the vendor published this itself, rather than it being an agent-host copy of a BYOK model. */
-function isOwnModel(model: ILanguageModelChatMetadataAndIdentifier): boolean {
-	return model.metadata.byokModelIdentifier === undefined;
-}
 
 /**
  * Filter models based on session type.
@@ -105,32 +100,12 @@ export function isModelValidForSession(
 	return !model.metadata.targetChatSessionType;
 }
 
-/**
- * Reconstructs the "Manage Models" identifier that an agent-host copy of an
- * extension-provided BYOK model is toggled under, or `undefined` when the model
- * is not such a copy. Re-exported from the shared `ILanguageModelChatMetadata`
- * namespace (which also backs the `common` model-visibility layer) so picker and
- * management code reconstruct the identifier the same way.
- */
-export const getAgentHostByokManageModelsIdentifier = ILanguageModelChatMetadata.getAgentHostByokManageModelsIdentifier;
-
-/**
- * Whether a model should be hidden from the picker given the user's Manage Models
- * visibility toggles. Matches the model by its own identifier and, for agent-host
- * copies of extension BYOK models, additionally by the reconstructed original
- * identifier (see {@link getAgentHostByokManageModelsIdentifier}) — which includes
- * any user-configured provider group carried across the bridge — so a BYOK model
- * hidden in Manage Models is also hidden in the agent-host picker.
- */
+/** Whether a model should be hidden from the picker by its Manage Models visibility toggle. */
 export function isModelHiddenInPicker(
 	model: ILanguageModelChatMetadataAndIdentifier,
 	isModelHidden: (identifier: string) => boolean,
 ): boolean {
-	if (isModelHidden(model.identifier)) {
-		return true;
-	}
-	const manageModelsIdentifier = getAgentHostByokManageModelsIdentifier(model.metadata);
-	return manageModelsIdentifier !== undefined && isModelHidden(manageModelsIdentifier);
+	return isModelHidden(model.identifier);
 }
 
 /**
@@ -139,8 +114,7 @@ export function isModelHiddenInPicker(
  * that is being opened.
  *
  * The draft is shared across all session types, so its `selectedModel` can belong to a
- * different pool in either direction — e.g. a `copilot/*` model leaking into an agent-host
- * session, or an `agent-host-*` model leaking into a general/local session. Applying such a
+ * different pool in either direction. Applying such a
  * cross-pool model while the session is opening lets the sync resolve it to (and persist) a
  * wrong default over the destination pool's persisted model. Dropped when present but not valid
  * for `sessionType`; an in-pool draft model is kept. See
@@ -205,13 +179,13 @@ function isSameBillingIdentity(
 	if (!isByokModel(a.metadata)) {
 		return true;
 	}
-	return (a.metadata.byokModelIdentifier ?? a.identifier) === (b.metadata.byokModelIdentifier ?? b.identifier);
+	return a.identifier === b.identifier;
 }
 
 /**
  * Find a model in `pool` that matches `previous` by id, then family, then
  * name (case-insensitive). Used to carry a selection across model pools
- * (e.g. `copilot/claude-sonnet-4.6` → `agent-host-copilotcli:claude-sonnet-4.6`).
+ * across model pools.
  * Returns `undefined` when no candidate matches.
  * Candidates that would change which account is billed are never matches.
  */
@@ -319,8 +293,6 @@ export function resolveModelFromSyncState(
  * - Copilot is the exception: its models are gated on an async token that can resolve slower than fast/local BYOK
  *   providers, so an early empty resolution is transient. Keeping its cache avoids resetting (and persisting) a
  *   restored Copilot selection to a BYOK default, which also preserves the selection across sign-out/in (see #321037).
- * - An agent-host vendor is judged on models of its OWN: it also publishes bridged copies of the workbench's
- *   BYOK models, and counting those as live evicts the cache mid-publication and persists the gap.
  * - When nothing is contributed yet and there are no live models (startup / reload), the full cache is returned to
  *   avoid flickering the picker to empty.
  */
@@ -334,16 +306,10 @@ export function mergeModelsWithCache(
 		return cachedModels;
 	}
 	const liveVendors = new Set(liveModels.map(m => m.metadata.vendor));
-	const ownLiveVendors = new Set(liveModels.filter(m => isOwnModel(m)).map(m => m.metadata.vendor));
 	const usableCached = cachedModels.filter(m => {
 		const vendor = m.metadata.vendor;
-		if (!contributedVendors.has(vendor) || ownLiveVendors.has(vendor)) {
+		if (!contributedVendors.has(vendor) || liveVendors.has(vendor)) {
 			return false;
-		}
-		// Only bridged copies so far, so the vendor has not finished publishing. Its own models are
-		// kept; the bridged ones are already live, so a removed key must not come back from cache.
-		if (liveVendors.has(vendor) && isAgentHostTarget(vendor)) {
-			return isOwnModel(m);
 		}
 		if (isLanguageModelVendorAbsenceConclusive(vendor, liveVendors.has(vendor), resolvedVendors?.has(vendor) ?? false)) {
 			return false;

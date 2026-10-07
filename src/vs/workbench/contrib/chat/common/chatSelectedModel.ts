@@ -203,10 +203,10 @@ export function getSelectedModelVendor(
 
 /**
  * Returns whether the given model is "bring your own key", i.e. served with the user's own
- * credentials. Agent-host copies carry `byokModelIdentifier` instead of setting `isBYOK`.
+ * credentials.
  */
 export function isByokModel(metadata: ILanguageModelChatMetadata): boolean {
-	return metadata.isBYOK === true || metadata.byokModelIdentifier !== undefined;
+	return metadata.isBYOK === true;
 }
 
 /**

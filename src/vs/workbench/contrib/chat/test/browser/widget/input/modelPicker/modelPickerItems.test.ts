@@ -625,7 +625,7 @@ suite('buildModelPickerItems', () => {
 		};
 		const availableTargeted = createAgentHostModel('available-targeted', 'Available Targeted', { id: 'copilotcli' });
 		const baseByokModel = createAgentHostModel('byok-model', 'BYOK Model', { id: 'custom' });
-		const byokModel = { ...baseByokModel, metadata: { ...baseByokModel.metadata, byokModelIdentifier: 'custom/byok-model' } };
+		const byokModel = baseByokModel;
 
 		assert.deepStrictEqual(getModelPickerControlModels(manifest, ChatEntitlement.Unknown, [availableTargeted, byokModel]), {
 			'available-targeted': { label: 'Available Targeted', featured: true, exists: true },
@@ -1053,46 +1053,6 @@ suite('buildModelPickerItems', () => {
 		assert.deepStrictEqual(labelledSeparators.map(s => s.label), ['ChatGPT', 'Copilot']);
 	});
 
-	test('Other Models respects the configured BYOK group name for agent-host models', () => {
-		const auto = createAutoModel();
-		const cli = createAgentHostModel('claude-haiku-4.5', 'Claude Haiku 4.5', { id: 'copilotcli' });
-		const googleModelIdentifier = 'google/GoogleBYOK/gemini-2.5-pro';
-		const google = createAgentHostModel('google/gemini-2.5-pro', 'Gemini 2.5 Pro', { id: 'google' });
-		const googleWithByokIdentifier = {
-			...google,
-			metadata: { ...google.metadata, byokModelIdentifier: googleModelIdentifier },
-		};
-		const service = createLanguageModelsServiceStub([
-			{ vendor: 'copilotcli', displayName: 'Copilot CLI', groups: [] },
-			{ vendor: 'google', displayName: 'Google', groups: [{ name: 'GoogleBYOK', modelIdentifiers: [googleModelIdentifier] }] },
-		]);
-
-		const items = callBuild([auto, cli, googleWithByokIdentifier], { languageModelsService: service });
-		const labelledSeparators = items.filter(i => i.kind === ActionListItemKind.Separator && i.label);
-
-		assert.deepStrictEqual(labelledSeparators.map(s => s.label), ['Copilot', 'GoogleBYOK']);
-	});
-
-	test('Other Models keeps identically named agent-host BYOK groups from different providers separate', () => {
-		const auto = createAutoModel();
-		const googleModelIdentifier = 'google/Default/gemini-2.5-pro';
-		const openaiModelIdentifier = 'openai/Default/gpt-5';
-		const google = createAgentHostModel('google/gemini-2.5-pro', 'Gemini 2.5 Pro', { id: 'google' });
-		const openai = createAgentHostModel('openai/gpt-5', 'GPT-5', { id: 'openai' });
-		const service = createLanguageModelsServiceStub([
-			{ vendor: 'google', displayName: 'Google', groups: [{ name: 'Default', modelIdentifiers: [googleModelIdentifier] }] },
-			{ vendor: 'openai', displayName: 'OpenAI', groups: [{ name: 'Default', modelIdentifiers: [openaiModelIdentifier] }] },
-		]);
-
-		const items = callBuild([
-			auto,
-			{ ...google, metadata: { ...google.metadata, byokModelIdentifier: googleModelIdentifier } },
-			{ ...openai, metadata: { ...openai.metadata, byokModelIdentifier: openaiModelIdentifier } },
-		], { languageModelsService: service });
-		const labelledSeparators = items.filter(i => i.kind === ActionListItemKind.Separator && i.label);
-
-		assert.deepStrictEqual(labelledSeparators.map(s => s.label), ['Default', 'Default']);
-	});
 
 	test('Other Models keeps a single section when agent-host models share one modelGroup', () => {
 		const auto = createAutoModel();

@@ -159,7 +159,7 @@ const autoModel = makeModel('copilot/auto', 'auto');
 const manualModel = makeModel('copilot/test-model', 'test-model');
 const byokModel = {
 	...makeModel('agent-host-copilotcli:byok', 'byok'),
-	metadata: { id: 'byok', vendor: 'agent-host-copilotcli', family: 'byok', byokModelIdentifier: 'openrouter/test' } as ILanguageModelChatMetadata,
+	metadata: { id: 'byok', vendor: 'agent-host-copilotcli', family: 'byok', isBYOK: true } as ILanguageModelChatMetadata,
 };
 
 function inputContext(selectedLanguageModel = manualModel, availableLanguageModels: readonly ILanguageModelChatMetadataAndIdentifier[] = [autoModel, manualModel]): IChatInputNotificationContext {

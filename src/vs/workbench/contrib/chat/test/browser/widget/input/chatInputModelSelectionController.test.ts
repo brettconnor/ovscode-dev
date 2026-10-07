@@ -42,10 +42,10 @@ function targetedModel(identifier: string, sessionType: string): ILanguageModelC
  * conversation reproduces the production guarantee — one record per conversation, reachable only
  * while that conversation is bound — rather than assuming it.
  */
-/** An agent-host model; `byokModelIdentifier` marks it as a copy bridged in from a BYOK provider. */
-function hostModel(identifier: string, byokModelIdentifier?: string): ILanguageModelChatMetadataAndIdentifier {
+/** Builds a model in the legacy Agent Host targeted pool for remaining selection tests. */
+function hostModel(identifier: string, _bridgeIdentifier?: string): ILanguageModelChatMetadataAndIdentifier {
 	const base = targetedModel(identifier, 'agent-host-copilotcli');
-	return { ...base, metadata: { ...base.metadata, vendor: 'agent-host-copilotcli', byokModelIdentifier } };
+	return { ...base, metadata: { ...base.metadata, vendor: 'agent-host-copilotcli', isBYOK: !!_bridgeIdentifier } };
 }
 
 function createIntentStore(
@@ -1395,67 +1395,6 @@ suite('ChatInputModelSelectionController', () => {
 		});
 	});
 
-	test('syncFromConversationState reclaims the conversation model however late the pool publishes', () => {
-		// Cold-restart race: the agent-host vendor is registered but its models arrive later, and it
-		// publishes in waves — first the workbench's BYOK models mirrored in over the bridge, then its
-		// own. Whatever stand-in is shown meanwhile, the conversation's model is reclaimed the moment
-		// it appears; no wave has to arrive by any particular deadline for the restore to be honoured.
-		const sessionType = 'agent-host-copilotcli';
-		const hostModel = (identifier: string, byokModelIdentifier?: string): ILanguageModelChatMetadataAndIdentifier => {
-			const base = targetedModel(identifier, sessionType);
-			return { ...base, metadata: { ...base.metadata, vendor: sessionType, byokModelIdentifier } };
-		};
-		const desired = hostModel('agent-host-copilotcli:gpt-5.6-sol');
-		const bridged = hostModel('agent-host-copilotcli:openrouter/ai21/jamba-large-1.7', 'openrouter/OpenRouter/ai21/jamba-large-1.7');
-		const modelChanges = disposables.add(new Emitter<string>());
-		let models: ILanguageModelChatMetadataAndIdentifier[] = [];
-		const applied: string[] = [];
-		const restored: { modelId: string; configuration: Record<string, unknown> | undefined }[] = [];
-		const runtime: IChatInputModelSelectionRuntime = {
-			getCurrentSessionType: () => sessionType,
-			isEmpty: () => false,
-			getModels: () => models,
-			getAllModels: () => models,
-			isAwaitingSessionModels: type => !hasModelsTargetingSession(models, type),
-			getConfiguredModelValue: () => undefined,
-			isModelSupportedHere: model => isModelSupportedForMode(model, ChatModeKind.Ask) && isModelSupportedForInlineChat(model, ChatAgentLocation.Chat),
-			getDeclaredDefaultModel: models => models.find(model => model.metadata.isDefaultForLocation[ChatAgentLocation.Chat]),
-			subscribeToModelChanges: listener => modelChanges.event(listener),
-			getBoundConversationKey: () => 'chat:one',
-			...createIntentStore(() => 'chat:one'),
-			restoreModelConfiguration: (modelId, configuration) => restored.push({ modelId, configuration }),
-			applyModel: selected => {
-				applied.push(selected.identifier);
-			},
-		};
-		const controller = disposables.add(new ChatInputModelSelectionController(runtime));
-
-		controller.syncFromConversationState(desired, { effort: 'high' }, sessionType, 'chat:one');
-		const awaitingWhileEmpty = controller.isAwaitingRememberedModel();
-		// Wave one: bridged BYOK copies only — the host's own catalog is still in flight.
-		models = [bridged];
-		modelChanges.fire('byok-bridge');
-		const awaitingAfterBridge = controller.isAwaitingRememberedModel();
-		// Wave two: the host's own models arrive.
-		models = [bridged, desired];
-		modelChanges.fire('loaded');
-
-		assert.deepStrictEqual({
-			awaitingWhileEmpty,
-			awaitingAfterBridge,
-			awaitingAfterLoad: controller.isAwaitingRememberedModel(),
-			current: controller.currentModel.get()?.identifier,
-			finalApplied: applied[applied.length - 1],
-			restored,
-		}, {
-			awaitingWhileEmpty: true,
-			awaitingAfterBridge: true,
-			awaitingAfterLoad: false,
-			current: desired.identifier,
-			finalApplied: desired.identifier,
-			restored: [{ modelId: desired.identifier, configuration: { effort: 'high' } }],
-		});
-	});
 
 	test('a stand-in echoed back by the conversation does not displace the model being awaited', () => {
 		// Applying a model writes it into the conversation's input state, which the agent host

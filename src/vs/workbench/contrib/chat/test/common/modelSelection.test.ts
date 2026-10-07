@@ -33,28 +33,25 @@ suite('ModelSelection', () => {
 
 	ensureNoDisposablesAreLeakedInTestSuite();
 
-	test('filters model targets and respects host-specific and underlying BYOK visibility', () => {
+	test('filters model targets and respects model visibility', () => {
 		const target = 'remote-host-copilot';
 		const models = [
 			{ id: 'visible', target },
 			{ id: 'hidden', target },
-			{ id: 'byok-visible', target, byokModelIdentifier: 'openrouter/visible' },
-			{ id: 'byok-hidden-copy', target, byokModelIdentifier: 'openrouter/hidden-copy' },
-			{ id: 'byok-hidden-source', target, byokModelIdentifier: 'openrouter/hidden-source' },
 			{ id: 'other-target', target: 'remote-other-copilot' },
-		].map(({ id, target, byokModelIdentifier }) => {
+		].map(({ id, target }) => {
 			const entry = model(`${target}:${id}`, id);
-			return { ...entry, metadata: { ...entry.metadata, targetChatSessionType: target, byokModelIdentifier } };
+			return { ...entry, metadata: { ...entry.metadata, targetChatSessionType: target } };
 		});
-		const hidden = new Set([`${target}:hidden`, `${target}:byok-hidden-copy`, 'openrouter/hidden-source']);
+		const hidden = new Set([`${target}:hidden`]);
 		const languageModelsService = { isModelHidden: (identifier: string) => hidden.has(identifier) };
 		const visible = getVisibleLanguageModelsForTarget(models, target, languageModelsService).map(model => model.metadata.id);
 		hidden.clear();
 		const unhidden = getVisibleLanguageModelsForTarget(models, target, languageModelsService).map(model => model.metadata.id);
 
 		assert.deepStrictEqual({ visible, unhidden }, {
-			visible: ['visible', 'byok-visible'],
-			unhidden: ['visible', 'hidden', 'byok-visible', 'byok-hidden-copy', 'byok-hidden-source'],
+			visible: ['visible'],
+			unhidden: ['visible', 'hidden'],
 		});
 	});
 
@@ -88,59 +85,6 @@ suite('ModelSelection', () => {
 			emptyCopilot: { kind: 'pending', identifier: 'copilot/remembered' },
 			emptyByok: { kind: 'unavailable', identifier: 'ollama/remembered' },
 			liveCopilot: { kind: 'unavailable', identifier: 'copilot/remembered' },
-		});
-	});
-
-	test('treats a resolved-but-empty agent-host vendor as still loading (pending)', () => {
-		// Agent-host vendors publish their models asynchronously after the agent host connects, so —
-		// like Copilot — an empty resolution during startup is transient (pending), not conclusive.
-		// This is the root fix for the "restored agent-host session shows Auto" bug: without it the
-		// absent model resolves as `unavailable`, and the restore gives up instead of waiting.
-		const resolvedVendors = new Set(['agent-host-copilotcli', 'remote-abc-copilotcli']);
-		const liveVendors = new Set<string>();
-		const vendorResolution = {
-			hasLiveModels: (vendor: string) => liveVendors.has(vendor),
-			hasResolved: (vendor: string) => resolvedVendors.has(vendor),
-		};
-		const localDesired = 'agent-host-copilotcli:gpt-5.6-sol';
-		const remoteDesired = 'remote-abc-copilotcli:gpt-5.6-sol';
-		const emptyLocal = resolveModelIdentifierFromCatalog([], localDesired, vendorResolution);
-		const emptyRemote = resolveModelIdentifierFromCatalog([], remoteDesired, vendorResolution);
-		// Once the agent-host pool has published models (but not this one) the absence is conclusive.
-		liveVendors.add('agent-host-copilotcli');
-		const loadedWithout = resolveModelIdentifierFromCatalog([], localDesired, vendorResolution);
-
-		assert.deepStrictEqual({ emptyLocal, emptyRemote, loadedWithout }, {
-			emptyLocal: { kind: 'pending', identifier: localDesired },
-			emptyRemote: { kind: 'pending', identifier: remoteDesired },
-			loadedWithout: { kind: 'unavailable', identifier: localDesired },
-		});
-	});
-
-	test('treats an agent-host pool of only bridged BYOK models as still loading (pending)', () => {
-		// The agent host mirrors the workbench's BYOK models into its pool as soon as the bridge is
-		// up, but its own catalog only arrives once it has connected and authenticated. That first
-		// wave must not make the vendor look live, or a restored session's model resolves as
-		// `unavailable` and the restore falls back to an arbitrary bridged model.
-		const sessionType = 'agent-host-copilotcli';
-		const hostModel = (identifier: string, byokModelIdentifier?: string): ILanguageModelChatMetadataAndIdentifier => {
-			const base = model(identifier);
-			return { ...base, metadata: { ...base.metadata, vendor: sessionType, byokModelIdentifier } };
-		};
-		const desired = hostModel('agent-host-copilotcli:gpt-5.6-sol');
-		const bridged = hostModel('agent-host-copilotcli:openrouter/ai21/jamba-large-1.7', 'openrouter/OpenRouter/ai21/jamba-large-1.7');
-		const languageModelsService = { hasResolvedVendor: () => true };
-		const resolve = (allModels: ILanguageModelChatMetadataAndIdentifier[]) =>
-			resolveModelIdentifierFromLanguageModels(allModels, desired.identifier, languageModelsService, allModels);
-
-		assert.deepStrictEqual({
-			bridgedOnly: resolve([bridged]),
-			ownModelsPublished: resolve([bridged, desired]),
-			ownModelsPublishedWithout: resolve([bridged, hostModel('agent-host-copilotcli:auto')]),
-		}, {
-			bridgedOnly: { kind: 'pending', identifier: desired.identifier },
-			ownModelsPublished: { kind: 'available', model: desired },
-			ownModelsPublishedWithout: { kind: 'unavailable', identifier: desired.identifier },
 		});
 	});
 

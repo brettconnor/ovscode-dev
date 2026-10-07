@@ -35,7 +35,7 @@ export function getModelPickerControlModels(
 	}
 
 	const availableModelIds = new Set(models
-		.filter(model => !model.metadata.isBYOK && !model.metadata.byokModelIdentifier && !!model.metadata.targetChatSessionType)
+		.filter(model => !model.metadata.isBYOK && !!model.metadata.targetChatSessionType)
 		.map(model => model.metadata.id));
 	const controlModels: IStringDictionary<IModelControlEntry> = {};
 	for (const tier of [manifest.free, manifest.paid]) {

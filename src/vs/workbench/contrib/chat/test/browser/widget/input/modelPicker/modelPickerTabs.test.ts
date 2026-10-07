@@ -17,7 +17,6 @@ import { ILanguageModelChatMetadata, ILanguageModelChatMetadataAndIdentifier, IL
 interface IFixtureModelOptions {
 	readonly vendor?: string;
 	readonly isBYOK?: boolean;
-	readonly byokModelIdentifier?: string;
 	readonly modelGroupId?: string;
 }
 
@@ -32,7 +31,6 @@ function createModel(id: string, name: string, options: IFixtureModelOptions = {
 			version: '1.0',
 			family: id,
 			isBYOK: options.isBYOK,
-			byokModelIdentifier: options.byokModelIdentifier,
 			modelGroup: options.modelGroupId ? { id: options.modelGroupId } : undefined,
 			maxInputTokens: 128000,
 			maxOutputTokens: 4096,
@@ -106,37 +104,6 @@ suite('Model picker destinations', () => {
 
 	/** The destination id a provider gets, keyed by identity rather than by display name. */
 	const providerId = (vendor: string, label: string) => `provider:${getProviderGroupKey(vendor, label)}`;
-
-	test('a host that relays the built-in provider keeps its models built in', () => {
-		// An agent host registers a vendor of its own and republishes the built-in
-		// provider's catalogue under it, so neither the vendor nor the BYOK flags say
-		// where a model actually came from. Only the provider group does.
-		const relayed = createModel('gpt-5-5', 'GPT-5.5', {
-			vendor: 'agent-host-copilotcli',
-			isBYOK: true,
-			byokModelIdentifier: 'copilot/gpt-5-5',
-			modelGroupId: 'copilot',
-		});
-		const relayedNative = createModel('cli-model', 'CLI Model', {
-			vendor: 'agent-host-copilotcli',
-			isBYOK: true,
-			modelGroupId: 'copilotcli',
-		});
-		const relayedByok = createModel('llama-3', 'Llama 3', {
-			vendor: 'agent-host-copilotcli',
-			isBYOK: true,
-			modelGroupId: 'ollama',
-		});
-		assert.deepStrictEqual(
-			summarize([relayed, relayedNative, relayedByok]),
-			[
-				{ id: 'builtIn', label: 'GitHub Copilot', models: ['GPT-5.5', 'CLI Model'] },
-				// The relayed model carries the host's vendor, so that is the identity it
-				// is keyed by; only the group supplies the name the user reads.
-				{ id: providerId('agent-host-copilotcli', 'Ollama'), label: 'Ollama', models: ['Llama 3'] },
-			],
-		);
-	});
 
 	test('a plan that grants only Auto still opens on the built-in destination', () => {
 		// Auto has its own row rather than a place in the list, so without this the

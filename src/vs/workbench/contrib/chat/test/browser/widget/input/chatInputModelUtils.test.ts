@@ -13,7 +13,6 @@ import { LocalChatSessionUri } from '../../../../common/model/chatUri.js';
 import {
 	filterModelsForSession,
 	findBestMatchingModel,
-	getAgentHostByokManageModelsIdentifier,
 	hasModelsTargetingSession,
 	isModelHiddenInPicker,
 	isModelSupportedForInlineChat,
@@ -460,34 +459,6 @@ suite('ChatInputModelUtils', () => {
 			assert.strictEqual(findBestMatchingModel(prev, [target])?.identifier, target.identifier);
 		});
 
-		test('never carries a selection across the BYOK billing boundary', () => {
-			// A bridged BYOK copy shares id, family and display name with the first-party model, so
-			// treating it as the same selection would silently change which account is billed.
-			const prev = createSessionModel('claude-opus-5', 'Claude Opus 5', 'agent-host-copilotcli', { family: 'claude-opus-5' });
-			const byokNamesake = createSessionModel('anthropic/Anthropic/claude-opus-5', 'Claude Opus 5', 'agent-host-copilotcli', {
-				family: 'claude-opus-5',
-				byokModelIdentifier: 'anthropic/Anthropic/claude-opus-5',
-			});
-			assert.strictEqual(findBestMatchingModel(prev, [byokNamesake]), undefined);
-			assert.strictEqual(findBestMatchingModel(byokNamesake, [prev]), undefined);
-		});
-
-		test('still carries a BYOK selection onto the agent host copy of the same key', () => {
-			// The renderer original sets `isBYOK`; the agent-host copy carries its identifier as
-			// `byokModelIdentifier`. Same key, so this is the carry-over the function exists for.
-			const original = { ...createModel('claude-opus-5', 'Claude Opus 5', { vendor: 'anthropic', family: 'claude-opus-5', isBYOK: true }), identifier: 'anthropic/Anthropic/claude-opus-5' };
-			const bridged = createSessionModel('anthropic/Anthropic/claude-opus-5', 'Claude Opus 5', 'agent-host-copilotcli', {
-				family: 'claude-opus-5',
-				byokModelIdentifier: 'anthropic/Anthropic/claude-opus-5',
-			});
-			assert.deepStrictEqual({
-				forward: findBestMatchingModel(original, [bridged])?.identifier,
-				back: findBestMatchingModel(bridged, [original])?.identifier,
-			}, {
-				forward: bridged.identifier,
-				back: original.identifier,
-			});
-		});
 	});
 
 	suite('shouldResetModelToDefault', () => {
@@ -649,20 +620,6 @@ suite('ChatInputModelUtils', () => {
 			);
 			assert.strictEqual(result.length, 2);
 			assert.deepStrictEqual(result.map(m => m.metadata.id).sort(), ['gpt', 'other-model']);
-		});
-
-		test('a vendor publishing only bridged BYOK copies keeps its cached own models', () => {
-			// The incident: the host's own models briefly dropped while its bridged BYOK copies stayed,
-			// and counting those as live evicted — then re-persisted over — the real pool.
-			const host = 'agent-host-copilotcli';
-			const bridged = createSessionModel('anthropic/Anthropic/claude-opus-5', 'Claude Opus 5', host, {
-				vendor: host,
-				byokModelIdentifier: 'anthropic/Anthropic/claude-opus-5',
-			});
-			const cachedOwn = createSessionModel('gpt-5.6-terra', 'GPT-5.6 Terra', host, { vendor: host });
-			const result = mergeModelsWithCache([bridged], [cachedOwn], new Set([host]), new Set([host]));
-
-			assert.deepStrictEqual(result.map(m => m.metadata.id).sort(), ['anthropic/Anthropic/claude-opus-5', 'gpt-5.6-terra']);
 		});
 
 		test('a vendor that has published its own models drops its cache as before', () => {
@@ -1576,112 +1533,11 @@ suite('ChatInputModelUtils', () => {
 		});
 	});
 
-	suite('BYOK agent-host visibility (isModelHiddenInPicker / getAgentHostByokManageModelsIdentifier)', () => {
-
-		// Mirrors the agent-host copy produced by `AgentHostLanguageModelProvider` after a
-		// BYOK model round-trips the bridge: it is surfaced under the agent-host vendor with
-		// `identifier = <agent-host-vendor>:<vendor>/<id>` and carries the original LM service
-		// identifier (`byokModelIdentifier`, the "Manage Models" visibility key) that the node
-		// agent host forwarded across the bridge via `_meta`.
-		function createAgentHostByokModel(vendor: string, modelId: string, manageModelsIdentifier: string): ILanguageModelChatMetadataAndIdentifier {
-			const sessionType = 'agent-host-copilotcli';
-			const appendedId = `${vendor}/${modelId}`;
-			return {
-				identifier: `${sessionType}:${appendedId}`,
-				metadata: {
-					extension: new ExtensionIdentifier('vscode.chat'),
-					id: appendedId,
-					name: modelId,
-					vendor: sessionType,
-					version: '1.0',
-					family: appendedId,
-					maxInputTokens: 128000,
-					maxOutputTokens: 4096,
-					isDefaultForLocation: {},
-					isUserSelectable: true,
-					targetChatSessionType: sessionType,
-					modelGroup: { id: vendor },
-					byokModelIdentifier: manageModelsIdentifier,
-					capabilities: { toolCalling: true, agentMode: true },
-				} as ILanguageModelChatMetadata,
-			};
-		}
-
-		// A native harness model (e.g. Copilot CLI's own model) carries no
-		// `byokModelIdentifier`; it is toggled under its own identifier.
-		function createNativeAgentHostModel(modelId: string): ILanguageModelChatMetadataAndIdentifier {
-			const sessionType = 'agent-host-copilotcli';
-			return {
-				identifier: `${sessionType}:${modelId}`,
-				metadata: {
-					extension: new ExtensionIdentifier('vscode.chat'),
-					id: modelId,
-					name: modelId,
-					vendor: sessionType,
-					version: '1.0',
-					family: modelId,
-					maxInputTokens: 128000,
-					maxOutputTokens: 4096,
-					isDefaultForLocation: {},
-					isUserSelectable: true,
-					targetChatSessionType: sessionType,
-					modelGroup: { id: 'copilotcli' },
-					capabilities: { toolCalling: true, agentMode: true },
-				} as ILanguageModelChatMetadata,
-			};
-		}
-
-		test('returns the carried Manage Models identifier for a groupless BYOK copy', () => {
-			const model = createAgentHostByokModel('anthropic', 'claude-sonnet-4', 'anthropic/claude-sonnet-4');
-			assert.strictEqual(getAgentHostByokManageModelsIdentifier(model.metadata), 'anthropic/claude-sonnet-4');
-		});
-
-		test('returns the carried grouped identifier verbatim (group name + slashes preserved)', () => {
-			// OpenRouter under a user-configured group "OpenRouter 2"; the model id itself has a slash.
-			const model = createAgentHostByokModel('openrouter', 'ai21/jamba-large-1.7', 'openrouter/OpenRouter 2/ai21/jamba-large-1.7');
-			assert.strictEqual(getAgentHostByokManageModelsIdentifier(model.metadata), 'openrouter/OpenRouter 2/ai21/jamba-large-1.7');
-		});
-
-		test('returns undefined for native harness models (no carried identifier)', () => {
-			const model = createNativeAgentHostModel('claude-haiku-4.5');
-			assert.strictEqual(getAgentHostByokManageModelsIdentifier(model.metadata), undefined);
-		});
-
-		test('returns undefined for non-agent-host models', () => {
-			const model = createModel('gpt-5', 'GPT-5');
-			assert.strictEqual(getAgentHostByokManageModelsIdentifier(model.metadata), undefined);
-		});
-
-		test('hides a grouped BYOK copy via its carried registered identifier', () => {
-			const model = createAgentHostByokModel('openrouter', 'ai21/jamba-large-1.7', 'openrouter/OpenRouter 2/ai21/jamba-large-1.7');
-			// The user hid the model in Manage Models, which stored the grouped identifier.
-			const hidden = new Set(['openrouter/OpenRouter 2/ai21/jamba-large-1.7']);
-			assert.strictEqual(isModelHiddenInPicker(model, id => hidden.has(id)), true);
-		});
-
-		test('hides a groupless BYOK copy via its carried identifier', () => {
-			const model = createAgentHostByokModel('anthropic', 'claude-sonnet-4', 'anthropic/claude-sonnet-4');
-			const hidden = new Set(['anthropic/claude-sonnet-4']);
-			assert.strictEqual(isModelHiddenInPicker(model, id => hidden.has(id)), true);
-		});
-
-		test('shows an agent-host BYOK copy when nothing is hidden', () => {
-			const model = createAgentHostByokModel('openrouter', 'ai21/jamba-large-1.7', 'openrouter/OpenRouter 2/ai21/jamba-large-1.7');
+	suite('model picker visibility', () => {
+		test('hides a model by its registered identifier', () => {
+			const model = createModel('provider/model', 'Model');
+			assert.strictEqual(isModelHiddenInPicker(model, id => id === model.identifier), true);
 			assert.strictEqual(isModelHiddenInPicker(model, () => false), false);
-		});
-
-		test('also hides when the agent-host copy identifier itself is hidden', () => {
-			const model = createAgentHostByokModel('anthropic', 'claude-sonnet-4', 'anthropic/claude-sonnet-4');
-			const hidden = new Set([model.identifier]);
-			assert.strictEqual(isModelHiddenInPicker(model, id => hidden.has(id)), true);
-		});
-
-		test('filters out a hidden grouped BYOK model but keeps visible peers', () => {
-			const visible = createAgentHostByokModel('anthropic', 'claude-sonnet-4', 'anthropic/claude-sonnet-4');
-			const hiddenModel = createAgentHostByokModel('openrouter', 'ai21/jamba-large-1.7', 'openrouter/OpenRouter 2/ai21/jamba-large-1.7');
-			const hidden = new Set(['openrouter/OpenRouter 2/ai21/jamba-large-1.7']);
-			const result = [visible, hiddenModel].filter(m => !isModelHiddenInPicker(m, id => hidden.has(id)));
-			assert.deepStrictEqual(result.map(m => m.identifier), ['agent-host-copilotcli:anthropic/claude-sonnet-4']);
 		});
 	});
 

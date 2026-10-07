@@ -283,14 +283,13 @@ suite('LanguageModels', function () {
 				isBYOK: true,
 			},
 		};
-		const bridgedModel: ILanguageModelChatMetadataAndIdentifier = {
-			identifier: 'agent-host-copilotcli:openrouter/amazon/nova-micro-v1',
+		const groupedByokModel: ILanguageModelChatMetadataAndIdentifier = {
+			identifier: originalIdentifier,
 			metadata: {
 				...originalModel.metadata,
-				vendor: 'agent-host-copilotcli',
-				isBYOK: undefined,
+				vendor: 'openrouter',
+				isBYOK: true,
 				modelGroup: { id: 'openrouter' },
-				byokModelIdentifier: originalIdentifier,
 			},
 		};
 		const nativeModel: ILanguageModelChatMetadataAndIdentifier = {
@@ -333,15 +332,15 @@ suite('LanguageModels', function () {
 
 		assert.deepStrictEqual({
 			direct: getLanguageModelDisplayNameWithProvider(originalModel, createService()),
-			bridged: getLanguageModelDisplayNameWithProvider(bridgedModel, createService()),
-			grouped: getLanguageModelDisplayNameWithProvider(bridgedModel, createService('OpenRouter 2')),
-			duplicateGroup: getLanguageModelDisplayNameWithProvider(bridgedModel, createService('OpenRouter')),
+			groupedByok: getLanguageModelDisplayNameWithProvider(groupedByokModel, createService()),
+			grouped: getLanguageModelDisplayNameWithProvider(groupedByokModel, createService('OpenRouter 2')),
+			duplicateGroup: getLanguageModelDisplayNameWithProvider(groupedByokModel, createService('OpenRouter')),
 			gemini: getLanguageModelDisplayNameWithProvider(geminiModel, createService()),
 			meaningfulParentheses: getLanguageModelDisplayNameWithProvider(meaningfulParenthesesModel, createService()),
 			native: getLanguageModelDisplayNameWithProvider(nativeModel, createService('OpenRouter 2')),
 		}, {
 			direct: 'OpenRouter/Amazon: Nova Micro 1.0',
-			bridged: 'OpenRouter/Amazon: Nova Micro 1.0',
+			groupedByok: 'OpenRouter/Amazon: Nova Micro 1.0',
 			grouped: 'OpenRouter/OpenRouter 2/Amazon: Nova Micro 1.0',
 			duplicateGroup: 'OpenRouter/Amazon: Nova Micro 1.0',
 			gemini: 'Gemini/Gemini 3.1 Pro Preview',
@@ -549,56 +548,6 @@ suite('LanguageModels', function () {
 		assert.strictEqual(fired, 1);
 	});
 
-	test('model visibility — hiding an agent-host group excludes BYOK model copies', async function () {
-		// An agent host surfaces the user's BYOK models as copies under its own vendor.
-		// Those copies (id carries the upstream provider prefix + `modelGroup`) are not
-		// listed in Manage Models under the agent host, so group-level visibility toggles
-		// must not touch them — their visibility is owned by the real provider row.
-		languageModels.deltaLanguageModelChatProviderDescriptors([
-			{ vendor: 'agent-host-copilotcli', displayName: 'Copilot', configuration: undefined, managementCommand: undefined, when: undefined }
-		], []);
-		store.add(languageModels.registerLanguageModelProvider('agent-host-copilotcli', {
-			onDidChange: Event.None,
-			provideLanguageModelChatInfo: async () => [
-				{
-					metadata: {
-						extension: nullExtensionDescription.identifier,
-						name: 'Claude Haiku 4.5', vendor: 'agent-host-copilotcli', family: 'claude-haiku-4.5', version: '1.0',
-						id: 'claude-haiku-4.5', maxInputTokens: 100, maxOutputTokens: 100, isDefaultForLocation: {},
-						targetChatSessionType: 'agent-host-copilotcli', modelGroup: { id: 'copilotcli' },
-					} satisfies ILanguageModelChatMetadata,
-					identifier: 'agent-host-copilotcli:claude-haiku-4.5',
-				},
-				{
-					metadata: {
-						extension: nullExtensionDescription.identifier,
-						name: 'AionLabs: Aion-3.0', vendor: 'agent-host-copilotcli', family: 'openrouter/aion-labs/aion-3.0', version: '1.0',
-						id: 'openrouter/aion-labs/aion-3.0', maxInputTokens: 100, maxOutputTokens: 100, isDefaultForLocation: {},
-						targetChatSessionType: 'agent-host-copilotcli', modelGroup: { id: 'openrouter' },
-						byokModelIdentifier: 'openrouter/OpenRouter 2/aion-labs/aion-3.0',
-					} satisfies ILanguageModelChatMetadata,
-					identifier: 'agent-host-copilotcli:openrouter/aion-labs/aion-3.0',
-				},
-			],
-			sendChatRequest: async () => { throw new Error(); },
-			provideTokenCount: async () => { throw new Error(); },
-		}));
-		await languageModels.selectLanguageModels({ vendor: 'agent-host-copilotcli' });
-
-		languageModels.setGroupHidden('agent-host-copilotcli', 'Copilot', true);
-
-		// Only the native agent-host model is hidden; the BYOK copy is untouched, and the
-		// group reads as hidden because every model it actually owns (the native one) is.
-		assert.deepStrictEqual({
-			hiddenModels: languageModels.getHiddenModelIds(),
-			groupHidden: languageModels.isGroupHidden('agent-host-copilotcli', 'Copilot'),
-			byokCopyHidden: languageModels.isModelHidden('agent-host-copilotcli:openrouter/aion-labs/aion-3.0'),
-		}, {
-			hiddenModels: ['agent-host-copilotcli:claude-haiku-4.5'],
-			groupHidden: true,
-			byokCopyHidden: false,
-		});
-	});
 
 	/** Registers the default provider with its `Auto` model plus one regular model. */
 	async function registerDefaultVendorWithAutoModel(): Promise<void> {
