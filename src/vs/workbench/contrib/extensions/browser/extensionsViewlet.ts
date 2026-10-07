@@ -429,7 +429,6 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 		@IInstantiationService instantiationService: IInstantiationService,
 		@IEditorGroupsService private readonly editorGroupService: IEditorGroupsService,
 		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
-		@IExtensionManagementServerService private readonly extensionManagementServerService: IExtensionManagementServerService,
 		@INotificationService private readonly notificationService: INotificationService,
 		@IPaneCompositePartService private readonly paneCompositeService: IPaneCompositePartService,
 		@IThemeService themeService: IThemeService,

@@ -44,7 +44,6 @@ import { Schemas } from '../../../../../base/common/network.js';
 import { platform } from '../../../../../base/common/platform.js';
 import { arch } from '../../../../../base/common/process.js';
 import { IProductService } from '../../../../../platform/product/common/productService.js';
-import { CancellationToken } from '../../../../../base/common/cancellation.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import { IUpdateService, State } from '../../../../../platform/update/common/update.js';
 import { IMeteredConnectionService } from '../../../../../platform/meteredConnection/common/meteredConnection.js';
