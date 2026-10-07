@@ -9,7 +9,7 @@ import { $, append, addDisposableListener, EventType, clearNode, getActiveWindow
 import { isCancellationError } from '../../../../base/common/errors.js';
 import { StopWatch } from '../../../../base/common/stopwatch.js';
 import { URI } from '../../../../base/common/uri.js';
-import { isWindows, isMacintosh, isLinux } from '../../../../base/common/platform.js';
+import { isMacintosh } from '../../../../base/common/platform.js';
 import { assertDefined } from '../../../../base/common/types.js';
 import { FileAccess } from '../../../../base/common/network.js';
 import { ILayoutService } from '../../../../platform/layout/browser/layoutService.js';
@@ -22,15 +22,11 @@ import { ThemeIcon } from '../../../../base/common/themables.js';
 import { renderIcon } from '../../../../base/browser/ui/iconLabel/iconLabels.js';
 import { Action } from '../../../../base/common/actions.js';
 import { IWorkbenchThemeService } from '../../../services/themes/common/workbenchThemeService.js';
-import { EXTENSION_INSTALL_SKIP_WALKTHROUGH_CONTEXT, IExtensionGalleryService, IExtensionManagementService } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { GitHubPaths, IDefaultAccountService } from '../../../../platform/defaultAccount/common/defaultAccount.js';
-import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { INotificationService, Severity } from '../../../../platform/notification/common/notification.js';
 import { ConfigurationTarget, IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { defaultInputBoxStyles } from '../../../../platform/theme/browser/defaultStyles.js';
 import product from '../../../../platform/product/common/product.js';
-import { IFileService } from '../../../../platform/files/common/files.js';
-import { IPathService } from '../../../services/path/common/pathService.js';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
 import { InstallChatEvent, InstallChatClassification, ChatSetupStrategy } from '../../chat/browser/chatSetup/chatSetup.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
@@ -125,8 +121,6 @@ export class OnboardingVariationA extends Disposable implements IOnboardingServi
 	private readonly footerFocusableElements: HTMLElement[] = [];
 	private readonly stepFocusableElements: HTMLElement[] = [];
 	private selectedThemeId = 'dark-2026';
-	private selectedKeymapId = 'vscode';
-	private _detectedEditorIds: Set<string> | undefined;
 	private _userSignedIn = false;
 	private selectedAiMode: AiCollaborationMode = AiCollaborationMode.Balanced;
 	private enterpriseSignInUiState: EnterpriseSignInUiState = 'options';
@@ -137,12 +131,8 @@ export class OnboardingVariationA extends Disposable implements IOnboardingServi
 		@ILayoutService private readonly layoutService: ILayoutService,
 		@IWorkbenchThemeService private readonly themeService: IWorkbenchThemeService,
 		@IDefaultAccountService private readonly defaultAccountService: IDefaultAccountService,
-		@IExtensionGalleryService private readonly extensionGalleryService: IExtensionGalleryService,
-		@IExtensionManagementService private readonly extensionManagementService: IExtensionManagementService,
 		@IConfigurationService private readonly configurationService: IConfigurationService,
 		@INotificationService private readonly notificationService: INotificationService,
-		@IFileService private readonly fileService: IFileService,
-		@IPathService private readonly pathService: IPathService,
 		@ITelemetryService private readonly telemetryService: ITelemetryService,
 		@ICommandService private readonly commandService: ICommandService,
 		@IAccessibilityService private readonly accessibilityService: IAccessibilityService,
@@ -158,7 +148,6 @@ export class OnboardingVariationA extends Disposable implements IOnboardingServi
 		}
 
 		// Start detecting installed editors early so results are ready by the Personalize step
-		this._detectInstalledEditors().then(ids => { this._detectedEditorIds = ids; });
 	}
 
 	get isShowing(): boolean {
@@ -239,7 +228,6 @@ export class OnboardingVariationA extends Disposable implements IOnboardingServi
 		}));
 		this.disposables.add(addDisposableListener(this.nextButton, EventType.CLICK, () => {
 			if (this._isLastStep()) {
-				this._applyStepSelections(this.steps[this.currentStepIndex]);
 				this._logAction('complete');
 				this._dismiss('complete');
 			} else if (this.currentStepIndex === 0) {
@@ -319,23 +307,12 @@ export class OnboardingVariationA extends Disposable implements IOnboardingServi
 				this.enterpriseInstanceValue = '';
 				this.enterpriseSignInWatch = undefined;
 			}
-			this._applyStepSelections(leavingStep);
 			this.currentStepIndex++;
 			this._renderStep();
 			this._renderProgress();
 			this._updateButtonStates();
 			this._focusCurrentStepElement();
 			this._logStepView();
-		}
-	}
-
-	/**
-	 * Applies the selections made on a step once the user moves past it, either
-	 * by continuing to the next step or by completing the onboarding.
-	 */
-	private _applyStepSelections(stepId: OnboardingStepId): void {
-		if (stepId === OnboardingStepId.Personalize) {
-			this._applyKeymap(this.selectedKeymapId);
 		}
 	}
 
@@ -821,16 +798,9 @@ export class OnboardingVariationA extends Disposable implements IOnboardingServi
 		themeGrid.setAttribute('role', 'radiogroup');
 		themeGrid.setAttribute('aria-label', localize('onboarding.personalize.themeLabel', "Choose a color theme"));
 
-		const hasOtherEditors = this._hasOtherEditors();
 		const allThemes = product.onboardingThemes ?? [];
-		// When other editors are detected, show a compact set (exclude solarized variants).
-		const themes: readonly IOnboardingThemeOption[] = hasOtherEditors
-			? allThemes.filter(t => !t.id.startsWith('solarized'))
-			: allThemes;
-
-		if (!hasOtherEditors) {
-			themeGrid.classList.add('theme-grid-expanded');
-		}
+		const themes: readonly IOnboardingThemeOption[] = allThemes;
+		themeGrid.classList.add('theme-grid-expanded');
 
 		const themeCards: HTMLElement[] = [];
 		for (const theme of themes) {
@@ -839,55 +809,6 @@ export class OnboardingVariationA extends Disposable implements IOnboardingServi
 		// Make all theme cards individually tabbable
 		for (const card of themeCards) {
 			card.setAttribute('tabindex', '0');
-		}
-
-		// Keyboard Mapping section — only shown when another editor is detected
-		const keymapOptions = this._detectedEditorIds
-			? (product.onboardingKeymaps ?? []).filter(k => this._detectedEditorIds!.has(k.id))
-			: [];
-
-		if (hasOtherEditors) {
-			const keymapLabel = append(wrapper, $('div.onboarding-a-section-label.onboarding-a-section-label-keymap'));
-			keymapLabel.textContent = localize('onboarding.personalize.keymap', "Keyboard Mapping");
-
-			const keymapHint = append(wrapper, $('div.onboarding-a-theme-hint'));
-			keymapHint.textContent = localize('onboarding.personalize.keymapHint', "Coming from another editor? Import your keyboard mapping to feel right at home.");
-
-			const keymapList = append(wrapper, $('.onboarding-a-keymap-list'));
-			keymapList.setAttribute('role', 'radiogroup');
-			keymapList.setAttribute('aria-label', localize('onboarding.personalize.keymapLabel', "Choose a keyboard mapping"));
-
-			const keymapPills: HTMLButtonElement[] = [];
-			for (const keymap of keymapOptions) {
-				const pill = this._registerStepFocusable(append(keymapList, $<HTMLButtonElement>('button.onboarding-a-keymap-pill')));
-				pill.type = 'button';
-				pill.setAttribute('role', 'radio');
-				pill.setAttribute('aria-checked', keymap.id === this.selectedKeymapId ? 'true' : 'false');
-				pill.title = keymap.description;
-				keymapPills.push(pill);
-
-				const labelSpan = append(pill, $('span'));
-				labelSpan.textContent = keymap.label;
-
-				if (keymap.id === this.selectedKeymapId) {
-					pill.classList.add('selected');
-				}
-
-				this.stepDisposables.add(addDisposableListener(pill, EventType.CLICK, () => {
-					this._logAction('selectKeymap', undefined, keymap.id);
-					this.selectedKeymapId = keymap.id;
-
-					for (const p of keymapPills) {
-						p.classList.remove('selected');
-						p.setAttribute('aria-checked', 'false');
-					}
-					pill.classList.add('selected');
-					pill.setAttribute('aria-checked', 'true');
-					this.accessibilityService.alert(localize('onboarding.keymap.selected.alert', "{0} keyboard mapping selected", keymap.label));
-				}));
-			}
-			const selectedKeymapIndex = keymapOptions.findIndex(k => k.id === this.selectedKeymapId);
-			this._setupRadioGroupNavigation(keymapPills, Math.max(0, selectedKeymapIndex));
 		}
 
 	}
@@ -958,88 +879,6 @@ export class OnboardingVariationA extends Disposable implements IOnboardingServi
 		if (match) {
 			this.themeService.setColorTheme(match.id, ConfigurationTarget.USER);
 		}
-	}
-
-	private async _applyKeymap(keymapId: string): Promise<void> {
-		const keymap = (product.onboardingKeymaps ?? []).find(k => k.id === keymapId);
-		if (!keymap?.extensionId) {
-			return; // VS Code default, nothing to install
-		}
-
-		try {
-			const gallery = await this.extensionGalleryService.getExtensions([{ id: keymap.extensionId }], CancellationToken.None);
-			if (gallery.length > 0) {
-				await this.extensionManagementService.installFromGallery(gallery[0], { context: { [EXTENSION_INSTALL_SKIP_WALKTHROUGH_CONTEXT]: true } });
-			}
-		} catch {
-			this.notificationService.notify({
-				severity: Severity.Warning,
-				message: localize('onboarding.keymap.installError', "Could not install {0} keymap. You can install it later from Extensions.", keymap.label),
-			});
-		}
-	}
-
-	private _hasOtherEditors(): boolean {
-		const keymapOptions = this._detectedEditorIds
-			? (product.onboardingKeymaps ?? []).filter(k => this._detectedEditorIds!.has(k.id))
-			: [];
-		return keymapOptions.some(k => k.id !== 'vscode');
-	}
-
-	/**
-	 * Checks common install paths for known editors and returns the set of
-	 * keymap option IDs whose editors are found on this machine.
-	 * Always includes 'vscode' (the default). In web environments or on
-	 * unknown platforms, returns only 'vscode'.
-	 */
-	private async _detectInstalledEditors(): Promise<Set<string>> {
-		const detected = new Set<string>(['vscode']);
-		const home = this.pathService.userHome({ preferLocal: true });
-
-		interface EditorCheck { id: string; paths: URI[] }
-		const checks: EditorCheck[] = [];
-
-		if (isWindows) {
-			const localAppData = URI.joinPath(home, 'AppData', 'Local');
-			checks.push(
-				{ id: 'sublime', paths: [URI.file('C:\\Program Files\\Sublime Text\\sublime_text.exe'), URI.file('C:\\Program Files\\Sublime Text 3\\sublime_text.exe')] },
-				{ id: 'intellij', paths: [URI.joinPath(localAppData, 'JetBrains', 'Toolbox')] },
-				{ id: 'vim', paths: [URI.joinPath(home, '_vimrc'), URI.joinPath(localAppData, 'nvim', 'init.vim'), URI.joinPath(localAppData, 'nvim', 'init.lua')] },
-				{ id: 'eclipse', paths: [URI.file('C:\\Program Files\\Eclipse\\eclipse.exe'), URI.file('C:\\Program Files\\eclipse\\eclipse.exe')] },
-				{ id: 'notepadpp', paths: [URI.file('C:\\Program Files\\Notepad++\\notepad++.exe'), URI.file('C:\\Program Files (x86)\\Notepad++\\notepad++.exe')] },
-			);
-		} else if (isMacintosh) {
-			checks.push(
-				{ id: 'sublime', paths: [URI.file('/Applications/Sublime Text.app')] },
-				{ id: 'intellij', paths: [URI.file('/Applications/IntelliJ IDEA.app'), URI.file('/Applications/IntelliJ IDEA CE.app')] },
-				{ id: 'vim', paths: [URI.joinPath(home, '.vimrc'), URI.joinPath(home, '.config', 'nvim', 'init.vim'), URI.joinPath(home, '.config', 'nvim', 'init.lua')] },
-				{ id: 'eclipse', paths: [URI.file('/Applications/Eclipse.app'), URI.file('/Applications/Eclipse IDE.app')] },
-				{ id: 'notepadpp', paths: [URI.file('/Applications/Notepad++.app')] },
-			);
-		} else if (isLinux) {
-			checks.push(
-				{ id: 'sublime', paths: [URI.file('/usr/bin/subl'), URI.file('/opt/sublime_text/sublime_text')] },
-				{ id: 'intellij', paths: [URI.joinPath(home, '.local', 'share', 'JetBrains', 'Toolbox'), URI.file('/opt/idea')] },
-				{ id: 'vim', paths: [URI.joinPath(home, '.vimrc'), URI.joinPath(home, '.config', 'nvim', 'init.vim'), URI.joinPath(home, '.config', 'nvim', 'init.lua')] },
-				{ id: 'eclipse', paths: [URI.file('/usr/bin/eclipse'), URI.file('/opt/eclipse/eclipse'), URI.joinPath(home, 'eclipse', 'eclipse')] },
-				{ id: 'notepadpp', paths: [URI.file('/usr/bin/notepadqq'), URI.file('/snap/notepad-plus-plus/current')] },
-			);
-		}
-
-		await Promise.all(checks.map(async check => {
-			for (const path of check.paths) {
-				try {
-					if (await this.fileService.exists(path)) {
-						detected.add(check.id);
-						return;
-					}
-				} catch {
-					// Path not accessible — skip
-				}
-			}
-		}));
-
-		return detected;
 	}
 
 	// =====================================================================

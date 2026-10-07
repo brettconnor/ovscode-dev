@@ -287,7 +287,6 @@ export interface IProductConfiguration {
 	 */
 	readonly extensionConfigurationPolicy?: IStringDictionary<IPolicy | IExtensionConfigurationPolicyReference>;
 
-	readonly onboardingKeymaps?: readonly IProductOnboardingKeymap[];
 	readonly onboardingThemes?: readonly IProductOnboardingTheme[];
 
 	/**
@@ -300,13 +299,6 @@ export interface IProductConfiguration {
 		darwinBundleIdentifier?: string;
 		urlProtocol?: string;
 	};
-}
-
-export interface IProductOnboardingKeymap {
-	readonly id: string;
-	readonly label: string;
-	readonly extensionId?: string;
-	readonly description: string;
 }
 
 export interface IProductOnboardingTheme {

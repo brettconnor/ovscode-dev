@@ -10,7 +10,6 @@ import { Action2, MenuId } from '../../../../platform/actions/common/actions.js'
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { ILanguagePackItem, ILanguagePackService } from '../../../../platform/languagePacks/common/languagePacks.js';
 import { ILocaleService } from '../../../services/localization/common/locale.js';
-import { IExtensionsWorkbenchService } from '../../extensions/common/extensions.js';
 
 export class ConfigureDisplayLanguageAction extends Action2 {
 	public static readonly ID = 'workbench.action.configureLocale';
@@ -32,7 +31,6 @@ export class ConfigureDisplayLanguageAction extends Action2 {
 		const languagePackService: ILanguagePackService = accessor.get(ILanguagePackService);
 		const quickInputService: IQuickInputService = accessor.get(IQuickInputService);
 		const localeService: ILocaleService = accessor.get(ILocaleService);
-		const extensionWorkbenchService: IExtensionsWorkbenchService = accessor.get(IExtensionsWorkbenchService);
 
 		const installedLanguages = await languagePackService.getInstalledLanguages();
 
@@ -43,25 +41,14 @@ export class ConfigureDisplayLanguageAction extends Action2 {
 
 		if (installedLanguages?.length) {
 			const items: Array<ILanguagePackItem | IQuickPickSeparator> = [{ type: 'separator', label: localize('installed', "Installed") }];
-			qp.items = items.concat(this.withMoreInfoButton(installedLanguages));
+			qp.items = items.concat(installedLanguages);
 		}
 
 		disposables.add(qp.onDidHide(() => {
 			disposables.dispose();
 		}));
 
-		const installedSet = new Set<string>(installedLanguages?.map(language => language.id!) ?? []);
-		languagePackService.getAvailableLanguages().then(availableLanguages => {
-			const newLanguages = availableLanguages.filter(l => l.id && !installedSet.has(l.id));
-			if (newLanguages.length) {
-				qp.items = [
-					...qp.items,
-					{ type: 'separator', label: localize('available', "Available") },
-					...this.withMoreInfoButton(newLanguages)
-				];
-			}
-			qp.busy = false;
-		});
+		qp.busy = false;
 
 		disposables.add(qp.onDidAccept(async () => {
 			const selectedLanguage = qp.activeItems[0] as ILanguagePackItem | undefined;
@@ -71,27 +58,7 @@ export class ConfigureDisplayLanguageAction extends Action2 {
 			}
 		}));
 
-		disposables.add(qp.onDidTriggerItemButton(async e => {
-			qp.hide();
-			if (e.item.extensionId) {
-				await extensionWorkbenchService.open(e.item.extensionId);
-			}
-		}));
-
 		qp.show();
-		qp.busy = true;
-	}
-
-	private withMoreInfoButton(items: ILanguagePackItem[]): ILanguagePackItem[] {
-		for (const item of items) {
-			if (item.extensionId) {
-				item.buttons = [{
-					tooltip: localize('moreInfo', "More Info"),
-					iconClass: 'codicon-info'
-				}];
-			}
-		}
-		return items;
 	}
 }
 

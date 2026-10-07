@@ -13,10 +13,10 @@ import { ILogService } from '../../log/common/log.js';
 export class WebLanguagePacksService extends LanguagePackBaseService {
 	constructor(
 		@IExtensionResourceLoaderService private readonly extensionResourceLoaderService: IExtensionResourceLoaderService,
-		@IExtensionGalleryService extensionGalleryService: IExtensionGalleryService,
+		@IExtensionGalleryService private readonly extensionGalleryService: IExtensionGalleryService,
 		@ILogService private readonly logService: ILogService
 	) {
-		super(extensionGalleryService);
+		super();
 	}
 
 	async getBuiltInExtensionTranslationsUri(id: string, language: string): Promise<URI | undefined> {

@@ -11,9 +11,6 @@ import { IActiveLanguagePackService, ILocaleService } from '../common/locale.js'
 import { IHostService } from '../../host/browser/host.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
-import { CancellationToken } from '../../../../base/common/cancellation.js';
-import { IExtensionGalleryService } from '../../../../platform/extensionManagement/common/extensionManagement.js';
-import { ILogService } from '../../../../platform/log/common/log.js';
 
 const localeStorage = new class LocaleStorage {
 
@@ -112,11 +109,6 @@ export class WebLocaleService implements ILocaleService {
 class WebActiveLanguagePackService implements IActiveLanguagePackService {
 	_serviceBrand: undefined;
 
-	constructor(
-		@IExtensionGalleryService private readonly galleryService: IExtensionGalleryService,
-		@ILogService private readonly logService: ILogService
-	) { }
-
 	async getExtensionIdProvidingCurrentLocale(): Promise<string | undefined> {
 		const language = Language.value();
 		if (language === LANGUAGE_DEFAULT) {
@@ -125,27 +117,6 @@ class WebActiveLanguagePackService implements IActiveLanguagePackService {
 		const extensionId = localeStorage.getExtensionId();
 		if (extensionId) {
 			return extensionId;
-		}
-
-		if (!this.galleryService.isEnabled()) {
-			return undefined;
-		}
-
-		try {
-			const tagResult = await this.galleryService.query({ text: `tag:lp-${language}` }, CancellationToken.None);
-
-			// Only install extensions that are published by Microsoft and start with vscode-language-pack for extra certainty
-			const extensionToInstall = tagResult.firstPage.find(e => e.publisher === 'MS-CEINTL' && e.name.startsWith('vscode-language-pack'));
-			if (extensionToInstall) {
-				localeStorage.setExtensionId(extensionToInstall.identifier.id);
-				return extensionToInstall.identifier.id;
-			}
-
-			// TODO: If a non-Microsoft language pack is installed, we should prompt the user asking if they want to install that.
-			// Since no such language packs exist yet, we can wait until that happens to implement this.
-		} catch (e) {
-			// Best effort
-			this.logService.error(e);
 		}
 
 		return undefined;

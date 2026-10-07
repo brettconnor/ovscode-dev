@@ -12,7 +12,7 @@ import { Schemas } from '../../../base/common/network.js';
 import { join } from '../../../base/common/path.js';
 import { Promises } from '../../../base/node/pfs.js';
 import { INativeEnvironmentService } from '../../environment/common/environment.js';
-import { IExtensionGalleryService, IExtensionIdentifier, IExtensionManagementService, ILocalExtension } from '../../extensionManagement/common/extensionManagement.js';
+import { IExtensionIdentifier, IExtensionManagementService, ILocalExtension } from '../../extensionManagement/common/extensionManagement.js';
 import { areSameExtensions } from '../../extensionManagement/common/extensionManagementUtil.js';
 import { ILogService } from '../../log/common/log.js';
 import { ILocalizationContribution } from '../../extensions/common/extensions.js';
@@ -35,10 +35,9 @@ export class NativeLanguagePackService extends LanguagePackBaseService {
 	constructor(
 		@IExtensionManagementService private readonly extensionManagementService: IExtensionManagementService,
 		@INativeEnvironmentService environmentService: INativeEnvironmentService,
-		@IExtensionGalleryService extensionGalleryService: IExtensionGalleryService,
 		@ILogService private readonly logService: ILogService
 	) {
-		super(extensionGalleryService);
+		super();
 		this.cache = this._register(new LanguagePacksCache(environmentService, logService));
 		this.extensionManagementService.registerParticipant({
 			postInstall: async (extension: ILocalExtension): Promise<void> => {

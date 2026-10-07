@@ -562,12 +562,6 @@
 	flex-direction: column;
 }
 
-.onboarding-a-section-label-keymap {
-	margin-top: 14px;
-	padding-top: 14px;
-	border-top: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.08));
-}
-
 .onboarding-a-theme-hint {
 	font-size: 11px;
 	color: var(--vscode-descriptionForeground);
@@ -659,44 +653,6 @@
 	color: var(--vscode-editor-foreground);
 	border-top: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.08));
 	background: var(--vscode-editorWidget-background, var(--vscode-sideBar-background));
-}
-
-.onboarding-a-keymap-list {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 10px;
-}
-
-.onboarding-a-keymap-pill {
-	padding: 7px 14px;
-	border-radius: 20px;
-	border: 1px solid var(--vscode-widget-border, rgba(255, 255, 255, 0.1));
-	background: var(--vscode-editorWidget-background, var(--vscode-sideBar-background));
-	color: var(--vscode-editor-foreground);
-	font-size: 12px;
-	cursor: pointer;
-	font-family: inherit;
-	transition: background 0.12s ease, border-color 0.12s ease;
-	outline: none;
-	display: flex;
-	align-items: center;
-	gap: 6px;
-}
-
-.onboarding-a-keymap-pill:hover {
-	background: var(--vscode-list-hoverBackground);
-	border-color: var(--vscode-focusBorder);
-}
-
-.onboarding-a-keymap-pill:focus-visible {
-	outline: 2px solid var(--vscode-focusBorder);
-	outline-offset: 1px;
-}
-
-.onboarding-a-keymap-pill.selected {
-	background: var(--vscode-button-background);
-	color: var(--vscode-button-foreground);
-	border-color: var(--vscode-button-background);
 }
 
 /* AI Preference step */
@@ -937,12 +893,6 @@
 	.onboarding-a-personalize {
 		justify-content: flex-start;
 	}
-}
-
-/* Keymap pills with icons */
-.onboarding-a-keymap-pill .codicon {
-	font-size: 13px;
-	opacity: 0.7;
 }
 
 @media (prefers-reduced-motion: reduce) {

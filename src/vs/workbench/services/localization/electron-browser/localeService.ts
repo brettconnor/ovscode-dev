@@ -9,10 +9,6 @@ import { INotificationService, Severity } from '../../../../platform/notificatio
 import { IJSONEditingService } from '../../configuration/common/jsonEditing.js';
 import { IActiveLanguagePackService, ILocaleService } from '../common/locale.js';
 import { ILanguagePackItem, ILanguagePackService } from '../../../../platform/languagePacks/common/languagePacks.js';
-import { IPaneCompositePartService } from '../../panecomposite/browser/panecomposite.js';
-import { IViewPaneContainer, ViewContainerLocation } from '../../../common/views.js';
-import { IExtensionManagementService } from '../../../../platform/extensionManagement/common/extensionManagement.js';
-import { IProgressService, ProgressLocation } from '../../../../platform/progress/common/progress.js';
 import { localize } from '../../../../nls.js';
 import { toAction } from '../../../../base/common/actions.js';
 import { ITextFileService } from '../../textfile/common/textfiles.js';
@@ -23,16 +19,6 @@ import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
 
-// duplicate of IExtensionsViewPaneContainer in contrib
-interface IExtensionsViewPaneContainer extends IViewPaneContainer {
-	readonly searchValue: string | undefined;
-	search(text: string): void;
-	refresh(): Promise<void>;
-}
-
-// duplicate of VIEWLET_ID in contrib/extensions
-const EXTENSIONS_VIEWLET_ID = 'workbench.view.extensions';
-
 class NativeLocaleService implements ILocaleService {
 	_serviceBrand: undefined;
 
@@ -41,9 +27,6 @@ class NativeLocaleService implements ILocaleService {
 		@IEnvironmentService private readonly environmentService: IEnvironmentService,
 		@INotificationService private readonly notificationService: INotificationService,
 		@ILanguagePackService private readonly languagePackService: ILanguagePackService,
-		@IPaneCompositePartService private readonly paneCompositePartService: IPaneCompositePartService,
-		@IExtensionManagementService private readonly extensionManagementService: IExtensionManagementService,
-		@IProgressService private readonly progressService: IProgressService,
 		@ITextFileService private readonly textFileService: ITextFileService,
 		@IEditorService private readonly editorService: IEditorService,
 		@IDialogService private readonly dialogService: IDialogService,
@@ -92,30 +75,8 @@ class NativeLocaleService implements ILocaleService {
 		}
 		const installedLanguages = await this.languagePackService.getInstalledLanguages();
 		try {
-
-			// Only Desktop has the concept of installing language packs so we only do this for Desktop
-			// and only if the language pack is not installed
 			if (!installedLanguages.some(installedLanguage => installedLanguage.id === languagePackItem.id)) {
-
-				// Only actually install a language pack from Microsoft
-				if (languagePackItem.galleryExtension?.publisher.toLowerCase() !== 'ms-ceintl') {
-					// Show the view so the user can see the language pack that they should install
-					// as of now, there are no 3rd party language packs available on the Marketplace.
-					const viewlet = await this.paneCompositePartService.openPaneComposite(EXTENSIONS_VIEWLET_ID, ViewContainerLocation.Sidebar);
-					(viewlet?.getViewPaneContainer() as IExtensionsViewPaneContainer).search(`@id:${languagePackItem.extensionId}`);
-					return;
-				}
-
-				await this.progressService.withProgress(
-					{
-						location: ProgressLocation.Notification,
-						title: localize('installing', "Installing {0} language support...", languagePackItem.label),
-					},
-					progress => this.extensionManagementService.installFromGallery(languagePackItem.galleryExtension!, {
-						// Setting this to false is how you get the extension to be synced with Settings Sync (if enabled).
-						isMachineScoped: false,
-					})
-				);
+				return;
 			}
 
 			if (!skipDialog && !await this.showRestartDialog(languagePackItem.label)) {
