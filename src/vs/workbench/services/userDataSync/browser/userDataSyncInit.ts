@@ -14,12 +14,11 @@ import { ILogService } from '../../../../platform/log/common/log.js';
 import { UserDataSyncStoreClient } from '../../../../platform/userDataSync/common/userDataSyncStoreService.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { IRequestService } from '../../../../platform/request/common/request.js';
-import { IRemoteUserData, IUserData, IUserDataSyncResourceInitializer, IUserDataSyncLogService, IUserDataSyncStoreManagementService, SyncResource } from '../../../../platform/userDataSync/common/userDataSync.js';
+import { IUserData, IUserDataSyncResourceInitializer, IUserDataSyncStoreManagementService, SyncResource } from '../../../../platform/userDataSync/common/userDataSync.js';
 import { AuthenticationSessionInfo, getCurrentAuthenticationSessionInfo } from '../../authentication/browser/authenticationService.js';
 import { getSyncAreaLabel } from '../common/userDataSync.js';
 import { isWeb } from '../../../../base/common/platform.js';
 import { Barrier, Promises } from '../../../../base/common/async.js';
-import { IEnvironmentService } from '../../../../platform/environment/common/environment.js';
 import { DisposableStore } from '../../../../base/common/lifecycle.js';
 import { isEqual } from '../../../../base/common/resources.js';
 import { IUriIdentityService } from '../../../../platform/uriIdentity/common/uriIdentity.js';
@@ -168,6 +167,8 @@ export class UserDataSyncInitializer implements IUserDataInitializer {
 		this.logService.trace(`UserDataInitializationService#initializeRequiredResources`);
 		return this.initialize([SyncResource.Settings, SyncResource.GlobalState]);
 	}
+
+	async initializeInstalledExtensions(_instantiationService: IInstantiationService): Promise<void> { }
 
 	async initializeOtherResources(_instantiationService: IInstantiationService): Promise<void> {
 		try {

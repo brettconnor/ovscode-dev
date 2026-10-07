@@ -32,7 +32,7 @@ import { IWorkspaceTrustRequestService, WorkspaceTrustRequestButton } from '../.
 import { IExtensionManifestPropertiesService } from '../../extensions/common/extensionManifestPropertiesService.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { ICommandService } from '../../../../platform/commands/common/commands.js';
-import { isString, isUndefined } from '../../../../base/common/types.js';
+import { isString } from '../../../../base/common/types.js';
 import { FileChangesEvent, IFileService } from '../../../../platform/files/common/files.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
 import { CancellationError, getErrorMessage } from '../../../../base/common/errors.js';

@@ -1199,7 +1199,6 @@ export class MenuItemExtensionAction extends ExtensionAction {
 
 	constructor(
 		private readonly action: IAction,
-		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
 	) {
 		super(action.id, action.label);
 	}
