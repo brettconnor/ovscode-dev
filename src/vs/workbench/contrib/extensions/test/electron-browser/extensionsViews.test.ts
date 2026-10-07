@@ -4,17 +4,14 @@
  *--------------------------------------------------------------------------------------------*/
 
 import assert from 'assert';
-import { generateUuid } from '../../../../../base/common/uuid.js';
 import { ExtensionsListView } from '../../browser/extensionsViews.js';
 import { TestInstantiationService } from '../../../../../platform/instantiation/test/common/instantiationServiceMock.js';
 import { IExtensionsWorkbenchService } from '../../common/extensions.js';
 import { ExtensionsWorkbenchService } from '../../browser/extensionsWorkbenchService.js';
 import {
-	IExtensionManagementService, IExtensionGalleryService, ILocalExtension, IGalleryExtension,
-	getTargetPlatform
+	IExtensionManagementService, IExtensionGalleryService, ILocalExtension
 } from '../../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IWorkbenchExtensionEnablementService, EnablementState, IExtensionManagementServerService, IExtensionManagementServer, IProfileAwareExtensionManagementService, IWorkbenchExtensionManagementService } from '../../../../services/extensionManagement/common/extensionManagement.js';
-import { IExtensionRecommendationsService, ExtensionRecommendationReason } from '../../../../services/extensionRecommendations/common/extensionRecommendations.js';
 import { getGalleryExtensionId } from '../../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { TestExtensionEnablementService } from '../../../../services/extensionManagement/test/browser/extensionEnablementService.test.js';
 import { ExtensionGalleryService } from '../../../../../platform/extensionManagement/common/extensionGalleryService.js';
@@ -41,8 +38,6 @@ import { IMenuService } from '../../../../../platform/actions/common/actions.js'
 import { TestContextService } from '../../../../test/common/workbenchTestServices.js';
 import { IViewDescriptorService, ViewContainerLocation } from '../../../../common/views.js';
 import { Schemas } from '../../../../../base/common/network.js';
-import { platform } from '../../../../../base/common/platform.js';
-import { arch } from '../../../../../base/common/process.js';
 import { IProductService } from '../../../../../platform/product/common/productService.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import { IUpdateService, State } from '../../../../../platform/update/common/update.js';
@@ -69,13 +64,6 @@ suite('ExtensionsViews Tests', () => {
 	const builtInTheme = aLocalExtension('my-theme', { categories: ['Themes'], contributes: { themes: ['my-theme'] } }, { type: ExtensionType.System, installedTimestamp: 222 });
 	const builtInBasic = aLocalExtension('my-lang', { categories: ['Programming Languages'], contributes: { grammars: [{ language: 'my-language' }] } }, { type: ExtensionType.System, installedTimestamp: 666666 });
 
-	const galleryExtensions: IGalleryExtension[] = [];
-
-	const workspaceRecommendationA = aGalleryExtension('workspace-recommendation-A');
-	const workspaceRecommendationB = aGalleryExtension('workspace-recommendation-B');
-	const configBasedRecommendationA = aGalleryExtension('configbased-recommendation-A');
-	const configBasedRecommendationB = aGalleryExtension('configbased-recommendation-B');
-	const otherRecommendationA = aGalleryExtension('other-recommendation-A');
 
 	setup(async () => {
 		instantiationService = disposableStore.add(new TestInstantiationService());
@@ -131,58 +119,10 @@ suite('ExtensionsViews Tests', () => {
 		instantiationService.stub(IWorkbenchExtensionEnablementService, disposableStore.add(new TestExtensionEnablementService(instantiationService)));
 		instantiationService.stub(IUserDataProfileService, disposableStore.add(new UserDataProfileService(toUserDataProfile('test', 'test', URI.file('foo'), URI.file('cache')))));
 
-		const reasons: { [key: string]: any } = {};
-		reasons[workspaceRecommendationA.identifier.id] = { reasonId: ExtensionRecommendationReason.Workspace };
-		reasons[workspaceRecommendationB.identifier.id] = { reasonId: ExtensionRecommendationReason.Workspace };
-		reasons[otherRecommendationA.identifier.id] = { reasonId: ExtensionRecommendationReason.Executable };
-		reasons[configBasedRecommendationA.identifier.id] = { reasonId: ExtensionRecommendationReason.WorkspaceConfig };
-		instantiationService.stub(IExtensionRecommendationsService, {
-			getWorkspaceRecommendations() {
-				return Promise.resolve([
-					workspaceRecommendationA.identifier.id,
-					workspaceRecommendationB.identifier.id]);
-			},
-			getConfigBasedRecommendations() {
-				return Promise.resolve({
-					important: [configBasedRecommendationA.identifier.id],
-					others: [configBasedRecommendationB.identifier.id],
-				});
-			},
-			getImportantRecommendations(): Promise<string[]> {
-				return Promise.resolve([]);
-			},
-			getOtherRecommendations() {
-				return Promise.resolve([
-					configBasedRecommendationB.identifier.id,
-					otherRecommendationA.identifier.id
-				]);
-			},
-			getAllRecommendationsWithReason() {
-				return reasons;
-			}
-		});
 		instantiationService.stub(IURLService, NativeURLService);
 
 		instantiationService.stubPromise(IExtensionManagementService, 'getInstalled', [localEnabledTheme, localEnabledLanguage, localRandom, localDisabledTheme, localDisabledLanguage, builtInTheme, builtInBasic]);
 		instantiationService.stubPromise(IExtensionManagementService, 'getExtensgetExtensionsControlManifestionsReport', {});
-
-		instantiationService.stub(IExtensionGalleryService, <Partial<IExtensionGalleryService>>{
-			getCompatibleExtension: async (gallery) => {
-				return gallery;
-			},
-			getExtensions: async (infos) => {
-				const result: IGalleryExtension[] = [];
-				for (const info of infos) {
-					const extension = galleryExtensions.find(e => e.identifier.id === info.id);
-					if (extension) {
-						result.push(extension);
-					}
-				}
-				return result;
-			},
-			isEnabled: () => true,
-			isExtensionCompatible: async () => true,
-		});
 
 		instantiationService.stub(IViewDescriptorService, {
 			getViewLocationById(): ViewContainerLocation {
@@ -210,13 +150,6 @@ suite('ExtensionsViews Tests', () => {
 		instantiationService.stub(IMeteredConnectionService, { isConnectionMetered: false, onDidChangeIsConnectionMetered: Event.None });
 		instantiationService.set(IExtensionsWorkbenchService, disposableStore.add(instantiationService.createInstance(ExtensionsWorkbenchService)));
 		testableView = disposableStore.add(instantiationService.createInstance(ExtensionsListView, {}, { id: '', title: '' }));
-		galleryExtensions.splice(0, galleryExtensions.length, ...[
-			workspaceRecommendationA,
-			workspaceRecommendationB,
-			configBasedRecommendationA,
-			configBasedRecommendationB,
-			otherRecommendationA
-		]);
 	});
 
 	test('Test query types', () => {
@@ -361,51 +294,6 @@ suite('ExtensionsViews Tests', () => {
 		});
 	});
 
-	test('Test @recommended:workspace query', () => {
-		const workspaceRecommendedExtensions = [
-			workspaceRecommendationA,
-			workspaceRecommendationB,
-			configBasedRecommendationA,
-		];
-
-		return testableView.show('@recommended:workspace').then(result => {
-			assert.strictEqual(result.length, workspaceRecommendedExtensions.length);
-			for (let i = 0; i < workspaceRecommendedExtensions.length; i++) {
-				assert.strictEqual(result.get(i).identifier.id, workspaceRecommendedExtensions[i].identifier.id);
-			}
-		});
-	});
-
-	test('Test @recommended query', async () => {
-		const allRecommendedExtensions = [
-			configBasedRecommendationB,
-			otherRecommendationA
-		];
-
-		const result = await testableView.show('@recommended');
-		assert.strictEqual(result.length, allRecommendedExtensions.length);
-		for (let i = 0; i < allRecommendedExtensions.length; i++) {
-			assert.strictEqual(result.get(i).identifier.id, allRecommendedExtensions[i].identifier.id);
-		}
-	});
-
-
-	test('Test @recommended:all query', async () => {
-		const allRecommendedExtensions = [
-			workspaceRecommendationA,
-			workspaceRecommendationB,
-			configBasedRecommendationA,
-			configBasedRecommendationB,
-			otherRecommendationA,
-		];
-
-		const result = await testableView.show('@recommended:all');
-		assert.strictEqual(result.length, allRecommendedExtensions.length);
-		for (let i = 0; i < allRecommendedExtensions.length; i++) {
-			assert.strictEqual(result.get(i).identifier.id, allRecommendedExtensions[i].identifier.id);
-		}
-	});
-
 	test('Unprefixed search filters installed extensions locally', async () => {
 		const result = await testableView.show('first');
 		assert.strictEqual(result.length, 2);
@@ -426,14 +314,4 @@ suite('ExtensionsViews Tests', () => {
 		properties.isBuiltin = properties.type === ExtensionType.System;
 		return <ILocalExtension>Object.create({ manifest, ...properties });
 	}
-
-	function aGalleryExtension(name: string, properties: any = {}, galleryExtensionProperties: any = {}, assets: any = {}): IGalleryExtension {
-		const targetPlatform = getTargetPlatform(platform, arch);
-		const galleryExtension = <IGalleryExtension>Object.create({ name, publisher: 'pub', version: '1.0.0', allTargetPlatforms: [targetPlatform], properties: {}, assets: {}, ...properties });
-		galleryExtension.properties = { ...galleryExtension.properties, dependencies: [], targetPlatform, ...galleryExtensionProperties };
-		galleryExtension.assets = { ...galleryExtension.assets, ...assets };
-		galleryExtension.identifier = { id: getGalleryExtensionId(galleryExtension.publisher, galleryExtension.name), uuid: generateUuid() };
-		return <IGalleryExtension>galleryExtension;
-	}
-
 });

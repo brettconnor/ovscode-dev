@@ -21,7 +21,7 @@ import { Extensions as ConfigurationExtensions, ConfigurationScope, IConfigurati
 import { ContextKeyExpr, IContextKeyService, RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
 import { ExtensionGalleryManifestStatus, ExtensionGalleryResourceType, ExtensionGalleryAuthProviderConfigKey, ExtensionGalleryServiceUrlConfigKey, getExtensionGalleryManifestResourceUri, IExtensionGalleryManifest, IExtensionGalleryManifestService } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
 import { IExtensionGalleryAccountService } from '../../../services/extensionManagement/common/extensionGalleryAccount.js';
-import { ExtensionRequestsTimeoutConfigKey, ExtensionsLocalizedLabel, IExtensionManagementService, PreferencesLocalizedLabel, SortBy, VerifyExtensionSignatureConfigKey } from '../../../../platform/extensionManagement/common/extensionManagement.js';
+import { ExtensionRequestsTimeoutConfigKey, ExtensionsLocalizedLabel, IExtensionManagementService, PreferencesLocalizedLabel, VerifyExtensionSignatureConfigKey } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { areSameExtensions } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { ExtensionStorageService } from '../../../../platform/extensionManagement/common/extensionStorage.js';
 import { IExtensionRecommendationNotificationService } from '../../../../platform/extensionRecommendations/common/extensionRecommendations.js';
@@ -69,7 +69,7 @@ import { ExtensionEnablementContextKeysContribution } from './extensionEnablemen
 import { ExtensionDependencyChecker } from './extensionsDependencyChecker.js';
 import { clearSearchResultsIcon, configureRecommendedIcon, extensionsViewIcon, filterIcon, refreshIcon } from './extensionsIcons.js';
 import { ManageExtensionsQuickAccessProvider } from './extensionsQuickAccess.js';
-import { BuiltInExtensionsContext, ExtensionsSearchValueContext, ExtensionsSortByContext, ExtensionsViewPaneContainer, MaliciousExtensionChecker, RecommendedExtensionsContext, SearchHasTextContext } from './extensionsViewlet.js';
+import { BuiltInExtensionsContext, ExtensionsSearchValueContext, ExtensionsSortByContext, ExtensionsViewPaneContainer, MaliciousExtensionChecker, SearchHasTextContext } from './extensionsViewlet.js';
 import { ExtensionsWorkbenchService } from './extensionsWorkbenchService.js';
 import './media/extensionManagement.css';
 
@@ -412,7 +412,6 @@ overrideActionForActiveExtensionEditorWebview(PasteAction, webview => webview.pa
 export const CONTEXT_HAS_LOCAL_SERVER = new RawContextKey<boolean>('hasLocalServer', false);
 export const CONTEXT_HAS_REMOTE_SERVER = new RawContextKey<boolean>('hasRemoteServer', false);
 export const CONTEXT_HAS_WEB_SERVER = new RawContextKey<boolean>('hasWebServer', false);
-const CONTEXT_GALLERY_SORT_CAPABILITIES = new RawContextKey<string>('gallerySortCapabilities', '');
 const CONTEXT_GALLERY_ALL_PUBLIC_REPOSITORY_SIGNED = new RawContextKey<boolean>('galleryAllPublicRepositorySigned', false);
 const CONTEXT_GALLERY_ALL_PRIVATE_REPOSITORY_SIGNED = new RawContextKey<boolean>('galleryAllPrivateRepositorySigned', false);
 const CONTEXT_GALLERY_HAS_EXTENSION_LINK = new RawContextKey<boolean>('galleryHasExtensionLink', false);
@@ -478,7 +477,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 	}
 
 	private async updateGalleryCapabilitiesContexts(extensionGalleryManifest: IExtensionGalleryManifest | null): Promise<void> {
-		CONTEXT_GALLERY_SORT_CAPABILITIES.bindTo(this.contextKeyService).set(`_${extensionGalleryManifest?.capabilities.extensionQuery.sorting?.map(s => s.name)?.join('_')}_UpdateDate_`);
 		CONTEXT_GALLERY_ALL_PUBLIC_REPOSITORY_SIGNED.bindTo(this.contextKeyService).set(!!extensionGalleryManifest?.capabilities?.signing?.allPublicRepositorySigned);
 		CONTEXT_GALLERY_ALL_PRIVATE_REPOSITORY_SIGNED.bindTo(this.contextKeyService).set(!!extensionGalleryManifest?.capabilities?.signing?.allPrivateRepositorySigned);
 		CONTEXT_GALLERY_HAS_EXTENSION_LINK.bindTo(this.contextKeyService).set(!!(extensionGalleryManifest && getExtensionGalleryManifestResourceUri(extensionGalleryManifest, ExtensionGalleryResourceType.ExtensionDetailsViewUri)));
@@ -524,35 +522,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 			run: async (accessor: ServicesAccessor) => {
 				accessor.get(IViewsService).openViewContainer(VIEWLET_ID, true);
 			}
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.showRecommendedKeymapExtensions',
-			title: localize2('showRecommendedKeymapExtensionsShort', 'Keymaps'),
-			category: PreferencesLocalizedLabel,
-			menu: [{
-				id: MenuId.CommandPalette,
-				when: CONTEXT_HAS_GALLERY
-			}, {
-				id: MenuId.EditorTitle,
-				when: ContextKeyExpr.and(CONTEXT_KEYBINDINGS_EDITOR, CONTEXT_HAS_GALLERY),
-				group: '2_keyboard_discover_actions'
-			}],
-			menuTitles: {
-				[MenuId.EditorTitle.id]: localize('importKeyboardShortcutsFroms', "Migrate Keyboard Shortcuts from...")
-			},
-			run: () => this.extensionsWorkbenchService.openSearch('@recommended:keymaps ')
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.showLanguageExtensions',
-			title: localize2('showLanguageExtensionsShort', 'Language Extensions'),
-			category: PreferencesLocalizedLabel,
-			menu: {
-				id: MenuId.CommandPalette,
-				when: CONTEXT_HAS_GALLERY
-			},
-			run: () => this.extensionsWorkbenchService.openSearch('@recommended:languages ')
 		});
 
 		this.registerExtensionAction({
@@ -730,35 +699,26 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 		MenuRegistry.appendMenuItem(extensionsFilterSubMenu, {
 			submenu: extensionsSortSubMenu,
 			title: localize('sorty by', "Sort By"),
-			when: ContextKeyExpr.and(ContextKeyExpr.or(CONTEXT_HAS_GALLERY, DefaultViewsContext)),
+			when: DefaultViewsContext,
 			group: '4_sort',
 			order: 1,
 		});
 
 		[
-			{ id: 'installs', title: localize('sort by installs', "Install Count"), precondition: BuiltInExtensionsContext.negate(), sortCapability: SortBy.InstallCount },
-			{ id: 'rating', title: localize('sort by rating', "Rating"), precondition: BuiltInExtensionsContext.negate(), sortCapability: SortBy.WeightedRating },
-			{ id: 'name', title: localize('sort by name', "Name"), precondition: BuiltInExtensionsContext.negate(), sortCapability: SortBy.Title },
-			{ id: 'publishedDate', title: localize('sort by published date', "Published Date"), precondition: BuiltInExtensionsContext.negate(), sortCapability: SortBy.PublishedDate },
-			{ id: 'updateDate', title: localize('sort by update date', "Updated Date"), precondition: ContextKeyExpr.and(RecommendedExtensionsContext.negate(), BuiltInExtensionsContext.negate()), sortCapability: 'UpdateDate' },
-		].map(({ id, title, precondition, sortCapability }, index) => {
-			const sortCapabilityContext = ContextKeyExpr.regex(CONTEXT_GALLERY_SORT_CAPABILITIES.key, new RegExp(`_${sortCapability}_`));
+			{ id: 'name', title: localize('sort by name', "Name") },
+			{ id: 'updateDate', title: localize('sort by update date', "Updated Date") },
+		].map(({ id, title }, index) => {
 			this.registerExtensionAction({
 				id: `extensions.sort.${id}`,
 				title,
-				precondition: ContextKeyExpr.and(precondition, ContextKeyExpr.regex(ExtensionsSearchValueContext.key, /^@contribute:/).negate(), sortCapabilityContext),
+				precondition: ContextKeyExpr.and(BuiltInExtensionsContext.negate(), ContextKeyExpr.regex(ExtensionsSearchValueContext.key, /^@contribute:/).negate()),
 				menu: [{
 					id: extensionsSortSubMenu,
-					when: ContextKeyExpr.and(ContextKeyExpr.or(CONTEXT_HAS_GALLERY, DefaultViewsContext), sortCapabilityContext),
+					when: DefaultViewsContext,
 					order: index,
 				}],
 				toggled: ExtensionsSortByContext.isEqualTo(id),
-				run: async () => {
-					const extensionsViewPaneContainer = ((await this.viewsService.openViewContainer(VIEWLET_ID, true))?.getViewPaneContainer()) as IExtensionsViewPaneContainer | undefined;
-					const currentQuery = Query.parse(extensionsViewPaneContainer?.searchValue ?? '');
-					extensionsViewPaneContainer?.search(new Query(currentQuery.value, id).toString());
-					extensionsViewPaneContainer?.focus();
-				}
+				run: () => this.extensionsWorkbenchService.openSearch(`@sort:${id}`)
 			});
 		});
 

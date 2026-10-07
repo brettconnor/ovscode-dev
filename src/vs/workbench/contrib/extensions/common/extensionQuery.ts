@@ -16,7 +16,7 @@ export class Query {
 	static suggestions(query: string): string[] {
 
 		const commands = ['installed', 'updates', 'enabled', 'disabled', 'builtin', 'contribute'];
-		commands.push(...['mcp', 'agentPlugins', 'recommended', 'workspaceUnsupported', 'deprecated', 'sort', 'category']);
+		commands.push(...['mcp', 'agentPlugins', 'workspaceUnsupported', 'deprecated', 'sort', 'category']);
 
 		commands.push(...['id', 'recentlyUpdated', 'restartRequired']);
 		const sortCommands = ['name', 'updateDate'];

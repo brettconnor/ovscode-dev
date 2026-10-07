@@ -78,7 +78,6 @@ const SearchBuiltInExtensionsContext = new RawContextKey<boolean>('searchBuiltIn
 const SearchUnsupportedWorkspaceExtensionsContext = new RawContextKey<boolean>('searchUnsupportedWorkspaceExtensions', false);
 const SearchDeprecatedExtensionsContext = new RawContextKey<boolean>('searchDeprecatedExtensions', false);
 const SearchRestartRequiredExtensionsContext = new RawContextKey<boolean>('searchRestartRequiredExtensions', false);
-export const RecommendedExtensionsContext = new RawContextKey<boolean>('recommendedExtensions', false);
 const SortByUpdateDateContext = new RawContextKey<boolean>('sortByUpdateDate', false);
 export const ExtensionsSearchValueContext = new RawContextKey<string>('extensionsSearchValue', '');
 
@@ -413,7 +412,6 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 	private readonly searchWorkspaceUnsupportedExtensionsContextKey: IContextKey<boolean>;
 	private readonly searchDeprecatedExtensionsContextKey: IContextKey<boolean>;
 	private readonly searchRestartRequiredExtensionsContextKey: IContextKey<boolean>;
-	private readonly recommendedExtensionsContextKey: IContextKey<boolean>;
 
 	private searchDelayer: Delayer<void>;
 	private root: HTMLElement | undefined;
@@ -464,7 +462,6 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 		this.hasInstalledExtensionsContextKey = HasInstalledExtensionsContext.bindTo(contextKeyService);
 		this.builtInExtensionsContextKey = BuiltInExtensionsContext.bindTo(contextKeyService);
 		this.searchBuiltInExtensionsContextKey = SearchBuiltInExtensionsContext.bindTo(contextKeyService);
-		this.recommendedExtensionsContextKey = RecommendedExtensionsContext.bindTo(contextKeyService);
 		this._register(this.paneCompositeService.onDidPaneCompositeOpen(e => { if (e.viewContainerLocation === ViewContainerLocation.Sidebar) { this.onViewletOpen(e.composite); } }, this));
 		this._register(extensionsWorkbenchService.onReset(() => this.refresh()));
 		this.searchViewletState = this.getMemento(StorageScope.WORKSPACE, StorageTarget.MACHINE);
@@ -699,7 +696,6 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 	private doSearch(refresh?: boolean): Promise<void> {
 		const value = this.normalizedQuery();
 		this.contextKeyService.bufferChangeEvents(() => {
-			const isRecommendedExtensionsQuery = ExtensionsListView.isRecommendedExtensionsQuery(value);
 			this.searchHasTextContextKey.set(value.trim() !== '');
 			this.extensionsSearchValueContextKey.set(value);
 			this.installedExtensionsContextKey.set(ExtensionsListView.isInstalledExtensionsQuery(value));
@@ -712,7 +708,6 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 			this.searchDeprecatedExtensionsContextKey.set(ExtensionsListView.isSearchDeprecatedExtensionsQuery(value));
 			this.searchRestartRequiredExtensionsContextKey.set(ExtensionsListView.isRestartRequiredQuery(value));
 			this.builtInExtensionsContextKey.set(ExtensionsListView.isBuiltInExtensionsQuery(value));
-			this.recommendedExtensionsContextKey.set(isRecommendedExtensionsQuery);
 			this.searchMcpServersContextKey.set(!!value && /@mcp\s?.*/i.test(value));
 			this.searchAgentPluginsContextKey.set(!!value && /@agentPlugins\s?.*/i.test(value));
 			this.sortByUpdateDateContextKey.set(ExtensionsListView.isSortUpdateDateQuery(value));

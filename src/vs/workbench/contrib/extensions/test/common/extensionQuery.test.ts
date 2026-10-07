@@ -114,6 +114,7 @@ suite('Extension query', () => {
 	});
 
 	test('autocomplete', () => {
+		assert.ok(Query.suggestions('@rec').every(x => x !== '@recommended '));
 		assert.ok(Query.suggestions('@sort:up').some(x => x === '@sort:updateDate '));
 		assert.ok(Query.suggestions('@sort:in').every(x => x !== '@sort:installs '));
 		assert.ok(Query.suggestions('@sort:in').every(x => x !== '@sort:rating '));
