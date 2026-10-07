@@ -19,7 +19,6 @@ import { registerIcon } from '../../../../platform/theme/common/iconRegistry.js'
 const ExtensionEditorIcon = registerIcon('extensions-editor-label-icon', Codicon.extensions, localize('extensionsEditorLabelIcon', 'Icon of the extensions editor label.'));
 
 export interface IExtensionEditorOptions extends IEditorOptions {
-	showPreReleaseVersion?: boolean;
 	tab?: ExtensionEditorTab;
 	feature?: string;
 	sideByside?: boolean;

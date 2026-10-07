@@ -18,7 +18,6 @@ import { KeyCode, KeyMod } from '../../../../base/common/keyCodes.js';
 import { Disposable, DisposableStore, MutableDisposable, dispose, toDisposable } from '../../../../base/common/lifecycle.js';
 import { Schemas, matchesScheme } from '../../../../base/common/network.js';
 import { isNative } from '../../../../base/common/platform.js';
-import { isUndefined } from '../../../../base/common/types.js';
 import { URI } from '../../../../base/common/uri.js';
 import { generateUuid } from '../../../../base/common/uuid.js';
 import './media/extensionEditor.css';
@@ -28,9 +27,9 @@ import { ILanguageService } from '../../../../editor/common/languages/language.j
 import { generateTokensCSSForColorMap } from '../../../../editor/common/languages/supports/tokenization.js';
 import { localize } from '../../../../nls.js';
 import { Action2, registerAction2 } from '../../../../platform/actions/common/actions.js';
-import { ContextKeyExpr, IContextKey, IContextKeyService, IScopedContextKeyService, RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
+import { ContextKeyExpr, IContextKeyService, IScopedContextKeyService } from '../../../../platform/contextkey/common/contextkey.js';
 import { IContextMenuService } from '../../../../platform/contextview/browser/contextView.js';
-import { computeSize, FilterType, IExtensionGalleryService, IGalleryExtension, ILocalExtension } from '../../../../platform/extensionManagement/common/extensionManagement.js';
+import { computeSize, FilterType, IGalleryExtension, ILocalExtension } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { areSameExtensions } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { ExtensionType, IExtensionManifest } from '../../../../platform/extensions/common/extensions.js';
 import { IInstantiationService, ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
@@ -68,7 +67,6 @@ import {
 	UninstallAction,
 	UpdateAction,
 	WebInstallAction,
-	TogglePreReleaseExtensionAction,
 } from './extensionsActions.js';
 import { Delegate } from './extensionsList.js';
 import { ExtensionData, ExtensionsGridView, ExtensionsTree, getExtensions } from './extensionsViewer.js';
@@ -177,8 +175,6 @@ const enum WebviewIndex {
 	Changelog
 }
 
-const CONTEXT_SHOW_PRE_RELEASE_VERSION = new RawContextKey<boolean>('showPreReleaseVersion', false);
-
 abstract class ExtensionWithDifferentGalleryVersionWidget extends ExtensionWidget {
 	private _gallery: IGalleryExtension | null = null;
 	get gallery(): IGalleryExtension | null { return this._gallery; }
@@ -234,14 +230,11 @@ export class ExtensionEditor extends EditorPane {
 	private activeElement: IActiveElement | null = null;
 	private dimension: Dimension | undefined;
 
-	private showPreReleaseVersionContextKey: IContextKey<boolean> | undefined;
-
 	constructor(
 		group: IEditorGroup,
 		@ITelemetryService telemetryService: ITelemetryService,
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
 		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
-		@IExtensionGalleryService private readonly extensionGalleryService: IExtensionGalleryService,
 		@IThemeService themeService: IThemeService,
 		@INotificationService private readonly notificationService: INotificationService,
 		@IOpenerService private readonly openerService: IOpenerService,
@@ -268,7 +261,6 @@ export class ExtensionEditor extends EditorPane {
 		const root = append(parent, $('.extension-editor'));
 		this._scopedContextKeyService.value = this.contextKeyService.createScoped(root);
 		this._scopedContextKeyService.value.createKey('inExtensionEditor', true);
-		this.showPreReleaseVersionContextKey = CONTEXT_SHOW_PRE_RELEASE_VERSION.bindTo(this._scopedContextKeyService.value);
 
 		root.tabIndex = 0; // this is required for the focus tracker on the editor
 		root.style.outline = 'none';
@@ -340,7 +332,6 @@ export class ExtensionEditor extends EditorPane {
 			this.instantiationService.createInstance(ClearLanguageAction),
 
 			this.instantiationService.createInstance(EnableDropDownAction),
-			this.instantiationService.createInstance(TogglePreReleaseExtensionAction),
 			this.instantiationService.createInstance(DisableDropDownAction),
 			this.instantiationService.createInstance(RemoteInstallAction, false),
 			this.instantiationService.createInstance(LocalInstallAction),
@@ -463,34 +454,18 @@ export class ExtensionEditor extends EditorPane {
 
 	override async setInput(input: ExtensionsInput, options: IExtensionEditorOptions | undefined, context: IEditorOpenContext, token: CancellationToken): Promise<void> {
 		await super.setInput(input, options, context, token);
-		this.updatePreReleaseVersionContext();
 		if (this.template) {
 			await this.render(input.extension, this.template, !!options?.preserveFocus);
 		}
 	}
 
 	override setOptions(options: IExtensionEditorOptions | undefined): void {
-		const currentOptions: IExtensionEditorOptions | undefined = this.options;
 		super.setOptions(options);
-		this.updatePreReleaseVersionContext();
-
-		if (this.input && this.template && currentOptions?.showPreReleaseVersion !== options?.showPreReleaseVersion) {
-			this.render((this.input as ExtensionsInput).extension, this.template, !!options?.preserveFocus);
-			return;
-		}
 
 		if (options?.tab) {
 			this.template?.navbar.switch(options.tab);
 		}
 
-	}
-
-	private updatePreReleaseVersionContext(): void {
-		let showPreReleaseVersion = (<IExtensionEditorOptions | undefined>this.options)?.showPreReleaseVersion;
-		if (isUndefined(showPreReleaseVersion)) {
-			showPreReleaseVersion = !!(<ExtensionsInput>this.input).extension.gallery?.properties.isPreReleaseVersion;
-		}
-		this.showPreReleaseVersionContextKey?.set(showPreReleaseVersion);
 	}
 
 	async openTab(tab: ExtensionEditorTab): Promise<void> {
@@ -506,45 +481,18 @@ export class ExtensionEditor extends EditorPane {
 		}
 	}
 
-	private async getGalleryVersionToShow(extension: IExtension, preRelease?: boolean): Promise<IGalleryExtension | null> {
-		if (extension.resourceExtension) {
-			return null;
-		}
-		if (extension.local?.source === 'resource') {
-			return null;
-		}
-		if (isUndefined(preRelease)) {
-			return null;
-		}
-		if (preRelease === extension.gallery?.properties.isPreReleaseVersion) {
-			return null;
-		}
-		if (preRelease && !extension.hasPreReleaseVersion) {
-			return null;
-		}
-		if (!preRelease && !extension.hasReleaseVersion) {
-			return null;
-		}
-		return (await this.extensionGalleryService.getExtensions([{ ...extension.identifier, preRelease, hasPreRelease: extension.hasPreReleaseVersion }], CancellationToken.None))[0] || null;
-	}
-
 	private async render(extension: IExtension, template: IExtensionEditorTemplate, preserveFocus: boolean): Promise<void> {
 		this.activeElement = null;
 		this.transientDisposables.clear();
 
 		const token = this.transientDisposables.add(new CancellationTokenSource()).token;
 
-		const gallery = await this.getGalleryVersionToShow(extension, (this.options as IExtensionEditorOptions)?.showPreReleaseVersion);
-		if (token.isCancellationRequested) {
-			return;
-		}
-
-		this.extensionReadme = new Cache(() => gallery ? this.extensionGalleryService.getReadme(gallery, token) : extension.getReadme(token));
-		this.extensionChangelog = new Cache(() => gallery ? this.extensionGalleryService.getChangelog(gallery, token) : extension.getChangelog(token));
-		this.extensionManifest = new Cache(() => gallery ? this.extensionGalleryService.getManifest(gallery, token) : extension.getManifest(token));
+		this.extensionReadme = new Cache(() => extension.getReadme(token));
+		this.extensionChangelog = new Cache(() => extension.getChangelog(token));
+		this.extensionManifest = new Cache(() => extension.getManifest(token));
 
 		template.extension = extension;
-		template.gallery = gallery;
+		template.gallery = extension.gallery ?? null;
 		template.manifest = null;
 
 		template.name.textContent = extension.displayName;

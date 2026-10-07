@@ -519,7 +519,7 @@ export class InstallAction extends ExtensionAction {
 			}
 		}
 
-		this.extensionsWorkbenchService.open(this.extension, { showPreReleaseVersion: this.options.installPreReleaseVersion });
+		this.extensionsWorkbenchService.open(this.extension);
 
 		alert(localize('installExtensionStart', "Installing extension {0} started. An editor is now open with more details on this extension", this.extension.displayName));
 
@@ -1431,78 +1431,6 @@ export class MenuItemExtensionAction extends ExtensionAction {
 			};
 			await this.action.run(id, extensionArg);
 		}
-	}
-}
-
-export class TogglePreReleaseExtensionAction extends ExtensionAction {
-
-	static readonly ID = 'workbench.extensions.action.togglePreRlease';
-	static readonly LABEL = localize('togglePreRleaseLabel', "Pre-Release");
-
-	private static readonly EnabledClass = `${ExtensionAction.LABEL_ACTION_CLASS} prominent pre-release`;
-	private static readonly DisabledClass = `${this.EnabledClass} hide`;
-
-	constructor(
-		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
-		@IAllowedExtensionsService private readonly allowedExtensionsService: IAllowedExtensionsService,
-	) {
-		super(TogglePreReleaseExtensionAction.ID, TogglePreReleaseExtensionAction.LABEL, TogglePreReleaseExtensionAction.DisabledClass);
-		this._register(allowedExtensionsService.onDidChangeAllowedExtensionsConfigValue(() => this.update()));
-		this.update();
-	}
-
-	override update() {
-		this.enabled = false;
-		this.class = TogglePreReleaseExtensionAction.DisabledClass;
-		if (!this.extension) {
-			return;
-		}
-		if (this.extension.isBuiltin) {
-			return;
-		}
-		if (this.extension.state !== ExtensionState.Installed) {
-			return;
-		}
-		if (!this.extension.hasPreReleaseVersion) {
-			return;
-		}
-		if (!this.extension.gallery) {
-			return;
-		}
-		if (this.extension.preRelease) {
-			if (!this.extension.isPreReleaseVersion) {
-				return;
-			}
-			if (this.allowedExtensionsService.isAllowed({ id: this.extension.identifier.id, publisherDisplayName: this.extension.publisherDisplayName }) !== true) {
-				return;
-			}
-		}
-		if (!this.extension.preRelease) {
-			if (!this.extension.gallery.hasPreReleaseVersion) {
-				return;
-			}
-			if (this.allowedExtensionsService.isAllowed(this.extension.gallery) !== true) {
-				return;
-			}
-		}
-		this.enabled = true;
-		this.class = TogglePreReleaseExtensionAction.EnabledClass;
-
-		if (this.extension.preRelease) {
-			this.label = localize('togglePreRleaseDisableLabel', "Switch to Release Version");
-			this.tooltip = localize('togglePreRleaseDisableTooltip', "This will switch and enable updates to release versions");
-		} else {
-			this.label = localize('switchToPreReleaseLabel', "Switch to Pre-Release Version");
-			this.tooltip = localize('switchToPreReleaseTooltip', "This will switch to pre-release version and enable updates to latest version always");
-		}
-	}
-
-	override async run(): Promise<any> {
-		if (!this.extension) {
-			return;
-		}
-		this.extensionsWorkbenchService.open(this.extension, { showPreReleaseVersion: !this.extension.preRelease });
-		await this.extensionsWorkbenchService.togglePreRelease(this.extension);
 	}
 }
 

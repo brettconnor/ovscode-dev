@@ -67,7 +67,7 @@ import { ExtensionEditor } from './extensionEditor.js';
 import { ExtensionEnablementWorkspaceTrustTransitionParticipant } from './extensionEnablementWorkspaceTrustTransitionParticipant.js';
 import { ExtensionRecommendationNotificationService } from './extensionRecommendationNotificationService.js';
 import { ExtensionRecommendationsService } from './extensionRecommendationsService.js';
-import { ClearLanguageAction, ConfigureWorkspaceFolderRecommendedExtensionsAction, ConfigureWorkspaceRecommendedExtensionsAction, InstallAction, InstallAnotherVersionAction, InstallSpecificVersionOfExtensionAction, SetColorThemeAction, SetFileIconThemeAction, SetProductIconThemeAction, ToggleAutoUpdateForExtensionAction, ToggleAutoUpdatesForPublisherAction, TogglePreReleaseExtensionAction } from './extensionsActions.js';
+import { ClearLanguageAction, ConfigureWorkspaceFolderRecommendedExtensionsAction, ConfigureWorkspaceRecommendedExtensionsAction, InstallAction, InstallAnotherVersionAction, InstallSpecificVersionOfExtensionAction, SetColorThemeAction, SetFileIconThemeAction, SetProductIconThemeAction, ToggleAutoUpdateForExtensionAction, ToggleAutoUpdatesForPublisherAction } from './extensionsActions.js';
 import { ExtensionActivationProgress } from './extensionsActivationProgress.js';
 import { ExtensionEnablementContextKeysContribution } from './extensionEnablementContext.js';
 import { ExtensionDependencyChecker } from './extensionsDependencyChecker.js';
@@ -1065,38 +1065,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 		});
 
 		this.registerExtensionAction({
-			id: 'workbench.extensions.action.showPreReleaseVersion',
-			title: localize2('show pre-release version', 'Show Pre-Release Version'),
-			menu: {
-				id: MenuId.ExtensionContext,
-				group: INSTALL_ACTIONS_GROUP,
-				order: 0,
-				when: ContextKeyExpr.and(ContextKeyExpr.has('inExtensionEditor'), ContextKeyExpr.has('galleryExtensionHasPreReleaseVersion'), ContextKeyExpr.has('isPreReleaseExtensionAllowed'), ContextKeyExpr.not('showPreReleaseVersion'), ContextKeyExpr.not('isBuiltinExtension'))
-			},
-			run: async (accessor: ServicesAccessor, extensionId: string) => {
-				const extensionWorkbenchService = accessor.get(IExtensionsWorkbenchService);
-				const extension = (await extensionWorkbenchService.getExtensions([{ id: extensionId }], CancellationToken.None))[0];
-				extensionWorkbenchService.open(extension, { showPreReleaseVersion: true });
-			}
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.showReleasedVersion',
-			title: localize2('show released version', 'Show Release Version'),
-			menu: {
-				id: MenuId.ExtensionContext,
-				group: INSTALL_ACTIONS_GROUP,
-				order: 1,
-				when: ContextKeyExpr.and(ContextKeyExpr.has('inExtensionEditor'), ContextKeyExpr.has('galleryExtensionHasPreReleaseVersion'), ContextKeyExpr.has('extensionHasReleaseVersion'), ContextKeyExpr.has('showPreReleaseVersion'), ContextKeyExpr.not('isBuiltinExtension'))
-			},
-			run: async (accessor: ServicesAccessor, extensionId: string) => {
-				const extensionWorkbenchService = accessor.get(IExtensionsWorkbenchService);
-				const extension = (await extensionWorkbenchService.getExtensions([{ id: extensionId }], CancellationToken.None))[0];
-				extensionWorkbenchService.open(extension, { showPreReleaseVersion: false });
-			}
-		});
-
-		this.registerExtensionAction({
 			id: ToggleAutoUpdateForExtensionAction.ID,
 			title: ToggleAutoUpdateForExtensionAction.LABEL,
 			category: ExtensionsLocalizedLabel,
@@ -1140,50 +1108,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 				const extension = extensionWorkbenchService.local.find(e => areSameExtensions(e.identifier, { id }));
 				if (extension) {
 					const action = instantiationService.createInstance(ToggleAutoUpdatesForPublisherAction);
-					action.extension = extension;
-					return runAction(action);
-				}
-			}
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.switchToPreRlease',
-			title: localize('enablePreRleaseLabel', "Switch to Pre-Release Version"),
-			category: ExtensionsLocalizedLabel,
-			menu: {
-				id: MenuId.ExtensionContext,
-				group: INSTALL_ACTIONS_GROUP,
-				order: 2,
-				when: ContextKeyExpr.and(CONTEXT_HAS_GALLERY, ContextKeyExpr.has('galleryExtensionHasPreReleaseVersion'), ContextKeyExpr.has('isPreReleaseExtensionAllowed'), ContextKeyExpr.not('installedExtensionIsOptedToPreRelease'), ContextKeyExpr.not('inExtensionEditor'), ContextKeyExpr.equals('extensionStatus', 'installed'), ContextKeyExpr.not('isBuiltinExtension'))
-			},
-			run: async (accessor: ServicesAccessor, id: string) => {
-				const instantiationService = accessor.get(IInstantiationService);
-				const extensionWorkbenchService = accessor.get(IExtensionsWorkbenchService);
-				const extension = extensionWorkbenchService.local.find(e => areSameExtensions(e.identifier, { id }));
-				if (extension) {
-					const action = instantiationService.createInstance(TogglePreReleaseExtensionAction);
-					action.extension = extension;
-					return runAction(action);
-				}
-			}
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.switchToRelease',
-			title: localize('disablePreRleaseLabel', "Switch to Release Version"),
-			category: ExtensionsLocalizedLabel,
-			menu: {
-				id: MenuId.ExtensionContext,
-				group: INSTALL_ACTIONS_GROUP,
-				order: 2,
-				when: ContextKeyExpr.and(CONTEXT_HAS_GALLERY, ContextKeyExpr.has('galleryExtensionHasPreReleaseVersion'), ContextKeyExpr.has('isExtensionAllowed'), ContextKeyExpr.has('installedExtensionIsOptedToPreRelease'), ContextKeyExpr.not('inExtensionEditor'), ContextKeyExpr.equals('extensionStatus', 'installed'), ContextKeyExpr.not('isBuiltinExtension'))
-			},
-			run: async (accessor: ServicesAccessor, id: string) => {
-				const instantiationService = accessor.get(IInstantiationService);
-				const extensionWorkbenchService = accessor.get(IExtensionsWorkbenchService);
-				const extension = extensionWorkbenchService.local.find(e => areSameExtensions(e.identifier, { id }));
-				if (extension) {
-					const action = instantiationService.createInstance(TogglePreReleaseExtensionAction);
 					action.extension = extension;
 					return runAction(action);
 				}
