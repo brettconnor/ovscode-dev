@@ -55,11 +55,10 @@ import { IPreferencesService } from '../../../services/preferences/common/prefer
 import { CONTEXT_SYNC_ENABLEMENT } from '../../../services/userDataSync/common/userDataSync.js';
 import { IViewsService } from '../../../services/views/common/viewsService.js';
 import { WORKSPACE_TRUST_EXTENSION_SUPPORT } from '../../../services/workspaces/common/workspaceTrust.js';
-import { IPluginInstallService } from '../../chat/common/plugins/pluginInstallService.js';
 import { CONTEXT_KEYBINDINGS_EDITOR } from '../../preferences/common/preferences.js';
 import { IWebview } from '../../webview/browser/webview.js';
 import { Query } from '../common/extensionQuery.js';
-import { AutoRestartConfigurationKey, AutoUpdateConfigurationKey, CONTEXT_EXTENSIONS_GALLERY_STATUS, CONTEXT_HAS_GALLERY, DefaultViewsContext, ExtensionEditorTab, EXTENSIONS_CATEGORY, extensionsFilterSubMenu, extensionsSearchActionsMenu, HasOutdatedExtensionsContext, IExtensionArg, IExtensionsViewPaneContainer, IExtensionsWorkbenchService, INSTALL_ACTIONS_GROUP, LIST_WORKSPACE_UNSUPPORTED_EXTENSIONS_COMMAND_ID, OUTDATED_EXTENSIONS_VIEW_ID, THEME_ACTIONS_GROUP, TOGGLE_IGNORE_EXTENSION_ACTION_ID, UPDATE_ACTIONS_GROUP, VIEWLET_ID } from '../common/extensions.js';
+import { AutoRestartConfigurationKey, AutoUpdateConfigurationKey, CONTEXT_EXTENSIONS_GALLERY_STATUS, CONTEXT_HAS_GALLERY, DefaultViewsContext, ExtensionEditorTab, EXTENSIONS_CATEGORY, extensionsFilterSubMenu, extensionsSearchActionsMenu, IExtensionArg, IExtensionsViewPaneContainer, IExtensionsWorkbenchService, INSTALL_ACTIONS_GROUP, LIST_WORKSPACE_UNSUPPORTED_EXTENSIONS_COMMAND_ID, THEME_ACTIONS_GROUP, TOGGLE_IGNORE_EXTENSION_ACTION_ID, UPDATE_ACTIONS_GROUP, VIEWLET_ID } from '../common/extensions.js';
 import { ExtensionsConfigurationSchema, ExtensionsConfigurationSchemaId } from '../common/extensionsFileTemplate.js';
 import { ExtensionsInput } from '../common/extensionsInput.js';
 import { KeymapExtensions } from '../common/extensionsUtils.js';
@@ -71,7 +70,7 @@ import { ClearLanguageAction, ConfigureWorkspaceFolderRecommendedExtensionsActio
 import { ExtensionActivationProgress } from './extensionsActivationProgress.js';
 import { ExtensionEnablementContextKeysContribution } from './extensionEnablementContext.js';
 import { ExtensionDependencyChecker } from './extensionsDependencyChecker.js';
-import { clearSearchResultsIcon, configureRecommendedIcon, extensionsViewIcon, filterIcon, installWorkspaceRecommendedIcon, refreshIcon } from './extensionsIcons.js';
+import { clearSearchResultsIcon, configureRecommendedIcon, extensionsViewIcon, filterIcon, refreshIcon } from './extensionsIcons.js';
 import { ManageExtensionsQuickAccessProvider } from './extensionsQuickAccess.js';
 import { BuiltInExtensionsContext, ExtensionsSearchValueContext, ExtensionsSortByContext, ExtensionsViewPaneContainer, MaliciousExtensionChecker, RecommendedExtensionsContext, SearchHasTextContext } from './extensionsViewlet.js';
 import { ExtensionsWorkbenchService } from './extensionsWorkbenchService.js';
@@ -508,7 +507,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 		@IDialogService private readonly dialogService: IDialogService,
 		@ICommandService private readonly commandService: ICommandService,
 		@IProductService private readonly productService: IProductService,
-		@IPluginInstallService private readonly pluginInstallService: IPluginInstallService,
 	) {
 		super();
 		const hasLocalServerContext = CONTEXT_HAS_LOCAL_SERVER.bindTo(contextKeyService);
@@ -620,33 +618,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 			run: () => this.extensionsWorkbenchService.openSearch('@recommended:languages ')
 		});
 
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.checkForUpdates',
-			title: localize2('checkForUpdates', 'Check for Extension Updates'),
-			category: ExtensionsLocalizedLabel,
-			menu: [{
-				id: MenuId.CommandPalette,
-				when: ContextKeyExpr.and(CONTEXT_HAS_GALLERY, ContextKeyExpr.or(CONTEXT_HAS_LOCAL_SERVER, CONTEXT_HAS_REMOTE_SERVER, CONTEXT_HAS_WEB_SERVER))
-			}, {
-				id: MenuId.ViewContainerTitle,
-				when: ContextKeyExpr.and(ContextKeyExpr.equals('viewContainer', VIEWLET_ID), CONTEXT_HAS_GALLERY),
-				group: '1_updates',
-				order: 1
-			}],
-			run: async () => {
-				const [, pluginResult] = await Promise.all([
-					this.extensionsWorkbenchService.checkForUpdates(),
-					this.pluginInstallService.updateAllPlugins({ silent: true }, CancellationToken.None),
-				]);
-				const outdated = this.extensionsWorkbenchService.outdated;
-				if (outdated.length) {
-					return this.extensionsWorkbenchService.openSearch('@outdated ');
-				} else if (pluginResult.updatedNames.length === 0 && pluginResult.failedNames.length === 0) {
-					return this.dialogService.info(localize('noUpdatesAvailable', "All extensions are up to date."));
-				}
-			}
-		});
-
 		const enableAutoUpdateWhenCondition = ContextKeyExpr.equals(`config.${AutoUpdateConfigurationKey}`, 'off');
 		this.registerExtensionAction({
 			id: 'workbench.extensions.action.enableAutoUpdate',
@@ -679,33 +650,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 				id: MenuId.CommandPalette,
 			}],
 			run: (accessor: ServicesAccessor) => accessor.get(IExtensionsWorkbenchService).updateAutoUpdateForAllExtensions(false)
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.updateAllExtensions',
-			title: localize2('updateAll', 'Update All Extensions'),
-			category: ExtensionsLocalizedLabel,
-			precondition: HasOutdatedExtensionsContext,
-			menu: [
-				{
-					id: MenuId.CommandPalette,
-					when: ContextKeyExpr.and(CONTEXT_HAS_GALLERY, ContextKeyExpr.or(CONTEXT_HAS_LOCAL_SERVER, CONTEXT_HAS_REMOTE_SERVER, CONTEXT_HAS_WEB_SERVER))
-				}, {
-					id: MenuId.ViewContainerTitle,
-					when: ContextKeyExpr.equals('viewContainer', VIEWLET_ID),
-					group: '1_updates',
-					order: 2
-				}, {
-					id: MenuId.ViewTitle,
-					when: ContextKeyExpr.equals('view', OUTDATED_EXTENSIONS_VIEW_ID),
-					group: 'navigation',
-					order: 1
-				}
-			],
-			icon: installWorkspaceRecommendedIcon,
-			run: async () => {
-				await this.extensionsWorkbenchService.updateAll();
-			}
 		});
 
 		this.registerExtensionAction({
@@ -822,24 +766,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 				[extensionsFilterSubMenu.id]: localize('builtin filter', "Built-in")
 			},
 			run: () => this.extensionsWorkbenchService.openSearch('@builtin ')
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.extensionUpdates',
-			title: localize2('extensionUpdates', 'Show Extension Updates'),
-			category: ExtensionsLocalizedLabel,
-			precondition: CONTEXT_HAS_GALLERY,
-			f1: true,
-			menu: [{
-				id: extensionsFilterSubMenu,
-				group: '3_installed',
-				when: CONTEXT_HAS_GALLERY,
-				order: 2,
-			}],
-			menuTitles: {
-				[extensionsFilterSubMenu.id]: localize('extension updates filter', "Updates")
-			},
-			run: () => this.extensionsWorkbenchService.openSearch('@updates')
 		});
 
 		this.registerExtensionAction({

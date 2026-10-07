@@ -98,35 +98,6 @@ suite('Extension query', () => {
 		assert.strictEqual(query.toString(), 'hello @sort:installs');
 	});
 
-	test('isValid', () => {
-		let query = new Query('hello', '');
-		assert(query.isValid());
-
-		query = new Query('hello world', '');
-		assert(query.isValid());
-
-		query = new Query('  hello    ', '');
-		assert(query.isValid());
-
-		query = new Query('', 'installs');
-		assert(query.isValid());
-
-		query = new Query('', 'installs');
-		assert(query.isValid());
-
-		query = new Query('', 'installs');
-		assert(query.isValid());
-
-		query = new Query('', 'installs');
-		assert(query.isValid());
-
-		query = new Query('hello', 'installs');
-		assert(query.isValid());
-
-		query = new Query('  hello      ', 'installs');
-		assert(query.isValid());
-	});
-
 	test('equals', () => {
 		const query1 = new Query('hello', '');
 		let query2 = new Query('hello', '');

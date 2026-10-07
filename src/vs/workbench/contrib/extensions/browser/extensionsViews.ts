@@ -376,10 +376,6 @@ export class ExtensionsListView extends AbstractExtensionsListView<IExtension> {
 			extensions = this.filterInstalledExtensions(local, runningExtensions, query, options);
 		}
 
-		else if (/@outdated/i.test(value)) {
-			extensions = this.filterOutdatedExtensions(local, query, options);
-		}
-
 		else if (/@disabled/i.test(value)) {
 			extensions = this.filterDisabledExtensions(local, runningExtensions, query, options, includeBuiltin);
 		}
@@ -533,20 +529,6 @@ export class ExtensionsListView extends AbstractExtensionsListView<IExtension> {
 			];
 		}
 		return result;
-	}
-
-	private filterOutdatedExtensions(local: IExtension[], query: Query, options: IQueryOptions): IExtension[] {
-		let { value, includedCategories, excludedCategories } = this.parseCategories(query.value);
-
-		value = value.replace(/@outdated/g, '').replace(/@sort:(\w+)(-\w*)?/g, '').trim().toLowerCase();
-
-		const result = local
-			.sort((e1, e2) => e1.displayName.localeCompare(e2.displayName))
-			.filter(extension => extension.outdated
-				&& (extension.name.toLowerCase().indexOf(value) > -1 || extension.displayName.toLowerCase().indexOf(value) > -1)
-				&& this.filterExtensionByCategory(extension, includedCategories, excludedCategories));
-
-		return this.sortExtensions(result, options);
 	}
 
 	private filterDisabledExtensions(local: IExtension[], runningExtensions: readonly IExtensionDescription[], query: Query, options: IQueryOptions, includeBuiltin: boolean): IExtension[] {
@@ -1165,7 +1147,6 @@ export class ExtensionsListView extends AbstractExtensionsListView<IExtension> {
 	static isLocalExtensionsQuery(query: string, sortBy?: string): boolean {
 		return this.isInstalledExtensionsQuery(query)
 			|| this.isSearchInstalledExtensionsQuery(query)
-			|| this.isOutdatedExtensionsQuery(query)
 			|| this.isEnabledExtensionsQuery(query)
 			|| this.isDisabledExtensionsQuery(query)
 			|| this.isBuiltInExtensionsQuery(query)
@@ -1175,7 +1156,6 @@ export class ExtensionsListView extends AbstractExtensionsListView<IExtension> {
 			|| this.isSearchWorkspaceUnsupportedExtensionsQuery(query)
 			|| this.isSearchRecentlyUpdatedQuery(query)
 			|| this.isRestartRequiredQuery(query)
-			|| this.isSearchExtensionUpdatesQuery(query)
 			|| this.isSortInstalledExtensionsQuery(query, sortBy)
 			|| this.isFeatureExtensionsQuery(query);
 	}
@@ -1202,10 +1182,6 @@ export class ExtensionsListView extends AbstractExtensionsListView<IExtension> {
 
 	static isSearchInstalledExtensionsQuery(query: string): boolean {
 		return (/@installed\s./i.test(query) && !/@mcp/i.test(query) && !/@agentPlugins/i.test(query)) || this.isFeatureExtensionsQuery(query);
-	}
-
-	static isOutdatedExtensionsQuery(query: string): boolean {
-		return /@outdated/i.test(query);
 	}
 
 	static isEnabledExtensionsQuery(query: string): boolean {
@@ -1268,10 +1244,6 @@ export class ExtensionsListView extends AbstractExtensionsListView<IExtension> {
 		return /@restartrequired/i.test(query);
 	}
 
-	static isSearchExtensionUpdatesQuery(query: string): boolean {
-		return /@updates/i.test(query);
-	}
-
 	static isSortUpdateDateQuery(query: string): boolean {
 		return /@sort:updateDate/i.test(query);
 	}
@@ -1323,30 +1295,10 @@ export class DisabledExtensionsView extends ExtensionsListView {
 	}
 }
 
-export class OutdatedExtensionsView extends ExtensionsListView {
-
-	override async show(query: string): Promise<IPagedModel<IExtension>> {
-		query = query ? query : '@outdated';
-		if (ExtensionsListView.isSearchExtensionUpdatesQuery(query)) {
-			query = query.replace('@updates', '@outdated');
-		}
-		return super.show(query.trim());
-	}
-
-	protected override updateSize() {
-		super.updateSize();
-		this.setExpanded(this.count() > 0);
-	}
-
-}
-
 export class RecentlyUpdatedExtensionsView extends ExtensionsListView {
 
 	override async show(query: string): Promise<IPagedModel<IExtension>> {
 		query = query ? query : '@recentlyUpdated';
-		if (ExtensionsListView.isSearchExtensionUpdatesQuery(query)) {
-			query = query.replace('@updates', '@recentlyUpdated');
-		}
 		return super.show(query.trim());
 	}
 

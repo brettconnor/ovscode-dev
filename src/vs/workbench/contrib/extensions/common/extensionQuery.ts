@@ -89,10 +89,6 @@ export class Query {
 		return result;
 	}
 
-	isValid(): boolean {
-		return !/@outdated/.test(this.value);
-	}
-
 	equals(other: Query): boolean {
 		return this.value === other.value && this.sortBy === other.sortBy;
 	}
