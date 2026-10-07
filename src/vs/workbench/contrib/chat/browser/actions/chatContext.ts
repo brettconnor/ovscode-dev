@@ -27,8 +27,6 @@ import { IChatWidget } from '../chat.js';
 import { imageToHash, isImage } from '../widget/input/editor/chatPasteProviders.js';
 import { convertBufferToScreenshotVariable } from '../attachments/chatScreenshotContext.js';
 import { ChatInstructionsPickerPick } from '../promptSyntax/attachInstructionsAction.js';
-import { isAgentHostTarget } from '../../common/chatSessionsService.js';
-import { getChatSessionType } from '../../common/model/chatUri.js';
 import { ITerminalService } from '../../../terminal/browser/terminal.js';
 import { URI } from '../../../../../base/common/uri.js';
 import { ITerminalCommand, TerminalCapability } from '../../../../../platform/terminal/common/capabilities/capabilities.js';
@@ -60,15 +58,6 @@ export const EnableChatDebugToolsCommandId = 'chat.enableDebugTools';
 
 export function shouldShowOpenEditorsContext(widget: Pick<IChatWidget, 'viewModel' | 'lockedAgentId'>, hasEligibleOpenEditors: boolean): boolean {
 	if (!hasEligibleOpenEditors) {
-		return false;
-	}
-
-	const sessionResource = widget.viewModel?.sessionResource;
-	if (sessionResource && isAgentHostTarget(getChatSessionType(sessionResource))) {
-		return false;
-	}
-
-	if (widget.lockedAgentId && isAgentHostTarget(widget.lockedAgentId)) {
 		return false;
 	}
 

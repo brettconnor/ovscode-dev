@@ -105,20 +105,6 @@ suite('ChatContext', () => {
 		);
 	});
 
-	test('hides Open Editors for Agent Host sessions with eligible editors', () => {
-		assert.strictEqual(
-			shouldShowOpenEditorsContext(widgetWithSession(URI.parse('agent-host-copilotcli:/session-1')), true),
-			false
-		);
-	});
-
-	test('hides Open Editors for locked Agent Host ids without a session resource', () => {
-		assert.strictEqual(
-			shouldShowOpenEditorsContext(widget({ lockedAgentId: 'agent-host-copilotcli' }), true),
-			false
-		);
-	});
-
 	test('hides Open Editors when there are no eligible editors', () => {
 		assert.strictEqual(
 			shouldShowOpenEditorsContext(widgetWithSession(URI.parse('copilotcli:/session-1')), false),
