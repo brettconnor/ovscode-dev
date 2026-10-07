@@ -8,7 +8,6 @@ import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { onUnexpectedError } from '../../../../base/common/errors.js';
 import { KeyCode, KeyMod } from '../../../../base/common/keyCodes.js';
 import { Disposable, DisposableStore, IDisposable, isDisposable } from '../../../../base/common/lifecycle.js';
-import { Schemas } from '../../../../base/common/network.js';
 import { isNative, isWeb } from '../../../../base/common/platform.js';
 import { PolicyCategory } from '../../../../base/common/policy.js';
 import { MultiCommand } from '../../../../editor/browser/editorExtensions.js';
