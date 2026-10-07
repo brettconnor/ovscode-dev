@@ -62,7 +62,7 @@ import { createActionViewItem } from '../../../../platform/actions/browser/menuE
 import { SeverityIcon } from '../../../../base/browser/ui/severityIcon/severityIcon.js';
 import { StandardKeyboardEvent } from '../../../../base/browser/keyboardEvent.js';
 import { KeyCode } from '../../../../base/common/keyCodes.js';
-import { IExtensionGalleryManifest, IExtensionGalleryManifestService, ExtensionGalleryManifestStatus } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
+import { IExtensionGalleryManifestService, ExtensionGalleryManifestStatus } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
 import { URI } from '../../../../base/common/uri.js';
 
 export const ExtensionsSortByContext = new RawContextKey<string>('extensionsSortByValue', '');
@@ -421,7 +421,6 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 	private searchBox: SuggestEnabledInput | undefined;
 	private notificationContainer: HTMLElement | undefined;
 	private readonly searchViewletState: IExtensionsViewletState;
-	private extensionGalleryManifest: IExtensionGalleryManifest | null = null;
 
 	constructor(
 		@IWorkbenchLayoutService layoutService: IWorkbenchLayoutService,
@@ -429,7 +428,6 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 		@IProgressService private readonly progressService: IProgressService,
 		@IInstantiationService instantiationService: IInstantiationService,
 		@IEditorGroupsService private readonly editorGroupService: IEditorGroupsService,
-		@IExtensionGalleryManifestService extensionGalleryManifestService: IExtensionGalleryManifestService,
 		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
 		@IExtensionManagementServerService private readonly extensionManagementServerService: IExtensionManagementServerService,
 		@INotificationService private readonly notificationService: INotificationService,
@@ -472,14 +470,6 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 		this._register(extensionsWorkbenchService.onReset(() => this.refresh()));
 		this.searchViewletState = this.getMemento(StorageScope.WORKSPACE, StorageTarget.MACHINE);
 
-		extensionGalleryManifestService.getExtensionGalleryManifest()
-			.then(galleryManifest => {
-				this.extensionGalleryManifest = galleryManifest;
-				this._register(extensionGalleryManifestService.onDidChangeExtensionGalleryManifest(galleryManifest => {
-					this.extensionGalleryManifest = galleryManifest;
-					this.refresh();
-				}));
-			});
 	}
 
 	get searchValue(): string | undefined {
@@ -491,7 +481,7 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 		this.root = parent;
 
 		this.header = append(this.root, $('.header'));
-		const placeholder = localize('searchExtensions', "Search Extensions in Marketplace");
+		const placeholder = localize('searchExtensions', "Search installed extensions");
 
 		const searchValue = this.searchViewletState['query.value'] ? this.searchViewletState['query.value'] : '';
 
@@ -505,7 +495,7 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 				else if (/sort:/.test(item)) { return 'c'; }
 				else { return 'd'; }
 			},
-			provideResults: (query: string) => Query.suggestions(query, this.extensionGalleryManifest)
+			provideResults: (query: string) => Query.suggestions(query)
 		}, placeholder, 'extensions:searchinput', { placeholderText: placeholder, value: searchValue }));
 
 		this.notificationContainer = append(this.header, $('.notification-container.hidden', { 'tabindex': '0' }));
@@ -694,10 +684,6 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 			? this.searchBox.getValue()
 				.trim()
 				.replace(/@category/g, 'category')
-				.replace(/@tag:/g, 'tag:')
-				.replace(/@ext:/g, 'ext:')
-				.replace(/@featured/g, 'featured')
-				.replace(/@popular/g, this.extensionManagementServerService.webExtensionManagementServer && !this.extensionManagementServerService.localExtensionManagementServer && !this.extensionManagementServerService.remoteExtensionManagementServer ? '@web' : '@popular')
 			: '';
 	}
 

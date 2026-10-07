@@ -3,8 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { IExtensionGalleryManifest } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
-import { FilterType, SortBy } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { EXTENSION_CATEGORIES } from '../../../../platform/extensions/common/extensions.js';
 import { Registry } from '../../../../platform/registry/common/platform.js';
 import { Extensions, IExtensionFeaturesRegistry } from '../../../services/extensionManagement/common/extensionFeatures.js';
@@ -15,28 +13,13 @@ export class Query {
 		this.value = value.trim();
 	}
 
-	static suggestions(query: string, galleryManifest: IExtensionGalleryManifest | null): string[] {
+	static suggestions(query: string): string[] {
 
 		const commands = ['installed', 'updates', 'enabled', 'disabled', 'builtin', 'contribute'];
-		if (galleryManifest?.capabilities.extensionQuery?.filtering?.some(c => c.name === FilterType.Featured)) {
-			commands.push('featured');
-		}
+		commands.push(...['mcp', 'agentPlugins', 'recommended', 'workspaceUnsupported', 'deprecated', 'sort', 'category']);
 
-		commands.push(...['mcp', 'agentPlugins', 'popular', 'recommended', 'recentlyPublished', 'workspaceUnsupported', 'deprecated', 'sort']);
-		const isCategoriesEnabled = galleryManifest?.capabilities.extensionQuery?.filtering?.some(c => c.name === FilterType.Category);
-		if (isCategoriesEnabled) {
-			commands.push('category');
-		}
-
-		commands.push(...['tag', 'ext', 'id', 'outdated', 'recentlyUpdated', 'restartRequired']);
-		const sortCommands = [];
-		if (galleryManifest?.capabilities.extensionQuery?.sorting?.some(c => c.name === SortBy.InstallCount)) {
-			sortCommands.push('installs');
-		}
-		if (galleryManifest?.capabilities.extensionQuery?.sorting?.some(c => c.name === SortBy.WeightedRating)) {
-			sortCommands.push('rating');
-		}
-		sortCommands.push('name', 'publishedDate', 'updateDate');
+		commands.push(...['id', 'recentlyUpdated', 'restartRequired']);
+		const sortCommands = ['name', 'updateDate'];
 
 		const contributeCommands = [];
 		for (const feature of Registry.as<IExtensionFeaturesRegistry>(Extensions.ExtensionFeaturesRegistry).getExtensionFeatures()) {
@@ -45,9 +28,7 @@ export class Query {
 
 		const subcommands = {
 			'sort': sortCommands,
-			'category': isCategoriesEnabled ? EXTENSION_CATEGORIES.map(c => `"${c.toLowerCase()}"`) : [],
-			'tag': [''],
-			'ext': [''],
+			'category': EXTENSION_CATEGORIES.map(c => `"${c.toLowerCase()}"`),
 			'id': [''],
 			'contribute': contributeCommands
 		} as const;

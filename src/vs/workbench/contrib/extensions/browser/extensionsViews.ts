@@ -8,7 +8,7 @@ import { Disposable, DisposableStore, toDisposable } from '../../../../base/comm
 import { Event, Emitter } from '../../../../base/common/event.js';
 import { isCancellationError, getErrorMessage, CancellationError } from '../../../../base/common/errors.js';
 import { PagedModel, IPagedModel, DelayedPagedModel, IPager } from '../../../../base/common/paging.js';
-import { SortOrder, IQueryOptions as IGalleryQueryOptions, SortBy as GallerySortBy, ExtensionGalleryErrorCode, ExtensionGalleryError } from '../../../../platform/extensionManagement/common/extensionManagement.js';
+import { SortOrder, IQueryOptions as IGalleryQueryOptions, ExtensionGalleryErrorCode, ExtensionGalleryError } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IExtensionManagementServer, IExtensionManagementServerService, EnablementState, IWorkbenchExtensionManagementService, IWorkbenchExtensionEnablementService } from '../../../services/extensionManagement/common/extensionManagement.js';
 import { IExtensionRecommendationsService } from '../../../services/extensionRecommendations/common/extensionRecommendations.js';
 import { areSameExtensions, getExtensionDependencies } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
@@ -32,7 +32,7 @@ import { coalesce, distinct, range } from '../../../../base/common/arrays.js';
 import { alert } from '../../../../base/browser/ui/aria/aria.js';
 import { CancellationToken, CancellationTokenSource } from '../../../../base/common/cancellation.js';
 import { ActionRunner } from '../../../../base/common/actions.js';
-import { ExtensionIdentifier, ExtensionIdentifierMap, ExtensionUntrustedWorkspaceSupportType, ExtensionVirtualWorkspaceSupportType, IExtensionDescription, IExtensionIdentifier, isLanguagePackExtension } from '../../../../platform/extensions/common/extensions.js';
+import { ExtensionIdentifier, ExtensionIdentifierMap, ExtensionUntrustedWorkspaceSupportType, ExtensionVirtualWorkspaceSupportType, IExtensionDescription, isLanguagePackExtension } from '../../../../platform/extensions/common/extensions.js';
 import { CancelablePromise, createCancelablePromise } from '../../../../base/common/async.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { SeverityIcon } from '../../../../base/browser/ui/severityIcon/severityIcon.js';
@@ -97,17 +97,11 @@ interface IQueryResult {
 }
 
 const enum LocalSortBy {
+	Name = 'Name',
 	UpdateDate = 'UpdateDate',
 }
 
-function isLocalSortBy(value: any): value is LocalSortBy {
-	switch (value as LocalSortBy) {
-		case LocalSortBy.UpdateDate: return true;
-	}
-}
-
-type SortBy = LocalSortBy | GallerySortBy;
-type IQueryOptions = Omit<IGalleryQueryOptions, 'sortBy'> & { sortBy?: SortBy };
+type IQueryOptions = Omit<IGalleryQueryOptions, 'sortBy'> & { sortBy?: LocalSortBy };
 
 export abstract class AbstractExtensionsListView<T> extends ViewPane {
 	abstract show(query: string, refresh?: boolean): Promise<IPagedModel<T>>;
@@ -241,10 +235,7 @@ export class ExtensionsListView extends AbstractExtensionsListView<IExtension> {
 		};
 
 		switch (parsedQuery.sortBy) {
-			case 'installs': options.sortBy = GallerySortBy.InstallCount; break;
-			case 'rating': options.sortBy = GallerySortBy.WeightedRating; break;
-			case 'name': options.sortBy = GallerySortBy.Title; break;
-			case 'publishedDate': options.sortBy = GallerySortBy.PublishedDate; break;
+			case 'name': options.sortBy = LocalSortBy.Name; break;
 			case 'updateDate': options.sortBy = LocalSortBy.UpdateDate; break;
 		}
 
@@ -296,7 +287,12 @@ export class ExtensionsListView extends AbstractExtensionsListView<IExtension> {
 			ids.push(name);
 		}
 		if (ids.length) {
-			const model = await this.queryByIds(ids, options, token);
+			const model = await this.queryByIds(ids);
+			return { model, disposables: new DisposableStore() };
+		}
+
+		if (this.isRecommendationsQuery(query)) {
+			const model = await this.queryRecommendations(query, options, token);
 			return { model, disposables: new DisposableStore() };
 		}
 
@@ -304,31 +300,13 @@ export class ExtensionsListView extends AbstractExtensionsListView<IExtension> {
 			return this.queryLocal(query, options);
 		}
 
-		if (ExtensionsListView.isSearchPopularQuery(query.value)) {
-			query.value = query.value.replace('@popular', '');
-			options.sortBy = !options.sortBy ? GallerySortBy.InstallCount : options.sortBy;
-		}
-		else if (ExtensionsListView.isSearchRecentlyPublishedQuery(query.value)) {
-			query.value = query.value.replace('@recentlyPublished', '');
-			options.sortBy = !options.sortBy ? GallerySortBy.PublishedDate : options.sortBy;
-		}
-
-		const galleryQueryOptions: IGalleryQueryOptions = { ...options, sortBy: isLocalSortBy(options.sortBy) ? undefined : options.sortBy };
-		return this.queryGallery(query, galleryQueryOptions, token);
+		return this.queryLocal(query, options);
 	}
 
-	private async queryByIds(ids: string[], options: IQueryOptions, token: CancellationToken): Promise<IPagedModel<IExtension>> {
+	private async queryByIds(ids: string[]): Promise<IPagedModel<IExtension>> {
 		const idsSet: Set<string> = ids.reduce((result, id) => { result.add(id.toLowerCase()); return result; }, new Set<string>());
 		const result = (await this.extensionsWorkbenchService.queryLocal(this.options.server))
 			.filter(e => idsSet.has(e.identifier.id.toLowerCase()));
-
-		const galleryIds = result.length ? ids.filter(id => result.every(r => !areSameExtensions(r.identifier, { id }))) : ids;
-
-		if (galleryIds.length) {
-			const galleryResult = await this.extensionsWorkbenchService.getExtensions(galleryIds.map(id => ({ id })), { source: 'queryById' }, token);
-			result.push(...galleryResult);
-		}
-
 		return new PagedModel(result);
 	}
 
@@ -406,6 +384,8 @@ export class ExtensionsListView extends AbstractExtensionsListView<IExtension> {
 
 		else if (includeBuiltin) {
 			extensions = this.filterBuiltinExtensions(local, query, options);
+		} else {
+			extensions = this.filterInstalledExtensions(local, runningExtensions, query, options);
 		}
 
 		return { extensions, canIncludeInstalledExtensions, description };
@@ -715,128 +695,16 @@ export class ExtensionsListView extends AbstractExtensionsListView<IExtension> {
 		return hasChanged ? extensions : undefined;
 	}
 
-	private async queryGallery(query: Query, options: IGalleryQueryOptions, token: CancellationToken): Promise<IQueryResult> {
-		const hasUserDefinedSortOrder = options.sortBy !== undefined;
-		if (!hasUserDefinedSortOrder && !query.value.trim()) {
-			options.sortBy = GallerySortBy.InstallCount;
-		}
-
-		if (this.isRecommendationsQuery(query)) {
-			const model = await this.queryRecommendations(query, options, token);
-			return { model, disposables: new DisposableStore() };
-		}
-
-		const text = query.value;
-
-		if (!text) {
-			options.source = 'viewlet';
-			const pager = await this.extensionsWorkbenchService.queryGallery(options, token);
-			return { model: new PagedModel(pager), disposables: new DisposableStore() };
-		}
-
-		if (/\bext:([^\s]+)\b/g.test(text)) {
-			options.text = text;
-			options.source = 'file-extension-tags';
-			const pager = await this.extensionsWorkbenchService.queryGallery(options, token);
-			return { model: new PagedModel(pager), disposables: new DisposableStore() };
-		}
-
-		options.text = text.substring(0, 350);
-		options.source = 'searchText';
-
-		if (hasUserDefinedSortOrder || /\b(category|tag):([^\s]+)\b/gi.test(text) || /\bfeatured(\s+|\b|$)/gi.test(text)) {
-			const pager = await this.extensionsWorkbenchService.queryGallery(options, token);
-			return { model: new PagedModel(pager), disposables: new DisposableStore() };
-		}
-
-		try {
-			const [pager, preferredExtensions] = await Promise.all([
-				this.extensionsWorkbenchService.queryGallery(options, token),
-				this.getPreferredExtensions(options.text.toLowerCase(), token).catch(() => [])
-			]);
-
-			const model = preferredExtensions.length ? new PreferredExtensionsPagedModel(preferredExtensions, pager) : new PagedModel(pager);
-			return { model, disposables: new DisposableStore() };
-		} catch (error) {
-			if (isCancellationError(error)) {
-				throw error;
-			}
-
-			if (!(error instanceof ExtensionGalleryError)) {
-				throw error;
-			}
-
-			const searchText = options.text.toLowerCase();
-			const localExtensions = this.extensionsWorkbenchService.local.filter(e => !e.isBuiltin && (e.name.toLowerCase().indexOf(searchText) > -1 || e.displayName.toLowerCase().indexOf(searchText) > -1 || e.description.toLowerCase().indexOf(searchText) > -1));
-			if (localExtensions.length) {
-				const message = this.getMessage(error);
-				return { model: new PagedModel(localExtensions), disposables: new DisposableStore(), message: { text: localize('showing local extensions only', "{0} Showing local extensions.", message.text), severity: message.severity } };
-			}
-
-			throw error;
-		}
-	}
-
-	private async getPreferredExtensions(searchText: string, token: CancellationToken): Promise<IExtension[]> {
-		const preferredExtensions = this.extensionsWorkbenchService.local.filter(e => !e.isBuiltin && (e.name.toLowerCase().indexOf(searchText) > -1 || e.displayName.toLowerCase().indexOf(searchText) > -1 || e.description.toLowerCase().indexOf(searchText) > -1));
-		const preferredExtensionUUIDs = new Set<string>();
-
-		if (preferredExtensions.length) {
-			// Update gallery data for preferred extensions if they are not yet fetched
-			const extesionsToFetch: IExtensionIdentifier[] = [];
-			for (const extension of preferredExtensions) {
-				if (extension.identifier.uuid) {
-					preferredExtensionUUIDs.add(extension.identifier.uuid);
-				}
-				if (!extension.gallery && extension.identifier.uuid) {
-					extesionsToFetch.push(extension.identifier);
-				}
-			}
-			if (extesionsToFetch.length) {
-				this.extensionsWorkbenchService.getExtensions(extesionsToFetch, CancellationToken.None).catch(e => null/*ignore error*/);
-			}
-		}
-
-		const preferredResults: string[] = [];
-		try {
-			const manifest = await this.extensionManagementService.getExtensionsControlManifest();
-			if (Array.isArray(manifest.search)) {
-				for (const s of manifest.search) {
-					if (s.query && s.query.toLowerCase() === searchText && Array.isArray(s.preferredResults)) {
-						preferredResults.push(...s.preferredResults);
-						break;
-					}
-				}
-			}
-			if (preferredResults.length) {
-				const result = await this.extensionsWorkbenchService.getExtensions(preferredResults.map(id => ({ id })), token);
-				for (const extension of result) {
-					if (extension.identifier.uuid && !preferredExtensionUUIDs.has(extension.identifier.uuid)) {
-						preferredExtensions.push(extension);
-					}
-				}
-			}
-		} catch (e) {
-			this.logService.warn('Failed to get preferred results from the extensions control manifest.', e);
-		}
-
-		return preferredExtensions;
-	}
-
 	private sortExtensions(extensions: IExtension[], options: IQueryOptions): IExtension[] {
 		switch (options.sortBy) {
-			case GallerySortBy.InstallCount:
-				extensions = extensions.sort((e1, e2) => typeof e2.installCount === 'number' && typeof e1.installCount === 'number' ? e2.installCount - e1.installCount : NaN);
+			case LocalSortBy.Name:
+				extensions = extensions.sort((e1, e2) => e1.displayName.localeCompare(e2.displayName));
 				break;
 			case LocalSortBy.UpdateDate:
 				extensions = extensions.sort((e1, e2) =>
 					typeof e2.local?.installedTimestamp === 'number' && typeof e1.local?.installedTimestamp === 'number' ? e2.local.installedTimestamp - e1.local.installedTimestamp :
 						typeof e2.local?.installedTimestamp === 'number' ? 1 :
 							typeof e1.local?.installedTimestamp === 'number' ? -1 : NaN);
-				break;
-			case GallerySortBy.AverageRating:
-			case GallerySortBy.WeightedRating:
-				extensions = extensions.sort((e1, e2) => typeof e2.rating === 'number' && typeof e1.rating === 'number' ? e2.rating - e1.rating : NaN);
 				break;
 			default:
 				extensions = extensions.sort((e1, e2) => e1.displayName.localeCompare(e2.displayName));
@@ -1224,14 +1092,6 @@ export class ExtensionsListView extends AbstractExtensionsListView<IExtension> {
 
 	static isSortInstalledExtensionsQuery(query: string, sortBy?: string): boolean {
 		return (sortBy !== undefined && sortBy !== '' && query === '') || (!sortBy && /^@sort:\S*$/i.test(query));
-	}
-
-	static isSearchPopularQuery(query: string): boolean {
-		return /@popular/i.test(query);
-	}
-
-	static isSearchRecentlyPublishedQuery(query: string): boolean {
-		return /@recentlyPublished/i.test(query);
 	}
 
 	static isSearchRecentlyUpdatedQuery(query: string): boolean {

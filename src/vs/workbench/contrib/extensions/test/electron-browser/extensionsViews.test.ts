@@ -10,8 +10,8 @@ import { TestInstantiationService } from '../../../../../platform/instantiation/
 import { IExtensionsWorkbenchService } from '../../common/extensions.js';
 import { ExtensionsWorkbenchService } from '../../browser/extensionsWorkbenchService.js';
 import {
-	IExtensionManagementService, IExtensionGalleryService, ILocalExtension, IGalleryExtension, IQueryOptions,
-	getTargetPlatform, SortBy
+	IExtensionManagementService, IExtensionGalleryService, ILocalExtension, IGalleryExtension,
+	getTargetPlatform
 } from '../../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IWorkbenchExtensionEnablementService, EnablementState, IExtensionManagementServerService, IExtensionManagementServer, IProfileAwareExtensionManagementService, IWorkbenchExtensionManagementService } from '../../../../services/extensionManagement/common/extensionManagement.js';
 import { IExtensionRecommendationsService, ExtensionRecommendationReason } from '../../../../services/extensionRecommendations/common/extensionRecommendations.js';
@@ -20,7 +20,6 @@ import { TestExtensionEnablementService } from '../../../../services/extensionMa
 import { ExtensionGalleryService } from '../../../../../platform/extensionManagement/common/extensionGalleryService.js';
 import { IURLService } from '../../../../../platform/url/common/url.js';
 import { Event } from '../../../../../base/common/event.js';
-import { IPager } from '../../../../../base/common/paging.js';
 import { ITelemetryService } from '../../../../../platform/telemetry/common/telemetry.js';
 import { NullTelemetryService } from '../../../../../platform/telemetry/common/telemetryUtils.js';
 import { IExtensionService, toExtensionDescription } from '../../../../services/extensions/common/extensions.js';
@@ -32,7 +31,6 @@ import { ILogService, NullLogService } from '../../../../../platform/log/common/
 import { NativeURLService } from '../../../../../platform/url/common/urlService.js';
 import { URI } from '../../../../../base/common/uri.js';
 import { TestConfigurationService } from '../../../../../platform/configuration/test/common/testConfigurationService.js';
-import { SinonStub } from 'sinon';
 import { IRemoteAgentService } from '../../../../services/remote/common/remoteAgentService.js';
 import { RemoteAgentService } from '../../../../services/remote/electron-browser/remoteAgentService.js';
 import { ExtensionType, IExtension } from '../../../../../platform/extensions/common/extensions.js';
@@ -72,15 +70,12 @@ suite('ExtensionsViews Tests', () => {
 	const builtInTheme = aLocalExtension('my-theme', { categories: ['Themes'], contributes: { themes: ['my-theme'] } }, { type: ExtensionType.System, installedTimestamp: 222 });
 	const builtInBasic = aLocalExtension('my-lang', { categories: ['Programming Languages'], contributes: { grammars: [{ language: 'my-language' }] } }, { type: ExtensionType.System, installedTimestamp: 666666 });
 
-	let queryPage = aPage([]);
 	const galleryExtensions: IGalleryExtension[] = [];
 
 	const workspaceRecommendationA = aGalleryExtension('workspace-recommendation-A');
 	const workspaceRecommendationB = aGalleryExtension('workspace-recommendation-B');
 	const configBasedRecommendationA = aGalleryExtension('configbased-recommendation-A');
 	const configBasedRecommendationB = aGalleryExtension('configbased-recommendation-B');
-	const searchResultA = aGalleryExtension('search-result-A');
-	const searchResultB = aGalleryExtension('search-result-B');
 	const otherRecommendationA = aGalleryExtension('other-recommendation-A');
 
 	setup(async () => {
@@ -173,9 +168,6 @@ suite('ExtensionsViews Tests', () => {
 		instantiationService.stubPromise(IExtensionManagementService, 'getExtensgetExtensionsControlManifestionsReport', {});
 
 		instantiationService.stub(IExtensionGalleryService, <Partial<IExtensionGalleryService>>{
-			query: async () => {
-				return queryPage;
-			},
 			getCompatibleExtension: async (gallery) => {
 				return gallery;
 			},
@@ -219,15 +211,11 @@ suite('ExtensionsViews Tests', () => {
 		instantiationService.stub(IMeteredConnectionService, { isConnectionMetered: false, onDidChangeIsConnectionMetered: Event.None });
 		instantiationService.set(IExtensionsWorkbenchService, disposableStore.add(instantiationService.createInstance(ExtensionsWorkbenchService)));
 		testableView = disposableStore.add(instantiationService.createInstance(ExtensionsListView, {}, { id: '', title: '' }));
-		queryPage = aPage([]);
-
 		galleryExtensions.splice(0, galleryExtensions.length, ...[
 			workspaceRecommendationA,
 			workspaceRecommendationB,
 			configBasedRecommendationA,
 			configBasedRecommendationB,
-			searchResultA,
-			searchResultB,
 			otherRecommendationA
 		]);
 	});
@@ -248,55 +236,6 @@ suite('ExtensionsViews Tests', () => {
 		assert.strictEqual(ExtensionsListView.isLocalExtensionsQuery('@agentPlugins @installed searchText'), false);
 		assert.strictEqual(ExtensionsListView.isLocalExtensionsQuery('@mcp @installed'), false);
 		assert.strictEqual(ExtensionsListView.isLocalExtensionsQuery('@mcp @installed searchText'), false);
-	});
-
-	test('Test empty query equates to sort by install count', async () => {
-		const target = <SinonStub>instantiationService.stubPromise(IExtensionGalleryService, 'query', aPage());
-		await testableView.show('');
-		assert.ok(target.calledOnce);
-		const options: IQueryOptions = target.args[0][0];
-		assert.strictEqual(options.sortBy, SortBy.InstallCount);
-	});
-
-	test('Test non empty query without sort doesnt use sortBy', async () => {
-		const target = <SinonStub>instantiationService.stubPromise(IExtensionGalleryService, 'query', aPage());
-		await testableView.show('some extension');
-		assert.ok(target.calledOnce);
-		const options: IQueryOptions = target.args[0][0];
-		assert.strictEqual(options.sortBy, undefined);
-	});
-
-	test('Test query with sort uses sortBy', async () => {
-		const target = <SinonStub>instantiationService.stubPromise(IExtensionGalleryService, 'query', aPage());
-		await testableView.show('some extension @sort:rating');
-		assert.ok(target.calledOnce);
-		const options: IQueryOptions = target.args[0][0];
-		assert.strictEqual(options.sortBy, SortBy.WeightedRating);
-	});
-
-	test('Test default view actions required sorting', async () => {
-		queryPage = aPage([aGalleryExtension(localEnabledLanguage.manifest.name, { ...localEnabledLanguage.manifest, version: '1.0.1', identifier: localDisabledLanguage.identifier })]);
-
-		const workbenchService = instantiationService.get(IExtensionsWorkbenchService);
-		const extension = (await workbenchService.queryLocal()).find(ex => ex.identifier.id === localEnabledLanguage.identifier.id);
-
-		await new Promise<void>(c => {
-			const disposable = workbenchService.onChange(() => {
-				if (extension?.outdated) {
-					disposable.dispose();
-					c();
-				}
-			});
-			instantiationService.get(IExtensionsWorkbenchService).queryGallery(CancellationToken.None);
-		});
-
-		const result = await testableView.show('@installed');
-		assert.strictEqual(result.length, 5, 'Unexpected number of results for @installed query');
-		const actual = [result.get(0).name, result.get(1).name, result.get(2).name, result.get(3).name, result.get(4).name];
-		const expected = [localEnabledLanguage.manifest.name, localEnabledTheme.manifest.name, localRandom.manifest.name, localDisabledTheme.manifest.name, localDisabledLanguage.manifest.name];
-		for (let i = 0; i < result.length; i++) {
-			assert.strictEqual(actual[i], expected[i], 'Unexpected extension for @installed query with outadted extension.');
-		}
 	});
 
 	test('Test installed query results', async () => {
@@ -468,72 +407,11 @@ suite('ExtensionsViews Tests', () => {
 		}
 	});
 
-	test('Test search', async () => {
-		const results = [
-			searchResultA,
-			workspaceRecommendationA,
-			otherRecommendationA,
-			workspaceRecommendationB
-		];
-		queryPage = aPage(results);
-		const result = await testableView.show('search-me');
-		assert.strictEqual(result.length, results.length);
-		for (let i = 0; i < results.length; i++) {
-			assert.strictEqual(result.get(i).identifier.id, results[i].identifier.id);
-		}
-	});
-
-	test('Test preferred search experiment', async () => {
-		queryPage = aPage([
-			searchResultA,
-			workspaceRecommendationA,
-			otherRecommendationA,
-			workspaceRecommendationB
-		], 5);
-		const notInFirstPage = aGalleryExtension('not-in-first-page');
-		galleryExtensions.push(notInFirstPage);
-		const expected = [
-			workspaceRecommendationA,
-			notInFirstPage,
-			workspaceRecommendationB,
-			searchResultA,
-			otherRecommendationA,
-		];
-
-		instantiationService.stubPromise(IWorkbenchExtensionManagementService, 'getExtensionsControlManifest', {
-			malicious: [], deprecated: {},
-			search: [{
-				query: 'search-me',
-				preferredResults: [
-					workspaceRecommendationA.identifier.id,
-					notInFirstPage.identifier.id,
-					workspaceRecommendationB.identifier.id
-				]
-			}]
-		});
-
-		const testObject = disposableStore.add(instantiationService.createInstance(ExtensionsListView, {}, { id: '', title: '' }));
-		const result = await testObject.show('search-me');
-		assert.strictEqual(result.length, expected.length);
-		for (let i = 0; i < expected.length; i++) {
-			assert.strictEqual(result.get(i).identifier.id, expected[i].identifier.id);
-		}
-	});
-
-	test('Skip preferred search experiment when user defines sort order', async () => {
-		const realResults = [
-			searchResultA,
-			workspaceRecommendationA,
-			otherRecommendationA,
-			workspaceRecommendationB
-		];
-		queryPage = aPage(realResults);
-
-		const result = await testableView.show('search-me @sort:installs');
-		assert.strictEqual(result.length, realResults.length);
-		for (let i = 0; i < realResults.length; i++) {
-			assert.strictEqual(result.get(i).identifier.id, realResults[i].identifier.id);
-		}
+	test('Unprefixed search filters installed extensions locally', async () => {
+		const result = await testableView.show('first');
+		assert.strictEqual(result.length, 2);
+		assert.strictEqual(result.get(0).identifier.id, localEnabledTheme.identifier.id);
+		assert.strictEqual(result.get(1).identifier.id, localDisabledTheme.identifier.id);
 	});
 
 	function aLocalExtension(name: string = 'someext', manifest: any = {}, properties: any = {}): ILocalExtension {
@@ -557,10 +435,6 @@ suite('ExtensionsViews Tests', () => {
 		galleryExtension.assets = { ...galleryExtension.assets, ...assets };
 		galleryExtension.identifier = { id: getGalleryExtensionId(galleryExtension.publisher, galleryExtension.name), uuid: generateUuid() };
 		return <IGalleryExtension>galleryExtension;
-	}
-
-	function aPage<T>(objects: IGalleryExtension[] = [], total?: number): IPager<IGalleryExtension> {
-		return { firstPage: objects, total: total ?? objects.length, pageSize: objects.length, getPage: () => null! };
 	}
 
 });
