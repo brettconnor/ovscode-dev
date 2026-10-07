@@ -656,34 +656,6 @@ export interface IGlobalExtensionEnablementService {
 
 }
 
-export type IConfigBasedExtensionTip = {
-	readonly extensionId: string;
-	readonly extensionName: string;
-	readonly isExtensionPack: boolean;
-	readonly configName: string;
-	readonly important: boolean;
-	readonly whenNotInstalled?: string[];
-};
-
-export type IExecutableBasedExtensionTip = {
-	readonly extensionId: string;
-	readonly extensionName: string;
-	readonly isExtensionPack: boolean;
-	readonly exeName: string;
-	readonly exeFriendlyName: string;
-	readonly windowsPath?: string;
-	readonly whenNotInstalled?: string[];
-};
-
-export const IExtensionTipsService = createDecorator<IExtensionTipsService>('IExtensionTipsService');
-export interface IExtensionTipsService {
-	readonly _serviceBrand: undefined;
-
-	getConfigBasedTips(folder: URI): Promise<IConfigBasedExtensionTip[]>;
-	getImportantExecutableBasedTips(): Promise<IExecutableBasedExtensionTip[]>;
-	getOtherExecutableBasedTips(): Promise<IExecutableBasedExtensionTip[]>;
-}
-
 export type AllowedExtensionsConfigValueType = IStringDictionary<boolean | string | string[]>;
 
 export const IAllowedExtensionsService = createDecorator<IAllowedExtensionsService>('IAllowedExtensionsService');
@@ -806,4 +778,3 @@ export function shouldRequireRepositorySignatureFor(isPrivate: boolean, galleryM
 	}
 	return galleryManifest?.capabilities.signing?.allPublicRepositorySigned === true;
 }
-

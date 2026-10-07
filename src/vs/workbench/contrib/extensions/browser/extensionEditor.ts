@@ -57,7 +57,7 @@ import {
 } from './extensionsActions.js';
 import { Delegate } from './extensionsList.js';
 import { ExtensionData, ExtensionsGridView, ExtensionsTree, getExtensions } from './extensionsViewer.js';
-import { ExtensionRecommendationWidget, ExtensionStatusWidget, ExtensionWidget, RemoteBadgeWidget, onClick, ExtensionIconWidget } from './extensionsWidgets.js';
+import { ExtensionStatusWidget, ExtensionWidget, RemoteBadgeWidget, onClick, ExtensionIconWidget } from './extensionsWidgets.js';
 import { ExtensionContainers, ExtensionEditorTab, ExtensionState, IExtension, IExtensionContainer, IExtensionsWorkbenchService } from '../common/extensions.js';
 import { ExtensionsInput, IExtensionEditorOptions } from '../common/extensionsInput.js';
 import { DEFAULT_MARKDOWN_STYLES, renderMarkdownDocument } from '../../markdown/browser/markdownDocumentRenderer.js';
@@ -322,10 +322,7 @@ export class ExtensionEditor extends EditorPane {
 			}
 		}());
 
-		const recommendationWidget = this.instantiationService.createInstance(ExtensionRecommendationWidget, append(details, $('.recommendation')));
-		widgets.push(recommendationWidget);
-
-		this._register(Event.any(extensionStatusWidget.onDidRender, recommendationWidget.onDidRender)(() => {
+		this._register(extensionStatusWidget.onDidRender(() => {
 			if (this.dimension) {
 				this.layout(this.dimension);
 			}

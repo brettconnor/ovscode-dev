@@ -24,12 +24,10 @@ import { IExtensionGalleryAccountService } from '../../../services/extensionMana
 import { ExtensionRequestsTimeoutConfigKey, ExtensionsLocalizedLabel, IExtensionManagementService, VerifyExtensionSignatureConfigKey } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { areSameExtensions } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { ExtensionStorageService } from '../../../../platform/extensionManagement/common/extensionStorage.js';
-import { IExtensionRecommendationNotificationService } from '../../../../platform/extensionRecommendations/common/extensionRecommendations.js';
 import { ExtensionType } from '../../../../platform/extensions/common/extensions.js';
 import { SyncDescriptor } from '../../../../platform/instantiation/common/descriptors.js';
 import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
 import { IInstantiationService, ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
-import * as jsonContributionRegistry from '../../../../platform/jsonschemas/common/jsonContributionRegistry.js';
 import product from '../../../../platform/product/common/product.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { Extensions, IQuickAccessRegistry } from '../../../../platform/quickinput/common/quickAccess.js';
@@ -45,8 +43,6 @@ import { EditorExtensions } from '../../../common/editor.js';
 import { IViewContainersRegistry, Extensions as ViewContainerExtensions, ViewContainerLocation } from '../../../common/views.js';
 import { IEditorService } from '../../../services/editor/common/editorService.js';
 import { EnablementState, IExtensionManagementServerService, IPublisherInfo, IWorkbenchExtensionEnablementService, IWorkbenchExtensionManagementService } from '../../../services/extensionManagement/common/extensionManagement.js';
-import { IExtensionIgnoredRecommendationsService, IExtensionRecommendationsService } from '../../../services/extensionRecommendations/common/extensionRecommendations.js';
-import { IWorkspaceExtensionsConfigService } from '../../../services/extensionRecommendations/common/workspaceExtensionsConfig.js';
 import { EXTENSIONS_SUPPORT_AGENTS_WINDOW } from '../../../services/extensions/common/extensionManifestPropertiesService.js';
 import { LifecyclePhase } from '../../../services/lifecycle/common/lifecycle.js';
 import { IPreferencesService } from '../../../services/preferences/common/preferences.js';
@@ -54,18 +50,15 @@ import { IViewsService } from '../../../services/views/common/viewsService.js';
 import { WORKSPACE_TRUST_EXTENSION_SUPPORT } from '../../../services/workspaces/common/workspaceTrust.js';
 import { IWebview } from '../../webview/browser/webview.js';
 import { AutoRestartConfigurationKey, CONTEXT_EXTENSIONS_GALLERY_STATUS, CONTEXT_HAS_GALLERY, DefaultViewsContext, ExtensionEditorTab, EXTENSIONS_CATEGORY, extensionsFilterSubMenu, extensionsSearchActionsMenu, IExtensionArg, IExtensionsViewPaneContainer, IExtensionsWorkbenchService, LIST_WORKSPACE_UNSUPPORTED_EXTENSIONS_COMMAND_ID, THEME_ACTIONS_GROUP, VIEWLET_ID } from '../common/extensions.js';
-import { ExtensionsConfigurationSchema, ExtensionsConfigurationSchemaId } from '../common/extensionsFileTemplate.js';
 import { ExtensionsInput } from '../common/extensionsInput.js';
 import { KeymapExtensions } from '../common/extensionsUtils.js';
 import { ExtensionEditor } from './extensionEditor.js';
 import { ExtensionEnablementWorkspaceTrustTransitionParticipant } from './extensionEnablementWorkspaceTrustTransitionParticipant.js';
-import { ExtensionRecommendationNotificationService } from './extensionRecommendationNotificationService.js';
-import { ExtensionRecommendationsService } from './extensionRecommendationsService.js';
-import { ConfigureWorkspaceFolderRecommendedExtensionsAction, ConfigureWorkspaceRecommendedExtensionsAction, InstallAction, InstallAnotherVersionAction, InstallSpecificVersionOfExtensionAction, SetColorThemeAction, SetFileIconThemeAction, SetProductIconThemeAction } from './extensionsActions.js';
+import { InstallAction, InstallAnotherVersionAction, InstallSpecificVersionOfExtensionAction, SetColorThemeAction, SetFileIconThemeAction, SetProductIconThemeAction } from './extensionsActions.js';
 import { ExtensionActivationProgress } from './extensionsActivationProgress.js';
 import { ExtensionEnablementContextKeysContribution } from './extensionEnablementContext.js';
 import { ExtensionDependencyChecker } from './extensionsDependencyChecker.js';
-import { clearSearchResultsIcon, configureRecommendedIcon, extensionsViewIcon, filterIcon, refreshIcon } from './extensionsIcons.js';
+import { clearSearchResultsIcon, extensionsViewIcon, filterIcon, refreshIcon } from './extensionsIcons.js';
 import { ManageExtensionsQuickAccessProvider } from './extensionsQuickAccess.js';
 import { BuiltInExtensionsContext, ExtensionsSearchValueContext, ExtensionsSortByContext, ExtensionsViewPaneContainer, MaliciousExtensionChecker, SearchHasTextContext } from './extensionsViewlet.js';
 import { ExtensionsWorkbenchService } from './extensionsWorkbenchService.js';
@@ -73,8 +66,6 @@ import './media/extensionManagement.css';
 
 // Singletons
 registerSingleton(IExtensionsWorkbenchService, ExtensionsWorkbenchService, InstantiationType.Eager /* Auto updates extensions */);
-registerSingleton(IExtensionRecommendationNotificationService, ExtensionRecommendationNotificationService, InstantiationType.Delayed);
-registerSingleton(IExtensionRecommendationsService, ExtensionRecommendationsService, InstantiationType.Eager /* Prompts recommendations in the background */);
 
 // Quick Access
 Registry.as<IQuickAccessRegistry>(Extensions.Quickaccess).registerQuickAccessProvider({
@@ -119,18 +110,6 @@ Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration)
 		title: localize('extensionsConfigurationTitle', "Extensions"),
 		type: 'object',
 		properties: {
-			'extensions.ignoreRecommendations': {
-				type: 'boolean',
-				description: localize('extensionsIgnoreRecommendations', "When enabled, the notifications for extension recommendations will not be shown."),
-				default: false,
-				agentsWindow: { default: true, readOnly: true },
-			},
-			'extensions.showRecommendationsOnlyOnDemand': {
-				type: 'boolean',
-				deprecationMessage: localize('extensionsShowRecommendationsOnlyOnDemand_Deprecated', "This setting is deprecated. Use extensions.ignoreRecommendations setting to control recommendation notifications. Use Extensions view's visibility actions to hide Recommended view by default."),
-				default: false,
-				tags: ['usesOnlineServices']
-			},
 			'extensions.closeExtensionDetailsOnViewChange': {
 				type: 'boolean',
 				description: localize('extensionsCloseExtensionDetailsOnViewChange', "When enabled, editors with extension details will be automatically closed upon navigating away from the Extensions View."),
@@ -333,9 +312,6 @@ Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration)
 		}
 	});
 
-const jsonRegistry = <jsonContributionRegistry.IJSONContributionRegistry>Registry.as(jsonContributionRegistry.Extensions.JSONContribution);
-jsonRegistry.registerSchema(ExtensionsConfigurationSchemaId, ExtensionsConfigurationSchema);
-
 // Register Commands
 CommandsRegistry.registerCommand('_extensions.manage', (accessor: ServicesAccessor, extensionId: string, tab?: ExtensionEditorTab, preserveFocus?: boolean, feature?: string, sideByside?: boolean) => {
 	const extensionService = accessor.get(IExtensionsWorkbenchService);
@@ -439,7 +415,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
 		@IWorkbenchExtensionEnablementService private readonly extensionEnablementService: IWorkbenchExtensionEnablementService,
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
-		@ICommandService private readonly commandService: ICommandService,
 	) {
 		super();
 		const hasLocalServerContext = CONTEXT_HAS_LOCAL_SERVER.bindTo(contextKeyService);
@@ -762,17 +737,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 		});
 
 		this.registerExtensionAction({
-			id: ConfigureWorkspaceFolderRecommendedExtensionsAction.ID,
-			title: ConfigureWorkspaceFolderRecommendedExtensionsAction.LABEL,
-			icon: configureRecommendedIcon,
-			menu: [{
-				id: MenuId.CommandPalette,
-				when: WorkbenchStateContext.notEqualsTo('empty'),
-			}],
-			run: () => runAction(this.instantiationService.createInstance(ConfigureWorkspaceFolderRecommendedExtensionsAction, ConfigureWorkspaceFolderRecommendedExtensionsAction.ID, ConfigureWorkspaceFolderRecommendedExtensionsAction.LABEL))
-		});
-
-		this.registerExtensionAction({
 			id: InstallSpecificVersionOfExtensionAction.ID,
 			title: { value: InstallSpecificVersionOfExtensionAction.LABEL, original: 'Install Specific Version of Extension...' },
 			category: ExtensionsLocalizedLabel,
@@ -994,133 +958,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 					return this.extensionsWorkbenchService.toggleApplyExtensionToAllProfiles(extension);
 				}
 			}
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.ignoreRecommendation',
-			title: localize2('workbench.extensions.action.ignoreRecommendation', "Ignore Recommendation"),
-			menu: {
-				id: MenuId.ExtensionContext,
-				group: '3_recommendations',
-				when: ContextKeyExpr.has('isExtensionRecommended'),
-				order: 1
-			},
-			run: async (accessor: ServicesAccessor, id: string) => accessor.get(IExtensionIgnoredRecommendationsService).toggleGlobalIgnoredRecommendation(id, true)
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.undoIgnoredRecommendation',
-			title: localize2('workbench.extensions.action.undoIgnoredRecommendation', "Undo Ignored Recommendation"),
-			menu: {
-				id: MenuId.ExtensionContext,
-				group: '3_recommendations',
-				when: ContextKeyExpr.has('isUserIgnoredRecommendation'),
-				order: 1
-			},
-			run: async (accessor: ServicesAccessor, id: string) => accessor.get(IExtensionIgnoredRecommendationsService).toggleGlobalIgnoredRecommendation(id, false)
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.addExtensionToWorkspaceRecommendations',
-			title: localize2('workbench.extensions.action.addExtensionToWorkspaceRecommendations', "Add to Workspace Recommendations"),
-			menu: {
-				id: MenuId.ExtensionContext,
-				group: '3_recommendations',
-				when: ContextKeyExpr.and(WorkbenchStateContext.notEqualsTo('empty'), ContextKeyExpr.has('isBuiltinExtension').negate(), ContextKeyExpr.has('isExtensionWorkspaceRecommended').negate(), ContextKeyExpr.has('isUserIgnoredRecommendation').negate(), ContextKeyExpr.notEquals('extensionSource', 'resource')),
-				order: 2
-			},
-			run: (accessor: ServicesAccessor, id: string) => accessor.get(IWorkspaceExtensionsConfigService).toggleRecommendation(id)
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.removeExtensionFromWorkspaceRecommendations',
-			title: localize2('workbench.extensions.action.removeExtensionFromWorkspaceRecommendations', "Remove from Workspace Recommendations"),
-			menu: {
-				id: MenuId.ExtensionContext,
-				group: '3_recommendations',
-				when: ContextKeyExpr.and(WorkbenchStateContext.notEqualsTo('empty'), ContextKeyExpr.has('isBuiltinExtension').negate(), ContextKeyExpr.has('isExtensionWorkspaceRecommended')),
-				order: 2
-			},
-			run: (accessor: ServicesAccessor, id: string) => accessor.get(IWorkspaceExtensionsConfigService).toggleRecommendation(id)
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.addToWorkspaceRecommendations',
-			title: localize2('workbench.extensions.action.addToWorkspaceRecommendations', "Add Extension to Workspace Recommendations"),
-			category: EXTENSIONS_CATEGORY,
-			menu: {
-				id: MenuId.CommandPalette,
-				when: ContextKeyExpr.and(WorkbenchStateContext.isEqualTo('workspace'), ContextKeyExpr.equals('resourceScheme', Schemas.extension)),
-			},
-			async run(accessor: ServicesAccessor): Promise<any> {
-				const editorService = accessor.get(IEditorService);
-				const workspaceExtensionsConfigService = accessor.get(IWorkspaceExtensionsConfigService);
-				if (!(editorService.activeEditor instanceof ExtensionsInput)) {
-					return;
-				}
-				const extensionId = editorService.activeEditor.extension.identifier.id.toLowerCase();
-				const recommendations = await workspaceExtensionsConfigService.getRecommendations();
-				if (recommendations.includes(extensionId)) {
-					return;
-				}
-				await workspaceExtensionsConfigService.toggleRecommendation(extensionId);
-			}
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.addToWorkspaceFolderRecommendations',
-			title: localize2('workbench.extensions.action.addToWorkspaceFolderRecommendations', "Add Extension to Workspace Folder Recommendations"),
-			category: EXTENSIONS_CATEGORY,
-			menu: {
-				id: MenuId.CommandPalette,
-				when: ContextKeyExpr.and(WorkbenchStateContext.isEqualTo('folder'), ContextKeyExpr.equals('resourceScheme', Schemas.extension)),
-			},
-			run: () => this.commandService.executeCommand('workbench.extensions.action.addToWorkspaceRecommendations')
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.addToWorkspaceIgnoredRecommendations',
-			title: localize2('workbench.extensions.action.addToWorkspaceIgnoredRecommendations', "Add Extension to Workspace Ignored Recommendations"),
-			category: EXTENSIONS_CATEGORY,
-			menu: {
-				id: MenuId.CommandPalette,
-				when: ContextKeyExpr.and(WorkbenchStateContext.isEqualTo('workspace'), ContextKeyExpr.equals('resourceScheme', Schemas.extension)),
-			},
-			async run(accessor: ServicesAccessor): Promise<any> {
-				const editorService = accessor.get(IEditorService);
-				const workspaceExtensionsConfigService = accessor.get(IWorkspaceExtensionsConfigService);
-				if (!(editorService.activeEditor instanceof ExtensionsInput)) {
-					return;
-				}
-				const extensionId = editorService.activeEditor.extension.identifier.id.toLowerCase();
-				const unwantedRecommendations = await workspaceExtensionsConfigService.getUnwantedRecommendations();
-				if (unwantedRecommendations.includes(extensionId)) {
-					return;
-				}
-				await workspaceExtensionsConfigService.toggleUnwantedRecommendation(extensionId);
-			}
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.addToWorkspaceFolderIgnoredRecommendations',
-			title: localize2('workbench.extensions.action.addToWorkspaceFolderIgnoredRecommendations', "Add Extension to Workspace Folder Ignored Recommendations"),
-			category: EXTENSIONS_CATEGORY,
-			menu: {
-				id: MenuId.CommandPalette,
-				when: ContextKeyExpr.and(WorkbenchStateContext.isEqualTo('folder'), ContextKeyExpr.equals('resourceScheme', Schemas.extension)),
-			},
-			run: () => this.commandService.executeCommand('workbench.extensions.action.addToWorkspaceIgnoredRecommendations')
-		});
-
-		this.registerExtensionAction({
-			id: ConfigureWorkspaceRecommendedExtensionsAction.ID,
-			title: { value: ConfigureWorkspaceRecommendedExtensionsAction.LABEL, original: 'Configure Recommended Extensions (Workspace)' },
-			category: EXTENSIONS_CATEGORY,
-			menu: {
-				id: MenuId.CommandPalette,
-				when: WorkbenchStateContext.isEqualTo('workspace'),
-			},
-			run: () => runAction(this.instantiationService.createInstance(ConfigureWorkspaceRecommendedExtensionsAction, ConfigureWorkspaceRecommendedExtensionsAction.ID, ConfigureWorkspaceRecommendedExtensionsAction.LABEL))
 		});
 
 		this.registerExtensionAction({

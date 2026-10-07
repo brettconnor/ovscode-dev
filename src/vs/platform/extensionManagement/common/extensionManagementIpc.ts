@@ -9,7 +9,7 @@ import { URI, UriComponents } from '../../../base/common/uri.js';
 import { DefaultURITransformer, IURITransformer, transformAndReviveIncomingURIs } from '../../../base/common/uriIpc.js';
 import { IChannel, IServerChannel } from '../../../base/parts/ipc/common/ipc.js';
 import {
-	IExtensionIdentifier, IExtensionTipsService, IGalleryExtension, ILocalExtension, IExtensionsControlManifest, InstallOptions,
+	IExtensionIdentifier, IGalleryExtension, ILocalExtension, IExtensionsControlManifest, InstallOptions,
 	UninstallOptions, Metadata, IExtensionManagementService, DidUninstallExtensionEvent, InstallExtensionEvent, InstallExtensionResult,
 	UninstallExtensionEvent, InstallOperation, InstallExtensionInfo, IProductVersion, DidUpdateExtensionMetadata, UninstallExtensionInfo,
 	IAllowedExtensionsService
@@ -338,26 +338,4 @@ export class ExtensionManagementChannelClient extends CommontExtensionManagement
 	}
 
 	registerParticipant() { throw new Error('Not Supported'); }
-}
-
-export class ExtensionTipsChannel implements IServerChannel {
-
-	constructor(private service: IExtensionTipsService) {
-	}
-
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	listen(context: any, event: string): Event<any> {
-		throw new Error('Invalid listen');
-	}
-
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	call(context: any, command: string, args?: any): Promise<any> {
-		switch (command) {
-			case 'getConfigBasedTips': return this.service.getConfigBasedTips(URI.revive(args[0]));
-			case 'getImportantExecutableBasedTips': return this.service.getImportantExecutableBasedTips();
-			case 'getOtherExecutableBasedTips': return this.service.getOtherExecutableBasedTips();
-		}
-
-		throw new Error('Invalid call');
-	}
 }

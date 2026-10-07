@@ -12,10 +12,8 @@ import * as json from '../../../../base/common/json.js';
 import { IContextMenuService } from '../../../../platform/contextview/browser/contextView.js';
 import { disposeIfDisposable } from '../../../../base/common/lifecycle.js';
 import { IExtension, ExtensionState, IExtensionsWorkbenchService, IExtensionContainer, THEME_ACTIONS_GROUP, INSTALL_ACTIONS_GROUP, UPDATE_ACTIONS_GROUP, ExtensionEditorTab, ExtensionRuntimeActionType, IExtensionArg } from '../common/extensions.js';
-import { ExtensionsConfigurationInitialContent } from '../common/extensionsFileTemplate.js';
 import { IGalleryExtension, IExtensionGalleryService, ILocalExtension, InstallOptions, InstallOperation, ExtensionManagementErrorCode, IAllowedExtensionsService, shouldRequireRepositorySignatureFor } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IWorkbenchExtensionEnablementService, EnablementState, IExtensionManagementServerService, IExtensionManagementServer, IWorkbenchExtensionManagementService } from '../../../services/extensionManagement/common/extensionManagement.js';
-import { ExtensionRecommendationReason, IExtensionIgnoredRecommendationsService, IExtensionRecommendationsService } from '../../../services/extensionRecommendations/common/extensionRecommendations.js';
 import { areSameExtensions, getExtensionId } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { ExtensionType, ExtensionIdentifier, IExtensionDescription, IExtensionManifest, isLanguagePackExtension, getWorkspaceSupportTypeMessage, isApplicationScopedExtension } from '../../../../platform/extensions/common/extensions.js';
 import { IInstantiationService, ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
@@ -49,7 +47,6 @@ import { IProductService } from '../../../../platform/product/common/productServ
 import { IDialogService, IPromptButton } from '../../../../platform/dialogs/common/dialogs.js';
 import { IProgressService, ProgressLocation } from '../../../../platform/progress/common/progress.js';
 import { IActionViewItemOptions, ActionViewItem } from '../../../../base/browser/ui/actionbar/actionViewItems.js';
-import { EXTENSIONS_CONFIG, IExtensionsConfigContent } from '../../../services/extensionRecommendations/common/workspaceExtensionsConfig.js';
 import { getErrorMessage, isCancellationError } from '../../../../base/common/errors.js';
 import { IContextMenuProvider } from '../../../../base/browser/contextmenu.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
@@ -982,8 +979,6 @@ async function getContextMenuActionsGroups(extension: IExtension | undefined | n
 	return instantiationService.invokeFunction(async accessor => {
 		const extensionEnablementService = accessor.get(IWorkbenchExtensionEnablementService);
 		const menuService = accessor.get(IMenuService);
-		const extensionRecommendationsService = accessor.get(IExtensionRecommendationsService);
-		const extensionIgnoredRecommendationsService = accessor.get(IExtensionIgnoredRecommendationsService);
 		const workbenchThemeService = accessor.get(IWorkbenchThemeService);
 		const authenticationUsageService = accessor.get(IAuthenticationUsageService);
 		const allowedExtensionsService = accessor.get(IAllowedExtensionsService);
@@ -1002,9 +997,6 @@ async function getContextMenuActionsGroups(extension: IExtension | undefined | n
 			cksOverlay.push(['extensionHasConfiguration', extension.local && !!extension.local.manifest.contributes && !!extension.local.manifest.contributes.configuration]);
 			cksOverlay.push(['extensionHasKeybindings', extension.local && !!extension.local.manifest.contributes && !!extension.local.manifest.contributes.keybindings]);
 			cksOverlay.push(['extensionHasCommands', extension.local && !!extension.local.manifest.contributes && !!extension.local.manifest.contributes?.commands]);
-			cksOverlay.push(['isExtensionRecommended', !!extensionRecommendationsService.getAllRecommendationsWithReason()[extension.identifier.id.toLowerCase()]]);
-			cksOverlay.push(['isExtensionWorkspaceRecommended', extensionRecommendationsService.getAllRecommendationsWithReason()[extension.identifier.id.toLowerCase()]?.reasonId === ExtensionRecommendationReason.Workspace]);
-			cksOverlay.push(['isUserIgnoredRecommendation', extensionIgnoredRecommendationsService.globalIgnoredRecommendations.some(e => e === extension.identifier.id.toLowerCase())]);
 			cksOverlay.push(['isExtensionPinned', extension.pinned]);
 			cksOverlay.push(['isExtensionEnabled', extensionEnablementService.isEnabledEnablementState(extension.enablementState)]);
 			switch (extension.state) {
@@ -1916,31 +1908,6 @@ export class SetProductIconThemeAction extends ExtensionAction {
 	}
 }
 
-export class ShowRecommendedExtensionAction extends Action {
-
-	static readonly ID = 'workbench.extensions.action.showRecommendedExtension';
-	static readonly LABEL = localize('showRecommendedExtension', "Show Recommended Extension");
-
-	private extensionId: string;
-
-	constructor(
-		extensionId: string,
-		@IExtensionsWorkbenchService private readonly extensionWorkbenchService: IExtensionsWorkbenchService,
-	) {
-		super(ShowRecommendedExtensionAction.ID, ShowRecommendedExtensionAction.LABEL, undefined, false);
-		this.extensionId = extensionId;
-	}
-
-	override async run(): Promise<any> {
-		await this.extensionWorkbenchService.openSearch(`@id:${this.extensionId}`);
-		const [extension] = await this.extensionWorkbenchService.getExtensions([{ id: this.extensionId }], { source: 'install-recommendation' }, CancellationToken.None);
-		if (extension) {
-			return this.extensionWorkbenchService.open(extension);
-		}
-		return null;
-	}
-}
-
 export class InstallRecommendedExtensionAction extends Action {
 
 	static readonly ID = 'workbench.extensions.action.installRecommendedExtension';
@@ -1968,205 +1935,6 @@ export class InstallRecommendedExtensionAction extends Action {
 				this.instantiationService.createInstance(PromptExtensionInstallFailureAction, extension, undefined, InstallOperation.Install, err).run();
 			}
 		}
-	}
-}
-
-export class IgnoreExtensionRecommendationAction extends Action {
-
-	static readonly ID = 'extensions.ignore';
-
-	private static readonly Class = `${ExtensionAction.LABEL_ACTION_CLASS} ignore`;
-
-	constructor(
-		private readonly extension: IExtension,
-		@IExtensionIgnoredRecommendationsService private readonly extensionRecommendationsManagementService: IExtensionIgnoredRecommendationsService,
-	) {
-		super(IgnoreExtensionRecommendationAction.ID, 'Ignore Recommendation');
-
-		this.class = IgnoreExtensionRecommendationAction.Class;
-		this.tooltip = localize('ignoreExtensionRecommendation', "Do not recommend this extension again");
-		this.enabled = true;
-	}
-
-	public override run(): Promise<any> {
-		this.extensionRecommendationsManagementService.toggleGlobalIgnoredRecommendation(this.extension.identifier.id, true);
-		return Promise.resolve();
-	}
-}
-
-export class UndoIgnoreExtensionRecommendationAction extends Action {
-
-	static readonly ID = 'extensions.ignore';
-
-	private static readonly Class = `${ExtensionAction.LABEL_ACTION_CLASS} undo-ignore`;
-
-	constructor(
-		private readonly extension: IExtension,
-		@IExtensionIgnoredRecommendationsService private readonly extensionRecommendationsManagementService: IExtensionIgnoredRecommendationsService,
-	) {
-		super(UndoIgnoreExtensionRecommendationAction.ID, 'Undo');
-
-		this.class = UndoIgnoreExtensionRecommendationAction.Class;
-		this.tooltip = localize('undo', "Undo");
-		this.enabled = true;
-	}
-
-	public override run(): Promise<any> {
-		this.extensionRecommendationsManagementService.toggleGlobalIgnoredRecommendation(this.extension.identifier.id, false);
-		return Promise.resolve();
-	}
-}
-
-export abstract class AbstractConfigureRecommendedExtensionsAction extends Action {
-
-	constructor(
-		id: string,
-		label: string,
-		@IWorkspaceContextService protected contextService: IWorkspaceContextService,
-		@IFileService private readonly fileService: IFileService,
-		@ITextFileService private readonly textFileService: ITextFileService,
-		@IEditorService protected editorService: IEditorService,
-		@IJSONEditingService private readonly jsonEditingService: IJSONEditingService,
-		@ITextModelService private readonly textModelResolverService: ITextModelService
-	) {
-		super(id, label);
-	}
-
-	protected openExtensionsFile(extensionsFileResource: URI): Promise<any> {
-		return this.getOrCreateExtensionsFile(extensionsFileResource)
-			.then(({ created, content }) =>
-				this.getSelectionPosition(content, extensionsFileResource, ['recommendations'])
-					.then(selection => this.editorService.openEditor({
-						resource: extensionsFileResource,
-						options: {
-							pinned: created,
-							selection
-						}
-					})),
-				error => Promise.reject(new Error(localize('OpenExtensionsFile.failed', "Unable to create 'extensions.json' file inside the '.vscode' folder ({0}).", error))));
-	}
-
-	protected openWorkspaceConfigurationFile(workspaceConfigurationFile: URI): Promise<any> {
-		return this.getOrUpdateWorkspaceConfigurationFile(workspaceConfigurationFile)
-			.then(content => this.getSelectionPosition(content.value.toString(), content.resource, ['extensions', 'recommendations']))
-			.then(selection => this.editorService.openEditor({
-				resource: workspaceConfigurationFile,
-				options: {
-					selection,
-					forceReload: true // because content has changed
-				}
-			}));
-	}
-
-	private getOrUpdateWorkspaceConfigurationFile(workspaceConfigurationFile: URI): Promise<IFileContent> {
-		return Promise.resolve(this.fileService.readFile(workspaceConfigurationFile))
-			.then(content => {
-				const workspaceRecommendations = <IExtensionsConfigContent>json.parse(content.value.toString())['extensions'];
-				if (!workspaceRecommendations || !workspaceRecommendations.recommendations) {
-					return this.jsonEditingService.write(workspaceConfigurationFile, [{ path: ['extensions'], value: { recommendations: [] } }], true)
-						.then(() => this.fileService.readFile(workspaceConfigurationFile));
-				}
-				return content;
-			});
-	}
-
-	private getSelectionPosition(content: string, resource: URI, path: json.JSONPath): Promise<ITextEditorSelection | undefined> {
-		const tree = json.parseTree(content);
-		const node = json.findNodeAtLocation(tree, path);
-		if (node && node.parent && node.parent.children) {
-			const recommendationsValueNode = node.parent.children[1];
-			const lastExtensionNode = recommendationsValueNode.children && recommendationsValueNode.children.length ? recommendationsValueNode.children[recommendationsValueNode.children.length - 1] : null;
-			const offset = lastExtensionNode ? lastExtensionNode.offset + lastExtensionNode.length : recommendationsValueNode.offset + 1;
-			return Promise.resolve(this.textModelResolverService.createModelReference(resource))
-				.then(reference => {
-					const position = reference.object.textEditorModel.getPositionAt(offset);
-					reference.dispose();
-					return {
-						startLineNumber: position.lineNumber,
-						startColumn: position.column,
-						endLineNumber: position.lineNumber,
-						endColumn: position.column,
-					};
-				});
-		}
-		return Promise.resolve(undefined);
-	}
-
-	private getOrCreateExtensionsFile(extensionsFileResource: URI): Promise<{ created: boolean; extensionsFileResource: URI; content: string }> {
-		return Promise.resolve(this.fileService.readFile(extensionsFileResource)).then(content => {
-			return { created: false, extensionsFileResource, content: content.value.toString() };
-		}, err => {
-			return this.textFileService.write(extensionsFileResource, ExtensionsConfigurationInitialContent).then(() => {
-				return { created: true, extensionsFileResource, content: ExtensionsConfigurationInitialContent };
-			});
-		});
-	}
-}
-
-export class ConfigureWorkspaceRecommendedExtensionsAction extends AbstractConfigureRecommendedExtensionsAction {
-
-	static readonly ID = 'workbench.extensions.action.configureWorkspaceRecommendedExtensions';
-	static readonly LABEL = localize('configureWorkspaceRecommendedExtensions', "Configure Recommended Extensions (Workspace)");
-
-	constructor(
-		id: string,
-		label: string,
-		@IFileService fileService: IFileService,
-		@ITextFileService textFileService: ITextFileService,
-		@IWorkspaceContextService contextService: IWorkspaceContextService,
-		@IEditorService editorService: IEditorService,
-		@IJSONEditingService jsonEditingService: IJSONEditingService,
-		@ITextModelService textModelResolverService: ITextModelService
-	) {
-		super(id, label, contextService, fileService, textFileService, editorService, jsonEditingService, textModelResolverService);
-		this._register(this.contextService.onDidChangeWorkbenchState(() => this.update(), this));
-		this.update();
-	}
-
-	private update(): void {
-		this.enabled = this.contextService.getWorkbenchState() !== WorkbenchState.EMPTY;
-	}
-
-	public override run(): Promise<void> {
-		switch (this.contextService.getWorkbenchState()) {
-			case WorkbenchState.FOLDER:
-				return this.openExtensionsFile(this.contextService.getWorkspace().folders[0].toResource(EXTENSIONS_CONFIG));
-			case WorkbenchState.WORKSPACE:
-				return this.openWorkspaceConfigurationFile(this.contextService.getWorkspace().configuration!);
-		}
-		return Promise.resolve();
-	}
-}
-
-export class ConfigureWorkspaceFolderRecommendedExtensionsAction extends AbstractConfigureRecommendedExtensionsAction {
-
-	static readonly ID = 'workbench.extensions.action.configureWorkspaceFolderRecommendedExtensions';
-	static readonly LABEL = localize('configureWorkspaceFolderRecommendedExtensions', "Configure Recommended Extensions (Workspace Folder)");
-
-	constructor(
-		id: string,
-		label: string,
-		@IFileService fileService: IFileService,
-		@ITextFileService textFileService: ITextFileService,
-		@IWorkspaceContextService contextService: IWorkspaceContextService,
-		@IEditorService editorService: IEditorService,
-		@IJSONEditingService jsonEditingService: IJSONEditingService,
-		@ITextModelService textModelResolverService: ITextModelService,
-		@ICommandService private readonly commandService: ICommandService
-	) {
-		super(id, label, contextService, fileService, textFileService, editorService, jsonEditingService, textModelResolverService);
-	}
-
-	public override run(): Promise<any> {
-		const folderCount = this.contextService.getWorkspace().folders.length;
-		const pickFolderPromise = folderCount === 1 ? Promise.resolve(this.contextService.getWorkspace().folders[0]) : this.commandService.executeCommand<IWorkspaceFolder>(PICK_WORKSPACE_FOLDER_COMMAND_ID);
-		return Promise.resolve(pickFolderPromise)
-			.then(workspaceFolder => {
-				if (workspaceFolder) {
-					return this.openExtensionsFile(workspaceFolder.toResource(EXTENSIONS_CONFIG));
-				}
-				return null;
-			});
 	}
 }
 

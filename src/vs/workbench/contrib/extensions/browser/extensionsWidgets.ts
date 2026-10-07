@@ -12,7 +12,6 @@ import { append, $, reset, addDisposableListener, EventType, finalHandler } from
 import * as platform from '../../../../base/common/platform.js';
 import { localize } from '../../../../nls.js';
 import { IExtensionManagementServerService } from '../../../services/extensionManagement/common/extensionManagement.js';
-import { IExtensionIgnoredRecommendationsService, IExtensionRecommendationsService } from '../../../services/extensionRecommendations/common/extensionRecommendations.js';
 import { ILabelService } from '../../../../platform/label/common/label.js';
 import { extensionButtonProminentBackground, ExtensionStatusAction } from './extensionsActions.js';
 import { IThemeService, registerThemingParticipant } from '../../../../platform/theme/common/themeService.js';
@@ -428,42 +427,6 @@ export class SponsorWidget extends ExtensionWidget {
 	}
 }
 
-export class RecommendationWidget extends ExtensionWidget {
-
-	private element?: HTMLElement;
-	private readonly disposables = this._register(new DisposableStore());
-
-	constructor(
-		private parent: HTMLElement,
-		@IExtensionRecommendationsService private readonly extensionRecommendationsService: IExtensionRecommendationsService
-	) {
-		super();
-		this.render();
-		this._register(toDisposable(() => this.clear()));
-		this._register(this.extensionRecommendationsService.onDidChangeRecommendations(() => this.render()));
-	}
-
-	private clear(): void {
-		this.element?.remove();
-		this.element = undefined;
-		this.disposables.clear();
-	}
-
-	render(): void {
-		this.clear();
-		if (!this.extension || this.extension.state === ExtensionState.Installed || this.extension.deprecationInfo) {
-			return;
-		}
-		const extRecommendations = this.extensionRecommendationsService.getAllRecommendationsWithReason();
-		if (extRecommendations[this.extension.identifier.id.toLowerCase()]) {
-			this.element = append(this.parent, $('div.extension-bookmark'));
-			const recommendation = append(this.element, $('.recommendation'));
-			append(recommendation, $('span' + ThemeIcon.asCSSSelector(ratingIcon)));
-		}
-	}
-
-}
-
 export class PreReleaseBookmarkWidget extends ExtensionWidget {
 
 	private element?: HTMLElement;
@@ -780,7 +743,6 @@ export class ExtensionHoverWidget extends ExtensionWidget {
 		@IExtensionFeaturesManagementService private readonly extensionFeaturesManagementService: IExtensionFeaturesManagementService,
 		@IHoverService private readonly hoverService: IHoverService,
 		@IConfigurationService private readonly configurationService: IConfigurationService,
-		@IExtensionRecommendationsService private readonly extensionRecommendationsService: IExtensionRecommendationsService,
 		@IThemeService private readonly themeService: IThemeService,
 		@IWorkspaceContextService private readonly contextService: IWorkspaceContextService,
 	) {
@@ -902,9 +864,8 @@ export class ExtensionHoverWidget extends ExtensionWidget {
 		const extensionFeaturesAccessData = this.extensionFeaturesManagementService.getAllAccessDataForExtension(new ExtensionIdentifier(this.extension.identifier.id));
 		const extensionStatus = this.extensionStatusAction.status;
 		const runtimeState = this.extension.runtimeState;
-		const recommendationMessage = this.getRecommendationMessage(this.extension);
 
-		if (extensionRuntimeStatus || extensionFeaturesAccessData.size || extensionStatus.length || runtimeState || recommendationMessage) {
+		if (extensionRuntimeStatus || extensionFeaturesAccessData.size || extensionStatus.length || runtimeState) {
 
 			markdown.appendMarkdown(`---`);
 			markdown.appendText(`\n`);
@@ -957,30 +918,11 @@ export class ExtensionHoverWidget extends ExtensionWidget {
 				markdown.appendMarkdown(`${runtimeState.reason}`);
 				markdown.appendText(`\n`);
 			}
-
-			if (recommendationMessage) {
-				markdown.appendMarkdown(recommendationMessage);
-				markdown.appendText(`\n`);
-			}
 		}
 
 		return markdown;
 	}
 
-	private getRecommendationMessage(extension: IExtension): string | undefined {
-		if (extension.state === ExtensionState.Installed) {
-			return undefined;
-		}
-		if (extension.deprecationInfo) {
-			return undefined;
-		}
-		const recommendation = this.extensionRecommendationsService.getAllRecommendationsWithReason()[extension.identifier.id.toLowerCase()];
-		if (!recommendation?.reasonText) {
-			return undefined;
-		}
-		const bgColor = this.themeService.getColorTheme().getColor(extensionButtonProminentBackground);
-		return `<span style="color:${bgColor ? Color.Format.CSS.formatHex(bgColor) : '#ffffff'};">$(${starEmptyIcon.id})</span>&nbsp;${recommendation.reasonText}`;
-	}
 
 }
 
@@ -1023,53 +965,6 @@ export class ExtensionStatusWidget extends ExtensionWidget {
 			append(this.container, rendered.element);
 		}
 		this._onDidRender.fire();
-	}
-}
-
-export class ExtensionRecommendationWidget extends ExtensionWidget {
-
-	private readonly _onDidRender = this._register(new Emitter<void>());
-	readonly onDidRender: Event<void> = this._onDidRender.event;
-
-	constructor(
-		private readonly container: HTMLElement,
-		@IExtensionRecommendationsService private readonly extensionRecommendationsService: IExtensionRecommendationsService,
-		@IExtensionIgnoredRecommendationsService private readonly extensionIgnoredRecommendationsService: IExtensionIgnoredRecommendationsService,
-	) {
-		super();
-		this.render();
-		this._register(this.extensionRecommendationsService.onDidChangeRecommendations(() => this.render()));
-	}
-
-	render(): void {
-		reset(this.container);
-		const recommendationStatus = this.getRecommendationStatus();
-		if (recommendationStatus) {
-			if (recommendationStatus.icon) {
-				append(this.container, $(`div${ThemeIcon.asCSSSelector(recommendationStatus.icon)}`));
-			}
-			append(this.container, $(`div.recommendation-text`, undefined, recommendationStatus.message));
-		}
-		this._onDidRender.fire();
-	}
-
-	private getRecommendationStatus(): { icon: ThemeIcon | undefined; message: string } | undefined {
-		if (!this.extension
-			|| this.extension.deprecationInfo
-			|| this.extension.state === ExtensionState.Installed
-		) {
-			return undefined;
-		}
-		const extRecommendations = this.extensionRecommendationsService.getAllRecommendationsWithReason();
-		if (extRecommendations[this.extension.identifier.id.toLowerCase()]) {
-			const reasonText = extRecommendations[this.extension.identifier.id.toLowerCase()].reasonText;
-			if (reasonText) {
-				return { icon: starEmptyIcon, message: reasonText };
-			}
-		} else if (this.extensionIgnoredRecommendationsService.globalIgnoredRecommendations.indexOf(this.extension.identifier.id.toLowerCase()) !== -1) {
-			return { icon: undefined, message: localize('recommendationHasBeenIgnored', "You have chosen not to receive recommendations for this extension.") };
-		}
-		return undefined;
 	}
 }
 

@@ -177,7 +177,6 @@ export interface IProductConfiguration {
 	readonly trustedExtensionPublishers?: readonly string[];
 
 	readonly extensionRecommendations?: IStringDictionary<IExtensionRecommendations>;
-	readonly configBasedExtensionTips?: IStringDictionary<IConfigBasedExtensionTip>;
 	readonly exeBasedExtensionTips?: IStringDictionary<IExeBasedExtensionTip>;
 	readonly remoteExtensionTips?: IStringDictionary<IRemoteExtensionTip>;
 	readonly virtualWorkspaceExtensionTips?: IStringDictionary<IVirtualWorkspaceExtensionTip>;
@@ -330,19 +329,6 @@ export interface IAppCenterConfiguration {
 	readonly 'darwin': string;
 	readonly 'darwin-universal': string;
 	readonly 'darwin-arm64': string;
-}
-
-export interface IConfigBasedExtensionTip {
-	configPath: string;
-	configName: string;
-	configScheme?: string;
-	recommendations: IStringDictionary<{
-		name: string;
-		contentPattern?: string;
-		important?: boolean;
-		isExtensionPack?: boolean;
-		whenNotInstalled?: string[];
-	}>;
 }
 
 export interface IExeBasedExtensionTip {

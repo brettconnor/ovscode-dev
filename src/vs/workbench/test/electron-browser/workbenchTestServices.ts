@@ -17,8 +17,6 @@ import { IContextKeyService } from '../../../platform/contextkey/common/contextk
 import { IFileDialogService, INativeOpenDialogOptions } from '../../../platform/dialogs/common/dialogs.js';
 import { IEnvironmentService, INativeEnvironmentService } from '../../../platform/environment/common/environment.js';
 import { IExtensionManagementService } from '../../../platform/extensionManagement/common/extensionManagement.js';
-import { AbstractNativeExtensionTipsService } from '../../../platform/extensionManagement/common/extensionTipsService.js';
-import { IExtensionRecommendationNotificationService } from '../../../platform/extensionRecommendations/common/extensionRecommendations.js';
 import { IFileService, IFileSystemProvider, FileSystemProviderCapabilities, IFileReadStreamOptions, IFileWriteOptions, IFileOpenOptions, IFileDeleteOptions, IFileOverwriteOptions, IStat, FileType, IWatchOptions } from '../../../platform/files/common/files.js';
 import { FileService } from '../../../platform/files/common/fileService.js';
 import { InMemoryFileSystemProvider } from '../../../platform/files/common/inMemoryFilesystemProvider.js';
@@ -211,22 +209,6 @@ export class TestNativeHostService implements INativeHostService {
 	async startPowerSaveBlocker(type: PowerSaveBlockerType): Promise<number> { return -1; }
 	async stopPowerSaveBlocker(id: number): Promise<boolean> { return false; }
 	async isPowerSaveBlockerStarted(id: number): Promise<boolean> { return false; }
-}
-
-export class TestExtensionTipsService extends AbstractNativeExtensionTipsService {
-
-	constructor(
-		@INativeEnvironmentService environmentService: INativeEnvironmentService,
-		@ITelemetryService telemetryService: ITelemetryService,
-		@IExtensionManagementService extensionManagementService: IExtensionManagementService,
-		@IStorageService storageService: IStorageService,
-		@INativeHostService nativeHostService: INativeHostService,
-		@IExtensionRecommendationNotificationService extensionRecommendationNotificationService: IExtensionRecommendationNotificationService,
-		@IFileService fileService: IFileService,
-		@IProductService productService: IProductService,
-	) {
-		super(environmentService.userHome, nativeHostService, telemetryService, extensionManagementService, storageService, extensionRecommendationNotificationService, fileService, productService);
-	}
 }
 
 export function workbenchInstantiationService(overrides?: {
