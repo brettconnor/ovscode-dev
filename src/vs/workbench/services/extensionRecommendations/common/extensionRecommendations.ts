@@ -10,7 +10,6 @@ import { URI } from '../../../../base/common/uri.js';
 
 export const enum ExtensionRecommendationReason {
 	Workspace,
-	File,
 	Executable,
 	WorkspaceConfig,
 	DynamicWorkspace,
@@ -33,7 +32,6 @@ export interface IExtensionRecommendationsService {
 
 	getImportantRecommendations(): Promise<string[]>;
 	getOtherRecommendations(): Promise<string[]>;
-	getFileBasedRecommendations(): string[];
 	getExeBasedRecommendations(exe?: string): Promise<{ important: string[]; others: string[] }>;
 	getConfigBasedRecommendations(): Promise<{ important: string[]; others: string[] }>;
 	getWorkspaceRecommendations(): Promise<Array<string | URI>>;
@@ -59,5 +57,3 @@ export interface IExtensionIgnoredRecommendationsService {
 	readonly globalIgnoredRecommendations: string[];
 	toggleGlobalIgnoredRecommendation(extensionId: string, ignore: boolean): void;
 }
-
-

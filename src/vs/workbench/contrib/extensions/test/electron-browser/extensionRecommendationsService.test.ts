@@ -253,47 +253,7 @@ suite('ExtensionRecommendationsService Test', () => {
 		instantiationService.stub(IWorkspaceTagsService, new NoOpWorkspaceTagsService());
 		instantiationService.stub(IStorageService, disposableStore.add(new TestStorageService()));
 		instantiationService.stub(ILogService, new NullLogService());
-		instantiationService.stub(IProductService, {
-			extensionRecommendations: {
-				'ms-python.python': {
-					onFileOpen: [
-						{
-							'pathGlob': '{**/*.py}',
-							important: true
-						}
-					]
-				},
-				'ms-vscode.PowerShell': {
-					onFileOpen: [
-						{
-							'pathGlob': '{**/*.ps,**/*.ps1}',
-							important: true
-						}
-					]
-				},
-				'ms-dotnettools.csharp': {
-					onFileOpen: [
-						{
-							'pathGlob': '{**/*.cs,**/project.json,**/global.json,**/*.csproj,**/*.sln,**/appsettings.json}',
-						}
-					]
-				},
-				'msjsdiag.debugger-for-chrome': {
-					onFileOpen: [
-						{
-							'pathGlob': '{**/*.ts,**/*.tsx,**/*.js,**/*.jsx,**/*.es6,**/*.mjs,**/*.cjs,**/.babelrc}',
-						}
-					]
-				},
-				'lukehoban.Go': {
-					onFileOpen: [
-						{
-							'pathGlob': '**/*.go',
-						}
-					]
-				}
-			},
-		});
+		instantiationService.stub(IProductService, {});
 
 		instantiationService.stub(IUpdateService, { onStateChange: Event.None, state: State.Uninitialized });
 		instantiationService.stub(IMeteredConnectionService, { isConnectionMetered: false, onDidChangeIsConnectionMetered: Event.None });
@@ -540,38 +500,4 @@ suite('ExtensionRecommendationsService Test', () => {
 		assert.ok(changeHandlerTarget.getCall(0).calledWithMatch({ extensionId: ignoredExtensionId.toLowerCase(), isRecommended: false }));
 	}));
 
-	test('ExtensionRecommendationsService: Get file based recommendations from storage (old format)', () => runWithFakedTimers<void>({ useFakeTimers: true }, async () => {
-		const storedRecommendations = '["ms-dotnettools.csharp", "ms-python.python", "ms-vscode.vscode-typescript-tslint-plugin"]';
-		instantiationService.get(IStorageService).store('extensionsAssistant/recommendations', storedRecommendations, StorageScope.PROFILE, StorageTarget.MACHINE);
-
-		return setUpFolderWorkspace('myFolder', []).then(() => {
-			testObject = disposableStore.add(instantiationService.createInstance(ExtensionRecommendationsService));
-			return testObject.activationPromise.then(() => {
-				const recommendations = testObject.getFileBasedRecommendations();
-				assert.strictEqual(recommendations.length, 2);
-				assert.ok(recommendations.some(extensionId => extensionId === 'ms-dotnettools.csharp')); // stored recommendation that exists in product.extensionTips
-				assert.ok(recommendations.some(extensionId => extensionId === 'ms-python.python')); // stored recommendation that exists in product.extensionImportantTips
-				assert.ok(recommendations.every(extensionId => extensionId !== 'ms-vscode.vscode-typescript-tslint-plugin')); // stored recommendation that is no longer in neither product.extensionTips nor product.extensionImportantTips
-			});
-		});
-	}));
-
-	test('ExtensionRecommendationsService: Get file based recommendations from storage (new format)', async () => {
-		const milliSecondsInADay = 1000 * 60 * 60 * 24;
-		const now = Date.now();
-		const tenDaysOld = 10 * milliSecondsInADay;
-		const storedRecommendations = `{"ms-dotnettools.csharp": ${now}, "ms-python.python": ${now}, "ms-vscode.vscode-typescript-tslint-plugin": ${now}, "lukehoban.Go": ${tenDaysOld}}`;
-		instantiationService.get(IStorageService).store('extensionsAssistant/recommendations', storedRecommendations, StorageScope.PROFILE, StorageTarget.MACHINE);
-
-		await setUpFolderWorkspace('myFolder', []);
-		testObject = disposableStore.add(instantiationService.createInstance(ExtensionRecommendationsService));
-		await testObject.activationPromise;
-
-		const recommendations = testObject.getFileBasedRecommendations();
-		assert.strictEqual(recommendations.length, 2);
-		assert.ok(recommendations.some(extensionId => extensionId === 'ms-dotnettools.csharp')); // stored recommendation that exists in product.extensionTips
-		assert.ok(recommendations.some(extensionId => extensionId === 'ms-python.python')); // stored recommendation that exists in product.extensionImportantTips
-		assert.ok(recommendations.every(extensionId => extensionId !== 'ms-vscode.vscode-typescript-tslint-plugin')); // stored recommendation that is no longer in neither product.extensionTips nor product.extensionImportantTips
-		assert.ok(recommendations.every(extensionId => extensionId !== 'lukehoban.Go')); //stored recommendation that is older than a week
-	});
 });

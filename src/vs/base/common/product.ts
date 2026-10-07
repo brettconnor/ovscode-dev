@@ -315,7 +315,6 @@ export interface ITunnelApplicationConfig {
 }
 
 export interface IExtensionRecommendations {
-	readonly onFileOpen: IFileOpenCondition[];
 	readonly onSettingsEditorOpen?: ISettingsEditorOpenCondition;
 }
 
@@ -323,24 +322,6 @@ export interface ISettingsEditorOpenCondition {
 	readonly prerelease?: boolean | string;
 	readonly descriptionOverride?: string;
 }
-
-export interface IExtensionRecommendationCondition {
-	readonly important?: boolean;
-	readonly whenInstalled?: string[];
-	readonly whenNotInstalled?: string[];
-}
-
-export type IFileOpenCondition = IFileLanguageCondition | IFilePathCondition | IFileContentCondition;
-
-export interface IFileLanguageCondition extends IExtensionRecommendationCondition {
-	readonly languages: string[];
-}
-
-export interface IFilePathCondition extends IExtensionRecommendationCondition {
-	readonly pathGlob: string;
-}
-
-export type IFileContentCondition = (IFileLanguageCondition | IFilePathCondition) & { readonly contentPattern: string };
 
 export interface IAppCenterConfiguration {
 	readonly 'win32-x64': string;

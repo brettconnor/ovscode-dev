@@ -1008,7 +1008,6 @@ export class ExtensionsListView extends AbstractExtensionsListView<IExtension> {
 			(await Promise.all([
 				// Order is important
 				this.extensionRecommendationsService.getImportantRecommendations(),
-				this.extensionRecommendationsService.getFileBasedRecommendations(),
 				this.extensionRecommendationsService.getOtherRecommendations()
 			])).flat().filter(extensionId => !local.includes(extensionId.toLowerCase()) && !workspaceRecommendations.includes(extensionId.toLowerCase())
 			), extensionId => extensionId.toLowerCase());
@@ -1024,7 +1023,6 @@ export class ExtensionsListView extends AbstractExtensionsListView<IExtension> {
 				// Order is important
 				this.getWorkspaceRecommendations(),
 				this.extensionRecommendationsService.getImportantRecommendations(),
-				this.extensionRecommendationsService.getFileBasedRecommendations(),
 				this.extensionRecommendationsService.getOtherRecommendations()
 			])).flat().filter(extensionId => {
 				if (isString(extensionId)) {

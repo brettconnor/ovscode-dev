@@ -14,7 +14,6 @@ import { IEnvironmentService } from '../../../../platform/environment/common/env
 import { LifecyclePhase, ILifecycleService } from '../../../services/lifecycle/common/lifecycle.js';
 import { ExeBasedRecommendations } from './exeBasedRecommendations.js';
 import { WorkspaceRecommendations } from './workspaceRecommendations.js';
-import { FileBasedRecommendations } from './fileBasedRecommendations.js';
 import { KeymapRecommendations } from './keymapRecommendations.js';
 import { LanguageRecommendations } from './languageRecommendations.js';
 import { ExtensionRecommendation } from './extensionRecommendations.js';
@@ -35,7 +34,6 @@ export class ExtensionRecommendationsService extends Disposable implements IExte
 	declare readonly _serviceBrand: undefined;
 
 	// Recommendations
-	private readonly fileBasedRecommendations: FileBasedRecommendations;
 	private readonly workspaceRecommendations: WorkspaceRecommendations;
 	private readonly configBasedRecommendations: ConfigBasedRecommendations;
 	private readonly exeBasedRecommendations: ExeBasedRecommendations;
@@ -66,7 +64,6 @@ export class ExtensionRecommendationsService extends Disposable implements IExte
 		super();
 
 		this.workspaceRecommendations = this._register(instantiationService.createInstance(WorkspaceRecommendations));
-		this.fileBasedRecommendations = this._register(instantiationService.createInstance(FileBasedRecommendations));
 		this.configBasedRecommendations = this._register(instantiationService.createInstance(ConfigBasedRecommendations));
 		this.exeBasedRecommendations = this._register(instantiationService.createInstance(ExeBasedRecommendations));
 		this.keymapRecommendations = this._register(instantiationService.createInstance(KeymapRecommendations));
@@ -100,7 +97,6 @@ export class ExtensionRecommendationsService extends Disposable implements IExte
 		await Promise.all([
 			this.workspaceRecommendations.activate(),
 			this.configBasedRecommendations.activate(),
-			this.fileBasedRecommendations.activate(),
 			this.keymapRecommendations.activate(),
 			this.languageRecommendations.activate(),
 			this.webRecommendations.activate(),
@@ -129,7 +125,6 @@ export class ExtensionRecommendationsService extends Disposable implements IExte
 		const allRecommendations = [
 			...this.configBasedRecommendations.recommendations,
 			...this.exeBasedRecommendations.recommendations,
-			...this.fileBasedRecommendations.recommendations,
 			...this.workspaceRecommendations.recommendations,
 			...this.keymapRecommendations.recommendations,
 			...this.languageRecommendations.recommendations,
@@ -172,7 +167,6 @@ export class ExtensionRecommendationsService extends Disposable implements IExte
 		await this.activateProactiveRecommendations();
 
 		const recommendations = [
-			...this.fileBasedRecommendations.importantRecommendations,
 			...this.configBasedRecommendations.importantRecommendations,
 			...this.exeBasedRecommendations.importantRecommendations,
 		];
@@ -217,10 +211,6 @@ export class ExtensionRecommendationsService extends Disposable implements IExte
 		const { important, others } = exe ? this.exeBasedRecommendations.getRecommendations(exe)
 			: { important: this.exeBasedRecommendations.importantRecommendations, others: this.exeBasedRecommendations.otherRecommendations };
 		return { important: this.toExtensionIds(important), others: this.toExtensionIds(others) };
-	}
-
-	getFileBasedRecommendations(): string[] {
-		return this.toExtensionIds(this.fileBasedRecommendations.recommendations);
 	}
 
 	private onDidInstallExtensions(results: readonly InstallExtensionResult[]): void {

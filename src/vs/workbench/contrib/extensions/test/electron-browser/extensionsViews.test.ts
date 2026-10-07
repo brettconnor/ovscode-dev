@@ -79,8 +79,8 @@ suite('ExtensionsViews Tests', () => {
 	const workspaceRecommendationB = aGalleryExtension('workspace-recommendation-B');
 	const configBasedRecommendationA = aGalleryExtension('configbased-recommendation-A');
 	const configBasedRecommendationB = aGalleryExtension('configbased-recommendation-B');
-	const fileBasedRecommendationA = aGalleryExtension('filebased-recommendation-A');
-	const fileBasedRecommendationB = aGalleryExtension('filebased-recommendation-B');
+	const searchResultA = aGalleryExtension('search-result-A');
+	const searchResultB = aGalleryExtension('search-result-B');
 	const otherRecommendationA = aGalleryExtension('other-recommendation-A');
 
 	setup(async () => {
@@ -140,8 +140,6 @@ suite('ExtensionsViews Tests', () => {
 		const reasons: { [key: string]: any } = {};
 		reasons[workspaceRecommendationA.identifier.id] = { reasonId: ExtensionRecommendationReason.Workspace };
 		reasons[workspaceRecommendationB.identifier.id] = { reasonId: ExtensionRecommendationReason.Workspace };
-		reasons[fileBasedRecommendationA.identifier.id] = { reasonId: ExtensionRecommendationReason.File };
-		reasons[fileBasedRecommendationB.identifier.id] = { reasonId: ExtensionRecommendationReason.File };
 		reasons[otherRecommendationA.identifier.id] = { reasonId: ExtensionRecommendationReason.Executable };
 		reasons[configBasedRecommendationA.identifier.id] = { reasonId: ExtensionRecommendationReason.WorkspaceConfig };
 		instantiationService.stub(IExtensionRecommendationsService, {
@@ -158,12 +156,6 @@ suite('ExtensionsViews Tests', () => {
 			},
 			getImportantRecommendations(): Promise<string[]> {
 				return Promise.resolve([]);
-			},
-			getFileBasedRecommendations() {
-				return [
-					fileBasedRecommendationA.identifier.id,
-					fileBasedRecommendationB.identifier.id
-				];
 			},
 			getOtherRecommendations() {
 				return Promise.resolve([
@@ -234,8 +226,8 @@ suite('ExtensionsViews Tests', () => {
 			workspaceRecommendationB,
 			configBasedRecommendationA,
 			configBasedRecommendationB,
-			fileBasedRecommendationA,
-			fileBasedRecommendationB,
+			searchResultA,
+			searchResultB,
 			otherRecommendationA
 		]);
 	});
@@ -448,8 +440,6 @@ suite('ExtensionsViews Tests', () => {
 
 	test('Test @recommended query', async () => {
 		const allRecommendedExtensions = [
-			fileBasedRecommendationA,
-			fileBasedRecommendationB,
 			configBasedRecommendationB,
 			otherRecommendationA
 		];
@@ -467,8 +457,6 @@ suite('ExtensionsViews Tests', () => {
 			workspaceRecommendationA,
 			workspaceRecommendationB,
 			configBasedRecommendationA,
-			fileBasedRecommendationA,
-			fileBasedRecommendationB,
 			configBasedRecommendationB,
 			otherRecommendationA,
 		];
@@ -482,7 +470,7 @@ suite('ExtensionsViews Tests', () => {
 
 	test('Test search', async () => {
 		const results = [
-			fileBasedRecommendationA,
+			searchResultA,
 			workspaceRecommendationA,
 			otherRecommendationA,
 			workspaceRecommendationB
@@ -497,7 +485,7 @@ suite('ExtensionsViews Tests', () => {
 
 	test('Test preferred search experiment', async () => {
 		queryPage = aPage([
-			fileBasedRecommendationA,
+			searchResultA,
 			workspaceRecommendationA,
 			otherRecommendationA,
 			workspaceRecommendationB
@@ -508,7 +496,7 @@ suite('ExtensionsViews Tests', () => {
 			workspaceRecommendationA,
 			notInFirstPage,
 			workspaceRecommendationB,
-			fileBasedRecommendationA,
+			searchResultA,
 			otherRecommendationA,
 		];
 
@@ -534,7 +522,7 @@ suite('ExtensionsViews Tests', () => {
 
 	test('Skip preferred search experiment when user defines sort order', async () => {
 		const realResults = [
-			fileBasedRecommendationA,
+			searchResultA,
 			workspaceRecommendationA,
 			otherRecommendationA,
 			workspaceRecommendationB
