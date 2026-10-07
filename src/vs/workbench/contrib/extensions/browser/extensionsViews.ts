@@ -16,7 +16,7 @@ import { IKeybindingService } from '../../../../platform/keybinding/common/keybi
 import { IContextMenuService } from '../../../../platform/contextview/browser/contextView.js';
 import { append, $ } from '../../../../base/browser/dom.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
-import { ExtensionResultsListFocused, ExtensionState, IExtension, IExtensionsViewState, IExtensionsWorkbenchService, IWorkspaceRecommendedExtensionsView } from '../common/extensions.js';
+import { ExtensionResultsListFocused, ExtensionState, IExtension, IExtensionsViewState, IExtensionsWorkbenchService } from '../common/extensions.js';
 import { Query } from '../common/extensionQuery.js';
 import { IExtensionService, toExtension } from '../../../services/extensions/common/extensions.js';
 import { IThemeService } from '../../../../platform/theme/common/themeService.js';
@@ -1293,15 +1293,6 @@ export class ExtensionsListView extends AbstractExtensionsListView<IExtension> {
 	}
 }
 
-export class DefaultPopularExtensionsView extends ExtensionsListView {
-
-	override async show(): Promise<IPagedModel<IExtension>> {
-		const query = this.extensionManagementServerService.webExtensionManagementServer && !this.extensionManagementServerService.localExtensionManagementServer && !this.extensionManagementServerService.remoteExtensionManagementServer ? '@web' : '';
-		return super.show(query);
-	}
-
-}
-
 export class ServerInstalledExtensionsView extends ExtensionsListView {
 
 	override async show(query: string): Promise<IPagedModel<IExtension>> {
@@ -1456,98 +1447,6 @@ export class DeprecatedExtensionsView extends ExtensionsListView {
 	override async show(query: string): Promise<IPagedModel<IExtension>> {
 		return ExtensionsListView.isSearchDeprecatedExtensionsQuery(query) ? super.show(query) : this.showEmptyModel();
 	}
-}
-
-export class DefaultRecommendedExtensionsView extends ExtensionsListView {
-	private readonly recommendedExtensionsQuery = '@recommended:all';
-
-	protected override renderBody(container: HTMLElement): void {
-		super.renderBody(container);
-
-		this._register(this.extensionRecommendationsService.onDidChangeRecommendations(() => {
-			this.show('');
-		}));
-	}
-
-	override async show(query: string): Promise<IPagedModel<IExtension>> {
-		if (query && query.trim() !== this.recommendedExtensionsQuery) {
-			return this.showEmptyModel();
-		}
-		const model = await super.show(this.recommendedExtensionsQuery);
-		if (!this.extensionsWorkbenchService.local.some(e => !e.isBuiltin)) {
-			// This is part of popular extensions view. Collapse if no installed extensions.
-			this.setExpanded(model.length > 0);
-		}
-		return model;
-	}
-
-}
-
-export class RecommendedExtensionsView extends ExtensionsListView {
-	private readonly recommendedExtensionsQuery = '@recommended';
-
-	protected override renderBody(container: HTMLElement): void {
-		super.renderBody(container);
-
-		this._register(this.extensionRecommendationsService.onDidChangeRecommendations(() => {
-			this.show('');
-		}));
-	}
-
-	override async show(query: string): Promise<IPagedModel<IExtension>> {
-		return (query && query.trim() !== this.recommendedExtensionsQuery) ? this.showEmptyModel() : super.show(this.recommendedExtensionsQuery);
-	}
-}
-
-export class WorkspaceRecommendedExtensionsView extends ExtensionsListView implements IWorkspaceRecommendedExtensionsView {
-	private readonly recommendedExtensionsQuery = '@recommended:workspace';
-
-	protected override renderBody(container: HTMLElement): void {
-		super.renderBody(container);
-
-		this._register(this.extensionRecommendationsService.onDidChangeRecommendations(() => this.show(this.recommendedExtensionsQuery)));
-		this._register(this.contextService.onDidChangeWorkbenchState(() => this.show(this.recommendedExtensionsQuery)));
-	}
-
-	override async show(query: string): Promise<IPagedModel<IExtension>> {
-		const shouldShowEmptyView = query && query.trim() !== '@recommended' && query.trim() !== '@recommended:workspace';
-		const model = await (shouldShowEmptyView ? this.showEmptyModel() : super.show(this.recommendedExtensionsQuery));
-		this.setExpanded(model.length > 0);
-		return model;
-	}
-
-	private async getInstallableWorkspaceRecommendations(): Promise<IExtension[]> {
-		const installed = (await this.extensionsWorkbenchService.queryLocal())
-			.filter(l => l.enablementState !== EnablementState.DisabledByExtensionKind); // Filter extensions disabled by kind
-		const recommendations = (await this.getWorkspaceRecommendations())
-			.filter(recommendation => installed.every(local => isString(recommendation) ? !areSameExtensions({ id: recommendation }, local.identifier) : !this.uriIdentityService.extUri.isEqual(recommendation, local.local?.location)));
-		return this.getInstallableRecommendations(recommendations, { source: 'install-all-workspace-recommendations' }, CancellationToken.None);
-	}
-
-	async installWorkspaceRecommendations(): Promise<void> {
-		const installableRecommendations = await this.getInstallableWorkspaceRecommendations();
-		if (installableRecommendations.length) {
-			const galleryExtensions: InstallExtensionInfo[] = [];
-			const resourceExtensions: IExtension[] = [];
-			for (const recommendation of installableRecommendations) {
-				if (recommendation.gallery) {
-					galleryExtensions.push({ extension: recommendation.gallery, options: {} });
-				} else {
-					resourceExtensions.push(recommendation);
-				}
-			}
-			await Promise.all([
-				this.extensionManagementService.installGalleryExtensions(galleryExtensions),
-				...resourceExtensions.map(extension => this.extensionsWorkbenchService.install(extension))
-			]);
-		} else {
-			this.notificationService.notify({
-				severity: Severity.Info,
-				message: localize('no local extensions', "There are no extensions to install.")
-			});
-		}
-	}
-
 }
 
 export class PreferredExtensionsPagedModel implements IPagedModel<IExtension> {

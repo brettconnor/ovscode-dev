@@ -22,11 +22,11 @@ import { ContextKeyExpr, IContextKeyService, RawContextKey } from '../../../../p
 import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
 import { ExtensionGalleryManifestStatus, ExtensionGalleryResourceType, ExtensionGalleryAuthProviderConfigKey, ExtensionGalleryServiceUrlConfigKey, getExtensionGalleryManifestResourceUri, IExtensionGalleryManifest, IExtensionGalleryManifestService } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
 import { IExtensionGalleryAccountService } from '../../../services/extensionManagement/common/extensionGalleryAccount.js';
-import { ExtensionRequestsTimeoutConfigKey, ExtensionsLocalizedLabel, FilterType, IExtensionManagementService, PreferencesLocalizedLabel, SortBy, VerifyExtensionSignatureConfigKey } from '../../../../platform/extensionManagement/common/extensionManagement.js';
+import { ExtensionRequestsTimeoutConfigKey, ExtensionsLocalizedLabel, IExtensionManagementService, PreferencesLocalizedLabel, SortBy, VerifyExtensionSignatureConfigKey } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { areSameExtensions } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { ExtensionStorageService } from '../../../../platform/extensionManagement/common/extensionStorage.js';
 import { IExtensionRecommendationNotificationService } from '../../../../platform/extensionRecommendations/common/extensionRecommendations.js';
-import { EXTENSION_CATEGORIES, ExtensionType } from '../../../../platform/extensions/common/extensions.js';
+import { ExtensionType } from '../../../../platform/extensions/common/extensions.js';
 import { SyncDescriptor } from '../../../../platform/instantiation/common/descriptors.js';
 import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
 import { IInstantiationService, ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
@@ -59,7 +59,7 @@ import { IPluginInstallService } from '../../chat/common/plugins/pluginInstallSe
 import { CONTEXT_KEYBINDINGS_EDITOR } from '../../preferences/common/preferences.js';
 import { IWebview } from '../../webview/browser/webview.js';
 import { Query } from '../common/extensionQuery.js';
-import { AutoRestartConfigurationKey, AutoUpdateConfigurationKey, CONTEXT_EXTENSIONS_GALLERY_STATUS, CONTEXT_HAS_GALLERY, DefaultViewsContext, ExtensionEditorTab, EXTENSIONS_CATEGORY, extensionsFilterSubMenu, extensionsSearchActionsMenu, HasOutdatedExtensionsContext, IExtensionArg, IExtensionsViewPaneContainer, IExtensionsWorkbenchService, INSTALL_ACTIONS_GROUP, IWorkspaceRecommendedExtensionsView, LIST_WORKSPACE_UNSUPPORTED_EXTENSIONS_COMMAND_ID, OUTDATED_EXTENSIONS_VIEW_ID, THEME_ACTIONS_GROUP, TOGGLE_IGNORE_EXTENSION_ACTION_ID, UPDATE_ACTIONS_GROUP, VIEWLET_ID, WORKSPACE_RECOMMENDATIONS_VIEW_ID } from '../common/extensions.js';
+import { AutoRestartConfigurationKey, AutoUpdateConfigurationKey, CONTEXT_EXTENSIONS_GALLERY_STATUS, CONTEXT_HAS_GALLERY, DefaultViewsContext, ExtensionEditorTab, EXTENSIONS_CATEGORY, extensionsFilterSubMenu, extensionsSearchActionsMenu, HasOutdatedExtensionsContext, IExtensionArg, IExtensionsViewPaneContainer, IExtensionsWorkbenchService, INSTALL_ACTIONS_GROUP, LIST_WORKSPACE_UNSUPPORTED_EXTENSIONS_COMMAND_ID, OUTDATED_EXTENSIONS_VIEW_ID, THEME_ACTIONS_GROUP, TOGGLE_IGNORE_EXTENSION_ACTION_ID, UPDATE_ACTIONS_GROUP, VIEWLET_ID } from '../common/extensions.js';
 import { ExtensionsConfigurationSchema, ExtensionsConfigurationSchemaId } from '../common/extensionsFileTemplate.js';
 import { ExtensionsInput } from '../common/extensionsInput.js';
 import { KeymapExtensions } from '../common/extensionsUtils.js';
@@ -475,7 +475,6 @@ export const CONTEXT_HAS_LOCAL_SERVER = new RawContextKey<boolean>('hasLocalServ
 export const CONTEXT_HAS_REMOTE_SERVER = new RawContextKey<boolean>('hasRemoteServer', false);
 export const CONTEXT_HAS_WEB_SERVER = new RawContextKey<boolean>('hasWebServer', false);
 const CONTEXT_GALLERY_SORT_CAPABILITIES = new RawContextKey<string>('gallerySortCapabilities', '');
-const CONTEXT_GALLERY_FILTER_CAPABILITIES = new RawContextKey<string>('galleryFilterCapabilities', '');
 const CONTEXT_GALLERY_ALL_PUBLIC_REPOSITORY_SIGNED = new RawContextKey<boolean>('galleryAllPublicRepositorySigned', false);
 const CONTEXT_GALLERY_ALL_PRIVATE_REPOSITORY_SIGNED = new RawContextKey<boolean>('galleryAllPrivateRepositorySigned', false);
 const CONTEXT_GALLERY_HAS_EXTENSION_LINK = new RawContextKey<boolean>('galleryHasExtensionLink', false);
@@ -545,7 +544,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 
 	private async updateGalleryCapabilitiesContexts(extensionGalleryManifest: IExtensionGalleryManifest | null): Promise<void> {
 		CONTEXT_GALLERY_SORT_CAPABILITIES.bindTo(this.contextKeyService).set(`_${extensionGalleryManifest?.capabilities.extensionQuery.sorting?.map(s => s.name)?.join('_')}_UpdateDate_`);
-		CONTEXT_GALLERY_FILTER_CAPABILITIES.bindTo(this.contextKeyService).set(`_${extensionGalleryManifest?.capabilities.extensionQuery.filtering?.map(s => s.name)?.join('_')}_`);
 		CONTEXT_GALLERY_ALL_PUBLIC_REPOSITORY_SIGNED.bindTo(this.contextKeyService).set(!!extensionGalleryManifest?.capabilities?.signing?.allPublicRepositorySigned);
 		CONTEXT_GALLERY_ALL_PRIVATE_REPOSITORY_SIGNED.bindTo(this.contextKeyService).set(!!extensionGalleryManifest?.capabilities?.signing?.allPrivateRepositorySigned);
 		CONTEXT_GALLERY_HAS_EXTENSION_LINK.bindTo(this.contextKeyService).set(!!(extensionGalleryManifest && getExtensionGalleryManifestResourceUri(extensionGalleryManifest, ExtensionGalleryResourceType.ExtensionDetailsViewUri)));
@@ -792,106 +790,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 			icon: filterIcon,
 		});
 
-		const showFeaturedExtensionsId = 'extensions.filter.featured';
-		const featuresExtensionsWhenContext = ContextKeyExpr.and(CONTEXT_HAS_GALLERY, ContextKeyExpr.regex(CONTEXT_GALLERY_FILTER_CAPABILITIES.key, new RegExp(`_${FilterType.Featured}_`)));
-		this.registerExtensionAction({
-			id: showFeaturedExtensionsId,
-			title: localize2('showFeaturedExtensions', 'Show Featured Extensions'),
-			category: ExtensionsLocalizedLabel,
-			menu: [{
-				id: MenuId.CommandPalette,
-				when: featuresExtensionsWhenContext
-			}, {
-				id: extensionsFilterSubMenu,
-				when: featuresExtensionsWhenContext,
-				group: '1_predefined',
-				order: 1,
-			}],
-			menuTitles: {
-				[extensionsFilterSubMenu.id]: localize('featured filter', "Featured")
-			},
-			run: () => this.extensionsWorkbenchService.openSearch('@featured ')
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.showPopularExtensions',
-			title: localize2('showPopularExtensions', 'Show Popular Extensions'),
-			category: ExtensionsLocalizedLabel,
-			menu: [{
-				id: MenuId.CommandPalette,
-				when: CONTEXT_HAS_GALLERY
-			}, {
-				id: extensionsFilterSubMenu,
-				when: CONTEXT_HAS_GALLERY,
-				group: '1_predefined',
-				order: 2,
-			}],
-			menuTitles: {
-				[extensionsFilterSubMenu.id]: localize('most popular filter', "Most Popular")
-			},
-			run: () => this.extensionsWorkbenchService.openSearch('@popular ')
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.showRecommendedExtensions',
-			title: localize2('showRecommendedExtensions', 'Show Recommended Extensions'),
-			category: ExtensionsLocalizedLabel,
-			menu: [{
-				id: MenuId.CommandPalette,
-				when: CONTEXT_HAS_GALLERY
-			}, {
-				id: extensionsFilterSubMenu,
-				when: CONTEXT_HAS_GALLERY,
-				group: '1_predefined',
-				order: 2,
-			}],
-			menuTitles: {
-				[extensionsFilterSubMenu.id]: localize('most popular recommended', "Recommended")
-			},
-			run: () => this.extensionsWorkbenchService.openSearch('@recommended ')
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.recentlyPublishedExtensions',
-			title: localize2('recentlyPublishedExtensions', 'Show Recently Published Extensions'),
-			category: ExtensionsLocalizedLabel,
-			menu: [{
-				id: MenuId.CommandPalette,
-				when: CONTEXT_HAS_GALLERY
-			}, {
-				id: extensionsFilterSubMenu,
-				when: CONTEXT_HAS_GALLERY,
-				group: '1_predefined',
-				order: 2,
-			}],
-			menuTitles: {
-				[extensionsFilterSubMenu.id]: localize('recently published filter', "Recently Published")
-			},
-			run: () => this.extensionsWorkbenchService.openSearch('@recentlyPublished ')
-		});
-
-		const extensionsCategoryFilterSubMenu = new MenuId('extensionsCategoryFilterSubMenu');
-		MenuRegistry.appendMenuItem(extensionsFilterSubMenu, {
-			submenu: extensionsCategoryFilterSubMenu,
-			title: localize('filter by category', "Category"),
-			when: ContextKeyExpr.and(CONTEXT_HAS_GALLERY, ContextKeyExpr.regex(CONTEXT_GALLERY_FILTER_CAPABILITIES.key, new RegExp(`_${FilterType.Category}_`))),
-			group: '2_categories',
-			order: 1,
-		});
-
-		EXTENSION_CATEGORIES.forEach((category, index) => {
-			this.registerExtensionAction({
-				id: `extensions.actions.searchByCategory.${category}`,
-				title: category,
-				menu: [{
-					id: extensionsCategoryFilterSubMenu,
-					when: CONTEXT_HAS_GALLERY,
-					order: index,
-				}],
-				run: () => this.extensionsWorkbenchService.openSearch(`@category:"${category.toLowerCase()}"`)
-			});
-		});
-
 		this.registerExtensionAction({
 			id: 'workbench.extensions.action.installedExtensions',
 			title: localize2('installedExtensions', 'Show Installed Extensions'),
@@ -1078,33 +976,12 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 		});
 
 		this.registerExtensionAction({
-			id: 'workbench.extensions.action.installWorkspaceRecommendedExtensions',
-			title: localize('installWorkspaceRecommendedExtensions', "Install Workspace Recommended Extensions"),
-			icon: installWorkspaceRecommendedIcon,
-			menu: {
-				id: MenuId.ViewTitle,
-				when: ContextKeyExpr.equals('view', WORKSPACE_RECOMMENDATIONS_VIEW_ID),
-				group: 'navigation',
-				order: 1
-			},
-			run: async (accessor: ServicesAccessor) => {
-				const view = accessor.get(IViewsService).getActiveViewWithId(WORKSPACE_RECOMMENDATIONS_VIEW_ID) as IWorkspaceRecommendedExtensionsView;
-				return view.installWorkspaceRecommendations();
-			}
-		});
-
-		this.registerExtensionAction({
 			id: ConfigureWorkspaceFolderRecommendedExtensionsAction.ID,
 			title: ConfigureWorkspaceFolderRecommendedExtensionsAction.LABEL,
 			icon: configureRecommendedIcon,
 			menu: [{
 				id: MenuId.CommandPalette,
 				when: WorkbenchStateContext.notEqualsTo('empty'),
-			}, {
-				id: MenuId.ViewTitle,
-				when: ContextKeyExpr.equals('view', WORKSPACE_RECOMMENDATIONS_VIEW_ID),
-				group: 'navigation',
-				order: 2
 			}],
 			run: () => runAction(this.instantiationService.createInstance(ConfigureWorkspaceFolderRecommendedExtensionsAction, ConfigureWorkspaceFolderRecommendedExtensionsAction.ID, ConfigureWorkspaceFolderRecommendedExtensionsAction.LABEL))
 		});

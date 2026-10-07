@@ -13,7 +13,7 @@ import { Disposable, IDisposable } from '../../../../base/common/lifecycle.js';
 import { areSameExtensions } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { IExtensionManifest, ExtensionType } from '../../../../platform/extensions/common/extensions.js';
 import { URI } from '../../../../base/common/uri.js';
-import { IView, IViewPaneContainer } from '../../../common/views.js';
+import { IViewPaneContainer } from '../../../common/views.js';
 import { RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
 import { IExtensionsStatus as IExtensionRuntimeStatus } from '../../../services/extensions/common/extensions.js';
 import { IExtensionEditorOptions } from './extensionsInput.js';
@@ -31,10 +31,6 @@ export interface IExtensionsViewPaneContainer extends IViewPaneContainer {
 	readonly searchValue: string | undefined;
 	search(text: string): void;
 	refresh(): Promise<void>;
-}
-
-export interface IWorkspaceRecommendedExtensionsView extends IView {
-	installWorkspaceRecommendations(): Promise<void>;
 }
 
 export const enum ExtensionState {
@@ -250,7 +246,6 @@ export class ExtensionContainers extends Disposable {
 	}
 }
 
-export const WORKSPACE_RECOMMENDATIONS_VIEW_ID = 'workbench.views.extensions.workspaceRecommendations';
 export const OUTDATED_EXTENSIONS_VIEW_ID = 'workbench.views.extensions.searchOutdated';
 export const TOGGLE_IGNORE_EXTENSION_ACTION_ID = 'workbench.extensions.action.toggleIgnoreExtension';
 export const LIST_WORKSPACE_UNSUPPORTED_EXTENSIONS_COMMAND_ID = 'workbench.extensions.action.listWorkspaceUnsupportedExtensions';
