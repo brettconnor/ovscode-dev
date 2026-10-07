@@ -998,45 +998,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 		});
 
 		this.registerExtensionAction({
-			id: 'workbench.extensions.action.download',
-			title: localize('download VSIX', "Download VSIX"),
-			menu: {
-				id: MenuId.ExtensionContext,
-				when: ContextKeyExpr.and(ContextKeyExpr.not('extensionDisallowInstall'), ContextKeyExpr.has('isGalleryExtension')),
-				order: this.productService.quality === 'stable' ? 0 : 1
-			},
-			run: async (accessor: ServicesAccessor, extensionId: string) => {
-				accessor.get(IExtensionsWorkbenchService).downloadVSIX(extensionId, 'release');
-			}
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.downloadPreRelease',
-			title: localize('download pre-release', "Download Pre-Release VSIX"),
-			menu: {
-				id: MenuId.ExtensionContext,
-				when: ContextKeyExpr.and(ContextKeyExpr.not('extensionDisallowInstall'), ContextKeyExpr.has('isGalleryExtension'), ContextKeyExpr.has('extensionHasPreReleaseVersion')),
-				order: this.productService.quality === 'stable' ? 1 : 0
-			},
-			run: async (accessor: ServicesAccessor, extensionId: string) => {
-				accessor.get(IExtensionsWorkbenchService).downloadVSIX(extensionId, 'prerelease');
-			}
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.downloadSpecificVersion',
-			title: localize('download specific version', "Download Specific Version VSIX..."),
-			menu: {
-				id: MenuId.ExtensionContext,
-				when: ContextKeyExpr.and(ContextKeyExpr.not('extensionDisallowInstall'), ContextKeyExpr.has('isGalleryExtension')),
-				order: 2
-			},
-			run: async (accessor: ServicesAccessor, extensionId: string) => {
-				accessor.get(IExtensionsWorkbenchService).downloadVSIX(extensionId, 'any');
-			}
-		});
-
-		this.registerExtensionAction({
 			id: 'workbench.extensions.action.manageAccountPreferences',
 			title: localize2('workbench.extensions.action.changeAccountPreference', "Account Preferences"),
 			menu: {
