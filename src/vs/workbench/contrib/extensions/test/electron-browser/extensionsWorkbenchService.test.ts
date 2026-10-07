@@ -25,7 +25,6 @@ import { ITelemetryService } from '../../../../../platform/telemetry/common/tele
 import { NullTelemetryService } from '../../../../../platform/telemetry/common/telemetryUtils.js';
 import { IWorkspaceContextService } from '../../../../../platform/workspace/common/workspace.js';
 import { TestExtensionTipsService, TestSharedProcessService } from '../../../../test/electron-browser/workbenchTestServices.js';
-import { ConfigurationTarget, IConfigurationChangeEvent, IConfigurationService } from '../../../../../platform/configuration/common/configuration.js';
 import { ILogService, NullLogService } from '../../../../../platform/log/common/log.js';
 import { IProgressService } from '../../../../../platform/progress/common/progress.js';
 import { ProgressService } from '../../../../services/progress/browser/progressService.js';

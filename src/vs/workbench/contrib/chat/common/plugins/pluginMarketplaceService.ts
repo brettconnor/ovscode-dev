@@ -24,7 +24,6 @@ import { ObservableMemento, observableMemento } from '../../../../../platform/ob
 import { asJson, IRequestService } from '../../../../../platform/request/common/request.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../../platform/storage/common/storage.js';
 import type { Dto } from '../../../../services/extensions/common/proxyIdentifier.js';
-import { IExtensionsWorkbenchService } from '../../../extensions/common/extensions.js';
 import { ChatConfiguration } from '../constants.js';
 import { IAgentPluginRepositoryService } from './agentPluginRepositoryService.js';
 import { FileBackedInstalledPluginsStore, IStoredInstalledPlugin } from './fileBackedInstalledPluginsStore.js';
@@ -338,7 +337,6 @@ export class PluginMarketplaceService extends Disposable implements IPluginMarke
 		@IStorageService private readonly _storageService: IStorageService,
 		@IWorkspacePluginSettingsService private readonly _workspacePluginSettingsService: IWorkspacePluginSettingsService,
 		@IWorkspaceTrustManagementService private readonly _workspaceTrustService: IWorkspaceTrustManagementService,
-		@IExtensionsWorkbenchService private readonly _extensionsWorkbenchService: IExtensionsWorkbenchService,
 		@IMeteredConnectionService private readonly _meteredConnectionService: IMeteredConnectionService,
 	) {
 		super();

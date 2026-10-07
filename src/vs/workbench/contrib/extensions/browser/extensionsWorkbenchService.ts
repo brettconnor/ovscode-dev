@@ -9,7 +9,7 @@ import { Event, Emitter } from '../../../../base/common/event.js';
 import { index } from '../../../../base/common/arrays.js';
 import { CancelablePromise, createCancelablePromise } from '../../../../base/common/async.js';
 import { CancellationError, getErrorMessage, isCancellationError } from '../../../../base/common/errors.js';
-import { Disposable, MutableDisposable, toDisposable } from '../../../../base/common/lifecycle.js';
+import { Disposable, MutableDisposable } from '../../../../base/common/lifecycle.js';
 import { IPager, singlePagePager } from '../../../../base/common/paging.js';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
 import {
@@ -19,9 +19,7 @@ import {
 	InstallOptions, IProductVersion,
 	UninstallExtensionInfo,
 	TargetPlatformToString,
-	IAllowedExtensionsService,
 	AllowedExtensionsConfigKey,
-	EXTENSION_INSTALL_SKIP_PUBLISHER_TRUST_CONTEXT,
 	ExtensionManagementError,
 	ExtensionManagementErrorCode,
 	MaliciousExtensionInfo,
@@ -51,7 +49,7 @@ import { IProductService } from '../../../../platform/product/common/productServ
 import { FileAccess } from '../../../../base/common/network.js';
 import { IIgnoredExtensionsManagementService } from '../../../../platform/userDataSync/common/ignoredExtensions.js';
 import { IUserDataAutoSyncService, IUserDataSyncEnablementService, SyncResource } from '../../../../platform/userDataSync/common/userDataSync.js';
-import { isDefined, isString, isUndefined } from '../../../../base/common/types.js';
+import { isString, isUndefined } from '../../../../base/common/types.js';
 import { IExtensionManifestPropertiesService } from '../../../services/extensions/common/extensionManifestPropertiesService.js';
 import { IExtensionService, IExtensionsStatus as IExtensionRuntimeStatus, toExtension, toExtensionDescription } from '../../../services/extensions/common/extensions.js';
 import { isWeb, language } from '../../../../base/common/platform.js';
@@ -1027,7 +1025,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		@IViewsService private readonly viewsService: IViewsService,
 		@IFileDialogService private readonly fileDialogService: IFileDialogService,
 		@IQuickInputService private readonly quickInputService: IQuickInputService,
-		@IAllowedExtensionsService private readonly allowedExtensionsService: IAllowedExtensionsService
 	) {
 		super();
 

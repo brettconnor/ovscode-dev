@@ -1466,6 +1466,7 @@ class EnableAIFeaturesGloballyAction extends ExtensionAction {
 
 	constructor(
 		@IProductService private readonly productService: IProductService,
+		@IConfigurationService private readonly configurationService: IConfigurationService,
 	) {
 		super(EnableAIFeaturesGloballyAction.ID, EnableAIFeaturesGloballyAction.LABEL, ExtensionAction.LABEL_ACTION_CLASS);
 		this.tooltip = localize('enableAIGloballyActionToolTip', "Enable AI features");
