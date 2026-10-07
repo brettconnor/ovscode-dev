@@ -9,7 +9,7 @@ import { TestInstantiationService } from '../../../../../platform/instantiation/
 import { IExtensionsWorkbenchService } from '../../common/extensions.js';
 import { ExtensionsWorkbenchService } from '../../browser/extensionsWorkbenchService.js';
 import {
-	IExtensionManagementService, IExtensionGalleryService, ILocalExtension
+	IExtensionManagementService, IExtensionGalleryService, ILocalExtension, getTargetPlatform
 } from '../../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IWorkbenchExtensionEnablementService, EnablementState, IExtensionManagementServerService, IExtensionManagementServer, IProfileAwareExtensionManagementService, IWorkbenchExtensionManagementService } from '../../../../services/extensionManagement/common/extensionManagement.js';
 import { getGalleryExtensionId } from '../../../../../platform/extensionManagement/common/extensionManagementUtil.js';
@@ -38,6 +38,8 @@ import { IMenuService } from '../../../../../platform/actions/common/actions.js'
 import { TestContextService } from '../../../../test/common/workbenchTestServices.js';
 import { IViewDescriptorService, ViewContainerLocation } from '../../../../common/views.js';
 import { Schemas } from '../../../../../base/common/network.js';
+import { platform } from '../../../../../base/common/platform.js';
+import { arch } from '../../../../../base/common/process.js';
 import { IProductService } from '../../../../../platform/product/common/productService.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
 import { IUpdateService, State } from '../../../../../platform/update/common/update.js';

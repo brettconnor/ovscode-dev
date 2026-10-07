@@ -6,7 +6,7 @@
 import { localize } from '../../../../nls.js';
 import { Disposable, DisposableStore, toDisposable } from '../../../../base/common/lifecycle.js';
 import { Event, Emitter } from '../../../../base/common/event.js';
-import { isCancellationError, getErrorMessage, CancellationError } from '../../../../base/common/errors.js';
+import { isCancellationError, getErrorMessage } from '../../../../base/common/errors.js';
 import { PagedModel, IPagedModel, DelayedPagedModel } from '../../../../base/common/paging.js';
 import { SortOrder, ExtensionGalleryErrorCode, ExtensionGalleryError } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IExtensionManagementServer, IExtensionManagementServerService, EnablementState, IWorkbenchExtensionManagementService, IWorkbenchExtensionEnablementService } from '../../../services/extensionManagement/common/extensionManagement.js';
