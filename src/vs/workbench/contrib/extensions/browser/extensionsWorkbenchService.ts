@@ -83,7 +83,6 @@ export class Extension implements IExtension {
 
 	public enablementState: EnablementState = EnablementState.EnabledGlobally;
 
-	private galleryResourcesCache = new Map<string, any>();
 
 	private _missingFromGallery: boolean | undefined;
 
@@ -125,7 +124,6 @@ export class Extension implements IExtension {
 
 	set gallery(gallery: IGalleryExtension | undefined) {
 		this._gallery = gallery;
-		this.galleryResourcesCache.clear();
 	}
 
 	get missingFromGallery(): boolean {
@@ -396,16 +394,11 @@ export class Extension implements IExtension {
 		return this.local && !this.outdated ? this.local : undefined;
 	}
 
-	async getManifest(token: CancellationToken): Promise<IExtensionManifest | null> {
-		const local = this.getLocal();
+	async getManifest(_token: CancellationToken): Promise<IExtensionManifest | null> {
+		const local = this.local;
 		if (local) {
 			return local.manifest;
 		}
-
-		if (this.gallery) {
-			return this.getGalleryManifest(token);
-		}
-
 		if (this.resourceExtension) {
 			return this.resourceExtension.manifest;
 		}
@@ -413,31 +406,8 @@ export class Extension implements IExtension {
 		return null;
 	}
 
-	async getGalleryManifest(token: CancellationToken = CancellationToken.None): Promise<IExtensionManifest | null> {
-		if (this.gallery) {
-			let cache = this.galleryResourcesCache.get('manifest');
-			if (!cache) {
-				if (this.gallery.assets.manifest) {
-					this.galleryResourcesCache.set('manifest', cache = this.galleryService.getManifest(this.gallery, token)
-						.catch(e => {
-							this.galleryResourcesCache.delete('manifest');
-							throw e;
-						}));
-				} else {
-					this.logService.error(nls.localize('Manifest is not found', "Manifest is not found"), this.identifier.id);
-				}
-			}
-			return cache;
-		}
-		return null;
-	}
-
 	hasReadme(): boolean {
 		if (this.local && this.local.readmeUrl) {
-			return true;
-		}
-
-		if (this.gallery && this.gallery.assets.readme) {
 			return true;
 		}
 
@@ -448,18 +418,11 @@ export class Extension implements IExtension {
 		return this.type === ExtensionType.System;
 	}
 
-	async getReadme(token: CancellationToken): Promise<string> {
-		const local = this.getLocal();
+	async getReadme(_token: CancellationToken): Promise<string> {
+		const local = this.local;
 		if (local?.readmeUrl) {
 			const content = await this.fileService.readFile(local.readmeUrl);
 			return content.value.toString();
-		}
-
-		if (this.gallery) {
-			if (this.gallery.assets.readme) {
-				return this.galleryService.getReadme(this.gallery, token);
-			}
-			this.telemetryService.publicLog('extensions:NotFoundReadMe', this.telemetryData);
 		}
 
 		if (this.type === ExtensionType.System) {
@@ -483,22 +446,14 @@ ${this.description}
 			return true;
 		}
 
-		if (this.gallery && this.gallery.assets.changelog) {
-			return true;
-		}
-
 		return this.type === ExtensionType.System;
 	}
 
-	async getChangelog(token: CancellationToken): Promise<string> {
-		const local = this.getLocal();
+	async getChangelog(_token: CancellationToken): Promise<string> {
+		const local = this.local;
 		if (local?.changelogUrl) {
 			const content = await this.fileService.readFile(local.changelogUrl);
 			return content.value.toString();
-		}
-
-		if (this.gallery?.assets.changelog) {
-			return this.galleryService.getChangelog(this.gallery, token);
 		}
 
 		if (this.type === ExtensionType.System) {

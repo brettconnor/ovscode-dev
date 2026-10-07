@@ -28,7 +28,7 @@ import { localize } from '../../../../nls.js';
 import { Action2, registerAction2 } from '../../../../platform/actions/common/actions.js';
 import { ContextKeyExpr, IContextKeyService, IScopedContextKeyService } from '../../../../platform/contextkey/common/contextkey.js';
 import { IContextMenuService } from '../../../../platform/contextview/browser/contextView.js';
-import { computeSize, FilterType, IGalleryExtension, ILocalExtension } from '../../../../platform/extensionManagement/common/extensionManagement.js';
+import { computeSize, ILocalExtension } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { areSameExtensions } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { ExtensionType, IExtensionManifest } from '../../../../platform/extensions/common/extensions.js';
 import { IInstantiationService, ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
@@ -46,39 +46,30 @@ import {
 	ButtonWithDropDownExtensionAction,
 	DisableDropDownAction,
 	EnableDropDownAction,
-	ButtonWithDropdownExtensionActionViewItem, DropDownExtensionAction,
-	ExtensionEditorManageExtensionAction,
+	ButtonWithDropdownExtensionActionViewItem,
 	ExtensionStatusAction,
 	ExtensionStatusLabelAction,
-	InstallAnotherVersionAction,
-	InstallDropdownAction, InstallingLabelAction,
-	LocalInstallAction,
-	MigrateDeprecatedExtensionAction,
 	ExtensionRuntimeStateAction,
-	RemoteInstallAction,
 	SetColorThemeAction,
 	SetFileIconThemeAction,
 	SetProductIconThemeAction,
 	UninstallAction,
-	WebInstallAction,
 } from './extensionsActions.js';
 import { Delegate } from './extensionsList.js';
 import { ExtensionData, ExtensionsGridView, ExtensionsTree, getExtensions } from './extensionsViewer.js';
-import { ExtensionRecommendationWidget, ExtensionStatusWidget, ExtensionWidget, InstallCountWidget, RatingsWidget, RemoteBadgeWidget, SponsorWidget, PublisherWidget, onClick, ExtensionKindIndicatorWidget, ExtensionIconWidget } from './extensionsWidgets.js';
+import { ExtensionRecommendationWidget, ExtensionStatusWidget, ExtensionWidget, RemoteBadgeWidget, onClick, ExtensionIconWidget } from './extensionsWidgets.js';
 import { ExtensionContainers, ExtensionEditorTab, ExtensionState, IExtension, IExtensionContainer, IExtensionsWorkbenchService } from '../common/extensions.js';
 import { ExtensionsInput, IExtensionEditorOptions } from '../common/extensionsInput.js';
 import { DEFAULT_MARKDOWN_STYLES, renderMarkdownDocument } from '../../markdown/browser/markdownDocumentRenderer.js';
 import { IWebview, IWebviewService, KEYBINDING_CONTEXT_WEBVIEW_FIND_WIDGET_FOCUSED } from '../../webview/browser/webview.js';
 import { IEditorGroup } from '../../../services/editor/common/editorGroupsService.js';
 import { IEditorService } from '../../../services/editor/common/editorService.js';
-import { IExtensionRecommendationsService } from '../../../services/extensionRecommendations/common/extensionRecommendations.js';
 import { IExtensionService } from '../../../services/extensions/common/extensions.js';
 import { IUriIdentityService } from '../../../../platform/uriIdentity/common/uriIdentity.js';
 import { IHoverService } from '../../../../platform/hover/browser/hover.js';
 import { ByteSize, IFileService } from '../../../../platform/files/common/files.js';
 import { IUserDataProfilesService } from '../../../../platform/userDataProfile/common/userDataProfile.js';
 import { IRemoteAgentService } from '../../../services/remote/common/remoteAgentService.js';
-import { IExtensionGalleryManifestService } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
 import { ShowCurrentReleaseNotesActionId } from '../../update/common/update.js';
 import { ThemeIcon } from '../../../../base/common/themables.js';
 import { Codicon } from '../../../../base/common/codicons.js';
@@ -160,8 +151,6 @@ interface IExtensionEditorTemplate {
 	content: HTMLElement;
 	header: HTMLElement;
 	extension: IExtension;
-	gallery: IGalleryExtension | null;
-	manifest: IExtensionManifest | null;
 }
 
 const enum WebviewIndex {
@@ -169,19 +158,7 @@ const enum WebviewIndex {
 	Changelog
 }
 
-abstract class ExtensionWithDifferentGalleryVersionWidget extends ExtensionWidget {
-	private _gallery: IGalleryExtension | null = null;
-	get gallery(): IGalleryExtension | null { return this._gallery; }
-	set gallery(gallery: IGalleryExtension | null) {
-		if (this.extension && gallery && !areSameExtensions(this.extension.identifier, gallery.identifier)) {
-			return;
-		}
-		this._gallery = gallery;
-		this.update();
-	}
-}
-
-class VersionWidget extends ExtensionWithDifferentGalleryVersionWidget {
+class VersionWidget extends ExtensionWidget {
 	private readonly element: HTMLElement;
 	constructor(
 		container: HTMLElement,
@@ -193,7 +170,7 @@ class VersionWidget extends ExtensionWithDifferentGalleryVersionWidget {
 		this.render();
 	}
 	render(): void {
-		if (this.extension?.preRelease) {
+		if (this.extension?.local?.isPreReleaseVersion) {
 			show(this.element);
 		} else {
 			hide(this.element);
@@ -232,7 +209,6 @@ export class ExtensionEditor extends EditorPane {
 		@IThemeService themeService: IThemeService,
 		@INotificationService private readonly notificationService: INotificationService,
 		@IOpenerService private readonly openerService: IOpenerService,
-		@IExtensionRecommendationsService private readonly extensionRecommendationsService: IExtensionRecommendationsService,
 		@IStorageService storageService: IStorageService,
 		@IExtensionService private readonly extensionService: IExtensionService,
 		@IWebviewService private readonly webviewService: IWebviewService,
@@ -262,12 +238,12 @@ export class ExtensionEditor extends EditorPane {
 		const header = append(root, $('.header'));
 
 		const iconContainer = append(header, $('.icon-container'));
-		const iconWidget = this.instantiationService.createInstance(ExtensionIconWidget, iconContainer);
+		const iconWidget = this.instantiationService.createInstance(ExtensionIconWidget, iconContainer, false);
 		const remoteBadge = this.instantiationService.createInstance(RemoteBadgeWidget, iconContainer, true);
 
 		const details = append(header, $('.details'));
 		const title = append(details, $('.title'));
-		const name = append(title, $('span.name.clickable', { role: 'heading', tabIndex: 0 }));
+		const name = append(title, $('span.name', { role: 'heading', tabIndex: 0 }));
 		this._register(this.hoverService.setupManagedHover(getDefaultHoverDelegate('mouse'), name, localize('name', "Extension name")));
 		const versionWidget = new VersionWidget(title, this.hoverService);
 
@@ -283,38 +259,16 @@ export class ExtensionEditor extends EditorPane {
 
 		const publisherContainer = append(subtitle, $('.subtitle-entry'));
 		subTitleEntryContainers.push(publisherContainer);
-		const publisherWidget = this.instantiationService.createInstance(PublisherWidget, publisherContainer, false);
-
-		const extensionKindContainer = append(subtitle, $('.subtitle-entry'));
-		subTitleEntryContainers.push(extensionKindContainer);
-		const extensionKindWidget = this.instantiationService.createInstance(ExtensionKindIndicatorWidget, extensionKindContainer, false);
-
-		const installCountContainer = append(subtitle, $('.subtitle-entry'));
-		subTitleEntryContainers.push(installCountContainer);
-		const installCountWidget = this.instantiationService.createInstance(InstallCountWidget, installCountContainer, false);
-
-		const ratingsContainer = append(subtitle, $('.subtitle-entry'));
-		subTitleEntryContainers.push(ratingsContainer);
-		const ratingsWidget = this.instantiationService.createInstance(RatingsWidget, ratingsContainer, false);
-
-		const sponsorContainer = append(subtitle, $('.subtitle-entry'));
-		subTitleEntryContainers.push(sponsorContainer);
-		const sponsorWidget = this.instantiationService.createInstance(SponsorWidget, sponsorContainer);
+		const publisherName = append(publisherContainer, $('span.publisher-name.ellipsis'));
 
 		const widgets: ExtensionWidget[] = [
 			iconWidget,
 			remoteBadge,
 			versionWidget,
-			publisherWidget,
-			extensionKindWidget,
-			installCountWidget,
-			ratingsWidget,
-			sponsorWidget,
 		];
 
 		const description = append(details, $('.description'));
 
-		const installAction = this.instantiationService.createInstance(InstallDropdownAction);
 		const actions = [
 			this.instantiationService.createInstance(ExtensionRuntimeStateAction),
 			this.instantiationService.createInstance(ExtensionStatusLabelAction),
@@ -323,27 +277,16 @@ export class ExtensionEditor extends EditorPane {
 			this.instantiationService.createInstance(SetProductIconThemeAction),
 			this.instantiationService.createInstance(EnableDropDownAction),
 			this.instantiationService.createInstance(DisableDropDownAction),
-			this.instantiationService.createInstance(RemoteInstallAction, false),
-			this.instantiationService.createInstance(LocalInstallAction),
-			this.instantiationService.createInstance(WebInstallAction),
-			installAction,
-			this.instantiationService.createInstance(InstallingLabelAction),
 			this.instantiationService.createInstance(ButtonWithDropDownExtensionAction, 'extensions.uninstall', UninstallAction.UninstallClass, [
 				[
-					this.instantiationService.createInstance(MigrateDeprecatedExtensionAction, false),
 					this.instantiationService.createInstance(UninstallAction),
-					this.instantiationService.createInstance(InstallAnotherVersionAction, null, true),
 				]
 			]),
-			new ExtensionEditorManageExtensionAction(this.scopedContextKeyService || this.contextKeyService, this.instantiationService),
 		];
 
 		const actionsAndStatusContainer = append(details, $('.actions-status-container'));
 		const extensionActionBar = this._register(new ActionBar(actionsAndStatusContainer, {
 			actionViewItemProvider: (action: IAction, options) => {
-				if (action instanceof DropDownExtensionAction) {
-					return action.createActionViewItem(options);
-				}
 				if (action instanceof ButtonWithDropDownExtensionAction) {
 					return new ButtonWithDropdownExtensionActionViewItem(
 						action,
@@ -418,6 +361,7 @@ export class ExtensionEditor extends EditorPane {
 			extensionActionBar,
 			set extension(extension: IExtension) {
 				extensionContainers.extension = extension;
+				publisherName.textContent = extension.local?.manifest.publisher ?? extension.resourceExtension?.manifest.publisher ?? '';
 				let lastNonEmptySubtitleEntryContainer;
 				for (const subTitleEntryElement of subTitleEntryContainers) {
 					subTitleEntryElement.classList.remove('last-non-empty');
@@ -429,12 +373,6 @@ export class ExtensionEditor extends EditorPane {
 					lastNonEmptySubtitleEntryContainer.classList.add('last-non-empty');
 				}
 			},
-			set gallery(gallery: IGalleryExtension | null) {
-				versionWidget.gallery = gallery;
-			},
-			set manifest(manifest: IExtensionManifest | null) {
-				installAction.manifest = manifest;
-			}
 		};
 	}
 
@@ -478,48 +416,21 @@ export class ExtensionEditor extends EditorPane {
 		this.extensionManifest = new Cache(() => extension.getManifest(token));
 
 		template.extension = extension;
-		template.gallery = extension.gallery ?? null;
-		template.manifest = null;
 
-		template.name.textContent = extension.displayName;
-		template.name.classList.toggle('clickable', !!extension.url);
+		const localManifest = extension.local?.manifest ?? extension.resourceExtension?.manifest;
+		template.name.textContent = localManifest?.displayName || localManifest?.name || extension.identifier.id;
 		template.name.classList.toggle('deprecated', !!extension.deprecationInfo);
-		template.preview.style.display = extension.preview ? 'inherit' : 'none';
+		template.preview.style.display = extension.local?.isPreReleaseVersion ? 'inherit' : 'none';
 		template.builtin.style.display = extension.isBuiltin ? 'inherit' : 'none';
 
-		template.description.textContent = extension.description;
-
-		if (extension.url) {
-			this.transientDisposables.add(onClick(template.name, () => this.openerService.open(URI.parse(extension.url!))));
-		}
+		template.description.textContent = localManifest?.description ?? '';
 
 		const manifest = await this.extensionManifest.get().promise;
 		if (token.isCancellationRequested) {
 			return;
 		}
 
-		if (manifest) {
-			template.manifest = manifest;
-		}
-
 		this.renderNavbar(extension, manifest, template, preserveFocus);
-
-		// report telemetry
-		const extRecommendations = this.extensionRecommendationsService.getAllRecommendationsWithReason();
-		let recommendationsData = {};
-		if (extRecommendations[extension.identifier.id.toLowerCase()]) {
-			recommendationsData = { recommendationReason: extRecommendations[extension.identifier.id.toLowerCase()].reasonId };
-		}
-		/* __GDPR__
-		"extensionGallery:openExtension" : {
-			"owner": "sandy081",
-			"recommendationReason": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "isMeasurement": true },
-			"${include}": [
-				"${GalleryExtensionTelemetryData}"
-			]
-		}
-		*/
-		this.telemetryService.publicLog('extensionGallery:openExtension', { ...extension.telemetryData, ...recommendationsData });
 
 	}
 
@@ -539,7 +450,7 @@ export class ExtensionEditor extends EditorPane {
 		if (extension.hasChangelog()) {
 			template.navbar.push(ExtensionEditorTab.Changelog, localize('changelog', "Changelog"), localize('changelogtooltip', "Extension update history, rendered from the extension's 'CHANGELOG.md' file"));
 		}
-		if (extension.dependencies.length) {
+		if (manifest?.extensionDependencies?.length) {
 			template.navbar.push(ExtensionEditorTab.Dependencies, localize('dependencies', "Dependencies"), localize('dependenciestooltip', "Lists extensions this extension depends on"));
 		}
 		if (manifest && manifest.extensionPack?.length && !this.shallRenderAsExtensionPack(manifest)) {
@@ -888,7 +799,8 @@ export class ExtensionEditor extends EditorPane {
 			return Promise.resolve(null);
 		}
 
-		if (arrays.isFalsyOrEmpty(extension.dependencies)) {
+		const dependencies = extension.local?.manifest.extensionDependencies ?? extension.resourceExtension?.manifest.extensionDependencies ?? [];
+		if (arrays.isFalsyOrEmpty(dependencies)) {
 			append(contentContainer, $('p.nocontent')).textContent = localize('noDependencies', "No Dependencies");
 			return Promise.resolve(contentContainer);
 		}
@@ -899,7 +811,7 @@ export class ExtensionEditor extends EditorPane {
 		this.contentDisposables.add(scrollableContent);
 
 		const dependenciesTree = this.instantiationService.createInstance(ExtensionsTree,
-			new ExtensionData(extension, null, extension => extension.dependencies || [], this.extensionsWorkbenchService), content,
+			new ExtensionData(extension, null, () => dependencies, this.extensionsWorkbenchService), content,
 			{
 				listBackground: editorBackground
 			});
@@ -992,7 +904,6 @@ class AdditionalDetailsWidget extends Disposable {
 		@IFileService private readonly fileService: IFileService,
 		@IUriIdentityService private readonly uriIdentityService: IUriIdentityService,
 		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
-		@IExtensionGalleryManifestService private readonly extensionGalleryManifestService: IExtensionGalleryManifestService,
 	) {
 		super();
 		this.render(extension);
@@ -1010,56 +921,36 @@ class AdditionalDetailsWidget extends Disposable {
 		if (extension.local) {
 			this.renderInstallInfo(this.container, extension.local);
 		}
-		if (extension.gallery) {
-			this.renderMarketplaceInfo(this.container, extension);
-		}
 		this.renderCategories(this.container, extension);
 		this.renderExtensionResources(this.container, extension);
 	}
 
 	private renderCategories(container: HTMLElement, extension: IExtension): void {
-		if (extension.categories.length) {
+		const categories = extension.local?.manifest.categories ?? extension.resourceExtension?.manifest.categories ?? [];
+		if (categories.length) {
 			const categoriesContainer = append(container, $('.categories-container.additional-details-element'));
 			append(categoriesContainer, $('.additional-details-title', undefined, localize('categories', "Categories")));
 			const categoriesElement = append(categoriesContainer, $('.categories'));
-			this.extensionGalleryManifestService.getExtensionGalleryManifest()
-				.then(manifest => {
-					const hasCategoryFilter = manifest?.capabilities.extensionQuery.filtering?.some(({ name }) => name === FilterType.Category);
-					for (const category of extension.categories) {
-						const categoryElement = append(categoriesElement, $('span.category', { tabindex: '0' }, category));
-						if (hasCategoryFilter) {
-							categoryElement.classList.add('clickable');
-							this.disposables.add(onClick(categoryElement, () => this.extensionsWorkbenchService.openSearch(`@category:"${category}"`)));
-						}
-					}
-				});
+			for (const category of categories) {
+				append(categoriesElement, $('span.category', { tabindex: '0' }, category));
+			}
 		}
 	}
 
 	private renderExtensionResources(container: HTMLElement, extension: IExtension): void {
 		const resources: [string, ThemeIcon, URI][] = [];
-		if (extension.repository) {
+		const manifest = extension.local?.manifest ?? extension.resourceExtension?.manifest;
+		if (manifest?.repository?.url) {
 			try {
-				resources.push([localize('repository', "Repository"), ThemeIcon.fromId(Codicon.repo.id), URI.parse(extension.repository)]);
+				resources.push([localize('repository', "Repository"), ThemeIcon.fromId(Codicon.repo.id), URI.parse(manifest.repository.url)]);
 			} catch (error) {/* Ignore */ }
 		}
-		if (extension.supportUrl) {
+		if (manifest?.bugs?.url) {
 			try {
-				resources.push([localize('issues', "Issues"), ThemeIcon.fromId(Codicon.issues.id), URI.parse(extension.supportUrl)]);
+				resources.push([localize('issues', "Issues"), ThemeIcon.fromId(Codicon.issues.id), URI.parse(manifest.bugs.url)]);
 			} catch (error) {/* Ignore */ }
 		}
-		if (extension.licenseUrl) {
-			try {
-				resources.push([localize('license', "License"), ThemeIcon.fromId(Codicon.linkExternal.id), URI.parse(extension.licenseUrl)]);
-			} catch (error) {/* Ignore */ }
-		}
-		if (extension.publisherUrl) {
-			resources.push([extension.publisherDisplayName, ThemeIcon.fromId(Codicon.linkExternal.id), extension.publisherUrl]);
-		}
-		if (extension.url) {
-			resources.push([localize('Marketplace', "Marketplace"), ThemeIcon.fromId(Codicon.linkExternal.id), URI.parse(extension.url)]);
-		}
-		if (resources.length || extension.publisherSponsorLink) {
+		if (resources.length) {
 			const extensionResourcesContainer = append(container, $('.resources-container.additional-details-element'));
 			append(extensionResourcesContainer, $('.additional-details-title', undefined, localize('resources', "Resources")));
 			const resourcesElement = append(extensionResourcesContainer, $('.resources'));
@@ -1169,41 +1060,6 @@ class AdditionalDetailsWidget extends Disposable {
 		return extensionCacheLocation;
 	}
 
-	private renderMarketplaceInfo(container: HTMLElement, extension: IExtension): void {
-		const gallery = extension.gallery;
-		const moreInfoContainer = append(container, $('.more-info-container.additional-details-element'));
-		append(moreInfoContainer, $('.additional-details-title', undefined, localize('Marketplace Info', "Marketplace")));
-		const moreInfo = append(moreInfoContainer, $('.more-info'));
-		if (gallery) {
-			if (!extension.local) {
-				append(moreInfo,
-					$('.more-info-entry', undefined,
-						$('div.more-info-entry-name', undefined, localize('id', "Identifier")),
-						$('code', undefined, extension.identifier.id)
-					));
-				append(moreInfo,
-					$('.more-info-entry', undefined,
-						$('div.more-info-entry-name', undefined, localize('Version', "Version")),
-						$('code', undefined, gallery.version)
-					)
-				);
-			}
-			append(moreInfo,
-				$('.more-info-entry', undefined,
-					$('div.more-info-entry-name', undefined, localize('published', "Published")),
-					$('div', {
-						'title': new Date(gallery.releaseDate).toString()
-					}, fromNow(gallery.releaseDate, true, true, true))
-				),
-				$('.more-info-entry', undefined,
-					$('div.more-info-entry-name', undefined, localize('last released', "Last Released")),
-					$('div', {
-						'title': new Date(gallery.lastUpdated).toString()
-					}, fromNow(gallery.lastUpdated, true, true, true))
-				)
-			);
-		}
-	}
 }
 
 const contextKeyExpr = ContextKeyExpr.and(ContextKeyExpr.equals('activeEditor', ExtensionEditor.ID), EditorContextKeys.focus.toNegated());

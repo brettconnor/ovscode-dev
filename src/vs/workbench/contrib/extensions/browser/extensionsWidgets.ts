@@ -5,6 +5,7 @@
 
 import './media/extensionsWidgets.css';
 import * as semver from '../../../../base/common/semver/semver.js';
+import * as resources from '../../../../base/common/resources.js';
 import { Disposable, toDisposable, DisposableStore, MutableDisposable, IDisposable } from '../../../../base/common/lifecycle.js';
 import { IExtension, IExtensionsWorkbenchService, IExtensionContainer, ExtensionState, ExtensionEditorTab, IExtensionsViewState } from '../common/extensions.js';
 import { append, $, reset, addDisposableListener, EventType, finalHandler } from '../../../../base/browser/dom.js';
@@ -49,6 +50,7 @@ import { IViewsService } from '../../../services/views/common/viewsService.js';
 import { VIEW_ID as EXPLORER_VIEW_ID } from '../../files/common/files.js';
 import { IExtensionGalleryManifest, IExtensionGalleryManifestService } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
 import { IMarkdownRendererService } from '../../../../platform/markdown/browser/markdownRenderer.js';
+import { FileAccess } from '../../../../base/common/network.js';
 
 export abstract class ExtensionWidget extends Disposable implements IExtensionContainer {
 	private _extension: IExtension | null = null;
@@ -84,6 +86,7 @@ export class ExtensionIconWidget extends ExtensionWidget {
 
 	constructor(
 		container: HTMLElement,
+		private readonly allowGalleryAssets = true,
 	) {
 		super();
 		this.element = append(container, $('.extension-icon'));
@@ -113,13 +116,14 @@ export class ExtensionIconWidget extends ExtensionWidget {
 			return;
 		}
 
-		if (this.extension.iconUrl) {
-			if (this.iconUrl !== this.extension.iconUrl) {
+		const extensionIconUrl = this.allowGalleryAssets ? this.extension.iconUrl : this.getLocalIconUrl(this.extension);
+		if (extensionIconUrl) {
+			if (this.iconUrl !== extensionIconUrl) {
 				this.iconElement.style.display = 'inherit';
 				this.defaultIconElement.style.display = 'none';
-				this.iconUrl = this.extension.iconUrl;
+				this.iconUrl = extensionIconUrl;
 				this.iconErrorDisposable.value = addDisposableListener(this.iconElement, 'error', () => {
-					if (this.extension?.iconUrlFallback) {
+					if (this.allowGalleryAssets && this.extension?.iconUrlFallback) {
 						this.iconElement.src = this.extension.iconUrlFallback;
 					} else {
 						this.iconElement.style.display = 'none';
@@ -144,6 +148,16 @@ export class ExtensionIconWidget extends ExtensionWidget {
 			this.iconErrorDisposable.clear();
 			this.iconLoadingDisposable.clear();
 		}
+	}
+
+	private getLocalIconUrl(extension: IExtension): string | undefined {
+		if (extension.local?.manifest.icon) {
+			return FileAccess.uriToBrowserUri(resources.joinPath(extension.local.location, extension.local.manifest.icon)).toString(true);
+		}
+		if (extension.resourceExtension?.manifest.icon) {
+			return FileAccess.uriToBrowserUri(resources.joinPath(extension.resourceExtension.location, extension.resourceExtension.manifest.icon)).toString(true);
+		}
+		return undefined;
 	}
 }
 
