@@ -93,9 +93,6 @@ export class Extension implements IExtension {
 		public local: ILocalExtension | undefined,
 		private _gallery: IGalleryExtension | undefined,
 		private readonly resourceExtensionInfo: { resourceExtension: IResourceExtension; isWorkspaceScoped: boolean } | undefined,
-		@IExtensionGalleryService private readonly galleryService: IExtensionGalleryService,
-		@ITelemetryService private readonly telemetryService: ITelemetryService,
-		@ILogService private readonly logService: ILogService,
 		@IFileService private readonly fileService: IFileService,
 		@IProductService private readonly productService: IProductService
 	) {
@@ -388,10 +385,6 @@ export class Extension implements IExtension {
 
 	get hasReleaseVersion(): boolean {
 		return !!this.resourceExtension || !!this.gallery?.hasReleaseVersion;
-	}
-
-	private getLocal(): ILocalExtension | undefined {
-		return this.local && !this.outdated ? this.local : undefined;
 	}
 
 	async getManifest(_token: CancellationToken): Promise<IExtensionManifest | null> {
