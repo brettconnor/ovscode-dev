@@ -12,7 +12,7 @@ import { IInstantiationService } from '../../../../platform/instantiation/common
 import { IListVirtualDelegate } from '../../../../base/browser/ui/list/list.js';
 import { IPagedRenderer } from '../../../../base/browser/ui/list/listPaging.js';
 import { IExtension, ExtensionContainers, ExtensionState, IExtensionsWorkbenchService, IExtensionsViewState } from '../common/extensions.js';
-import { ManageExtensionAction, ExtensionStatusLabelAction, RemoteInstallAction, ExtensionStatusAction, LocalInstallAction, ButtonWithDropDownExtensionAction, InstallDropdownAction, InstallingLabelAction, ButtonWithDropdownExtensionActionViewItem, DropDownExtensionAction, WebInstallAction, MigrateDeprecatedExtensionAction, SetLanguageAction, ClearLanguageAction } from './extensionsActions.js';
+import { ManageExtensionAction, ExtensionStatusLabelAction, RemoteInstallAction, ExtensionStatusAction, LocalInstallAction, ButtonWithDropDownExtensionAction, InstallDropdownAction, InstallingLabelAction, ButtonWithDropdownExtensionActionViewItem, DropDownExtensionAction, WebInstallAction, MigrateDeprecatedExtensionAction } from './extensionsActions.js';
 import { areSameExtensions } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { RatingsWidget, InstallCountWidget, RecommendationWidget, RemoteBadgeWidget, ExtensionPackCountWidget as ExtensionPackBadgeWidget, ExtensionHoverWidget, ExtensionRuntimeStatusWidget, ExtensionRestartRequiredWidget, PreReleaseBookmarkWidget, PublisherWidget, ExtensionKindIndicatorWidget, ExtensionIconWidget } from './extensionsWidgets.js';
 import { IExtensionService } from '../../../services/extensions/common/extensions.js';
@@ -117,8 +117,6 @@ export class Renderer implements IPagedRenderer<IExtension, ITemplateData> {
 			this.instantiationService.createInstance(MigrateDeprecatedExtensionAction, true),
 			this.instantiationService.createInstance(InstallDropdownAction),
 			this.instantiationService.createInstance(InstallingLabelAction),
-			this.instantiationService.createInstance(SetLanguageAction),
-			this.instantiationService.createInstance(ClearLanguageAction),
 			this.instantiationService.createInstance(RemoteInstallAction, false),
 			this.instantiationService.createInstance(LocalInstallAction),
 			this.instantiationService.createInstance(WebInstallAction),

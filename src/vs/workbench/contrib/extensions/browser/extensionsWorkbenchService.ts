@@ -50,9 +50,7 @@ import { FileAccess } from '../../../../base/common/network.js';
 import { isString, isUndefined } from '../../../../base/common/types.js';
 import { IExtensionManifestPropertiesService } from '../../../services/extensions/common/extensionManifestPropertiesService.js';
 import { IExtensionService, IExtensionsStatus as IExtensionRuntimeStatus, toExtension, toExtensionDescription } from '../../../services/extensions/common/extensions.js';
-import { isWeb, language } from '../../../../base/common/platform.js';
-import { getLocale } from '../../../../platform/languagePacks/common/languagePacks.js';
-import { ILocaleService } from '../../../services/localization/common/locale.js';
+import { isWeb } from '../../../../base/common/platform.js';
 import { TelemetryTrustedValue } from '../../../../platform/telemetry/common/telemetryUtils.js';
 import { ILifecycleService, LifecyclePhase } from '../../../services/lifecycle/common/lifecycle.js';
 import { IUserDataProfileService } from '../../../services/userDataProfile/common/userDataProfile.js';
@@ -1007,7 +1005,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		@IExtensionManifestPropertiesService private readonly extensionManifestPropertiesService: IExtensionManifestPropertiesService,
 		@ILogService private readonly logService: ILogService,
 		@IExtensionService private readonly extensionService: IExtensionService,
-		@ILocaleService private readonly localeService: ILocaleService,
 		@ILifecycleService private readonly lifecycleService: ILifecycleService,
 		@IFileService private readonly fileService: IFileService,
 		@IUserDataProfileService private readonly userDataProfileService: IUserDataProfileService,
@@ -2199,35 +2196,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 				}
 			}
 		});
-	}
-
-	canSetLanguage(extension: IExtension): boolean {
-		if (!isWeb) {
-			return false;
-		}
-
-		if (!extension.gallery) {
-			return false;
-		}
-
-		const locale = getLocale(extension.gallery);
-		if (!locale) {
-			return false;
-		}
-
-		return true;
-	}
-
-	async setLanguage(extension: IExtension): Promise<void> {
-		if (!this.canSetLanguage(extension)) {
-			throw new Error('Can not set language');
-		}
-		const locale = getLocale(extension.gallery!);
-		if (locale === language) {
-			return;
-		}
-		const localizedLanguageName = extension.gallery?.properties?.localizedLanguages?.[0];
-		return this.localeService.setLocale({ id: locale, galleryExtension: extension.gallery, extensionId: extension.identifier.id, label: localizedLanguageName ?? extension.displayName });
 	}
 
 	setEnablement(extensions: IExtension | IExtension[], enablementState: EnablementState): Promise<void> {

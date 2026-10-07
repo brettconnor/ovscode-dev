@@ -63,7 +63,7 @@ import { ExtensionEditor } from './extensionEditor.js';
 import { ExtensionEnablementWorkspaceTrustTransitionParticipant } from './extensionEnablementWorkspaceTrustTransitionParticipant.js';
 import { ExtensionRecommendationNotificationService } from './extensionRecommendationNotificationService.js';
 import { ExtensionRecommendationsService } from './extensionRecommendationsService.js';
-import { ClearLanguageAction, ConfigureWorkspaceFolderRecommendedExtensionsAction, ConfigureWorkspaceRecommendedExtensionsAction, InstallAction, InstallAnotherVersionAction, InstallSpecificVersionOfExtensionAction, SetColorThemeAction, SetFileIconThemeAction, SetProductIconThemeAction } from './extensionsActions.js';
+import { ConfigureWorkspaceFolderRecommendedExtensionsAction, ConfigureWorkspaceRecommendedExtensionsAction, InstallAction, InstallAnotherVersionAction, InstallSpecificVersionOfExtensionAction, SetColorThemeAction, SetFileIconThemeAction, SetProductIconThemeAction } from './extensionsActions.js';
 import { ExtensionActivationProgress } from './extensionsActivationProgress.js';
 import { ExtensionEnablementContextKeysContribution } from './extensionEnablementContext.js';
 import { ExtensionDependencyChecker } from './extensionsDependencyChecker.js';
@@ -891,25 +891,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 					action.extension = extension;
 					return runAction(action);
 				}
-			}
-		});
-
-		this.registerExtensionAction({
-			id: ClearLanguageAction.ID,
-			title: ClearLanguageAction.TITLE,
-			menu: {
-				id: MenuId.ExtensionContext,
-				group: INSTALL_ACTIONS_GROUP,
-				order: 0,
-				when: ContextKeyExpr.and(ContextKeyExpr.not('inExtensionEditor'), ContextKeyExpr.has('canSetLanguage'), ContextKeyExpr.has('isActiveLanguagePackExtension'))
-			},
-			run: async (accessor: ServicesAccessor, extensionId: string) => {
-				const instantiationService = accessor.get(IInstantiationService);
-				const extensionsWorkbenchService = accessor.get(IExtensionsWorkbenchService);
-				const extension = (await extensionsWorkbenchService.getExtensions([{ id: extensionId }], CancellationToken.None))[0];
-				const action = instantiationService.createInstance(ClearLanguageAction);
-				action.extension = extension;
-				return runAction(action);
 			}
 		});
 

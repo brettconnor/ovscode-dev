@@ -8,7 +8,6 @@ import { Emitter, Event } from '../../../../base/common/event.js';
 import { $, append, addDisposableListener, EventType, clearNode, getActiveWindow } from '../../../../base/browser/dom.js';
 import { isCancellationError } from '../../../../base/common/errors.js';
 import { StopWatch } from '../../../../base/common/stopwatch.js';
-import { URI } from '../../../../base/common/uri.js';
 import { isMacintosh } from '../../../../base/common/platform.js';
 import { assertDefined } from '../../../../base/common/types.js';
 import { FileAccess } from '../../../../base/common/network.js';

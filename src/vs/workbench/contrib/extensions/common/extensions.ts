@@ -146,8 +146,6 @@ export interface IExtensionsWorkbenchService {
 	downloadVSIX(extension: string, versionKind: 'prerelease' | 'release' | 'any'): Promise<void>;
 	uninstall(extension: IExtension): Promise<void>;
 	togglePreRelease(extension: IExtension): Promise<void>;
-	canSetLanguage(extension: IExtension): boolean;
-	setLanguage(extension: IExtension): Promise<void>;
 	setEnablement(extensions: IExtension | IExtension[], enablementState: EnablementState): Promise<void>;
 	open(extension: IExtension | string, options?: IExtensionEditorOptions): Promise<void>;
 	openSearch(searchValue: string, focus?: boolean): Promise<void>;

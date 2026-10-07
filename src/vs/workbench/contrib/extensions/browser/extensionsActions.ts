@@ -54,15 +54,13 @@ import { getErrorMessage, isCancellationError } from '../../../../base/common/er
 import { IContextMenuProvider } from '../../../../base/browser/contextmenu.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
 import { errorIcon, infoIcon, manageExtensionIcon, trustIcon, warningIcon } from './extensionsIcons.js';
-import { isWeb, language } from '../../../../base/common/platform.js';
+import { isWeb } from '../../../../base/common/platform.js';
 import { IExtensionManifestPropertiesService } from '../../../services/extensions/common/extensionManifestPropertiesService.js';
 import { IWorkspaceTrustEnablementService, IWorkspaceTrustManagementService } from '../../../../platform/workspace/common/workspaceTrust.js';
 import { isVirtualWorkspace } from '../../../../platform/workspace/common/virtualWorkspace.js';
 import { createCommandUri, escapeMarkdownSyntaxTokens, IMarkdownString, MarkdownString } from '../../../../base/common/htmlContent.js';
 import { fromNow } from '../../../../base/common/date.js';
 import { IPreferencesService } from '../../../services/preferences/common/preferences.js';
-import { getLocale } from '../../../../platform/languagePacks/common/languagePacks.js';
-import { ILocaleService } from '../../../services/localization/common/locale.js';
 import { isString } from '../../../../base/common/types.js';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
 import { Extensions, IExtensionFeaturesManagementService, IExtensionFeaturesRegistry } from '../../../services/extensionManagement/common/extensionFeatures.js';
@@ -405,9 +403,6 @@ export class InstallAction extends ExtensionAction {
 			return;
 		}
 		if (this.extension.isBuiltin) {
-			return;
-		}
-		if (this.extensionsWorkbenchService.canSetLanguage(this.extension)) {
 			return;
 		}
 		if (this.extension.state !== ExtensionState.Uninstalled) {
@@ -1045,8 +1040,6 @@ async function getContextMenuActionsGroups(extension: IExtension | undefined | n
 			cksOverlay.push(['extensionHasProductIconThemes', productIconThemes.some(theme => isThemeFromExtension(theme, extension))]);
 			cksOverlay.push(['extensionHasAccountPreferences', extensionUsesAuth]);
 
-			cksOverlay.push(['canSetLanguage', extensionsWorkbenchService.canSetLanguage(extension)]);
-			cksOverlay.push(['isActiveLanguagePackExtension', extension.gallery && language === getLocale(extension.gallery)]);
 		}
 
 		const actionsGroups = menuService.getMenuActions(MenuId.ExtensionContext, contextKeyService.createOverlay(cksOverlay), { shouldForwardArgs: true });
@@ -1924,79 +1917,6 @@ export class SetProductIconThemeAction extends ExtensionAction {
 	}
 }
 
-export class SetLanguageAction extends ExtensionAction {
-
-	static readonly ID = 'workbench.extensions.action.setDisplayLanguage';
-	static readonly TITLE = localize2('workbench.extensions.action.setDisplayLanguage', 'Set Display Language');
-
-	private static readonly EnabledClass = `${ExtensionAction.LABEL_ACTION_CLASS} language`;
-	private static readonly DisabledClass = `${this.EnabledClass} disabled`;
-
-	constructor(
-		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
-	) {
-		super(SetLanguageAction.ID, SetLanguageAction.TITLE.value, SetLanguageAction.DisabledClass, false);
-		this.update();
-	}
-
-	update(): void {
-		this.enabled = false;
-		this.class = SetLanguageAction.DisabledClass;
-		if (!this.extension) {
-			return;
-		}
-		if (!this.extensionsWorkbenchService.canSetLanguage(this.extension)) {
-			return;
-		}
-		if (this.extension.gallery && language === getLocale(this.extension.gallery)) {
-			return;
-		}
-		this.enabled = true;
-		this.class = SetLanguageAction.EnabledClass;
-	}
-
-	override async run(): Promise<any> {
-		return this.extension && this.extensionsWorkbenchService.setLanguage(this.extension);
-	}
-}
-
-export class ClearLanguageAction extends ExtensionAction {
-
-	static readonly ID = 'workbench.extensions.action.clearLanguage';
-	static readonly TITLE = localize2('workbench.extensions.action.clearLanguage', 'Clear Display Language');
-
-	private static readonly EnabledClass = `${ExtensionAction.LABEL_ACTION_CLASS} language`;
-	private static readonly DisabledClass = `${this.EnabledClass} disabled`;
-
-	constructor(
-		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
-		@ILocaleService private readonly localeService: ILocaleService,
-	) {
-		super(ClearLanguageAction.ID, ClearLanguageAction.TITLE.value, ClearLanguageAction.DisabledClass, false);
-		this.update();
-	}
-
-	update(): void {
-		this.enabled = false;
-		this.class = ClearLanguageAction.DisabledClass;
-		if (!this.extension) {
-			return;
-		}
-		if (!this.extensionsWorkbenchService.canSetLanguage(this.extension)) {
-			return;
-		}
-		if (this.extension.gallery && language !== getLocale(this.extension.gallery)) {
-			return;
-		}
-		this.enabled = true;
-		this.class = ClearLanguageAction.EnabledClass;
-	}
-
-	override async run(): Promise<any> {
-		return this.extension && this.localeService.clearLocalePreference();
-	}
-}
-
 export class ShowRecommendedExtensionAction extends Action {
 
 	static readonly ID = 'workbench.extensions.action.showRecommendedExtension';
@@ -2452,11 +2372,6 @@ export class ExtensionStatusAction extends ExtensionAction {
 			this.updateStatus({ icon: warningIcon, message: new MarkdownString(localize('missing from gallery tooltip', "This extension is no longer available on the Extension Marketplace.")) }, true);
 			return;
 		}
-
-		if (this.extensionsWorkbenchService.canSetLanguage(this.extension)) {
-			return;
-		}
-
 
 		if (this.extension.gallery && this.extension.state === ExtensionState.Uninstalled) {
 			const result = await this.extensionsWorkbenchService.canInstall(this.extension);

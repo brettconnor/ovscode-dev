@@ -44,7 +44,6 @@ import { IEditorOpenContext } from '../../../common/editor.js';
 import { ExtensionFeaturesTab } from './extensionFeaturesTab.js';
 import {
 	ButtonWithDropDownExtensionAction,
-	ClearLanguageAction,
 	DisableDropDownAction,
 	EnableDropDownAction,
 	ButtonWithDropdownExtensionActionViewItem, DropDownExtensionAction,
@@ -59,7 +58,6 @@ import {
 	RemoteInstallAction,
 	SetColorThemeAction,
 	SetFileIconThemeAction,
-	SetLanguageAction,
 	SetProductIconThemeAction,
 	UninstallAction,
 	WebInstallAction,
@@ -323,9 +321,6 @@ export class ExtensionEditor extends EditorPane {
 			this.instantiationService.createInstance(SetColorThemeAction),
 			this.instantiationService.createInstance(SetFileIconThemeAction),
 			this.instantiationService.createInstance(SetProductIconThemeAction),
-			this.instantiationService.createInstance(SetLanguageAction),
-			this.instantiationService.createInstance(ClearLanguageAction),
-
 			this.instantiationService.createInstance(EnableDropDownAction),
 			this.instantiationService.createInstance(DisableDropDownAction),
 			this.instantiationService.createInstance(RemoteInstallAction, false),
