@@ -1698,7 +1698,12 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 
 	async open(extension: IExtension | string, options?: IExtensionEditorOptions): Promise<void> {
 		if (typeof extension === 'string') {
-			extension = this.installed.find(e => areSameExtensions(e.identifier, { id: extension }));
+			const id = extension;
+			const installed = this.installed.find(e => areSameExtensions(e.identifier, { id }));
+			if (!installed) {
+				throw new Error(`Extension not found. ${id}`);
+			}
+			extension = installed;
 		}
 		if (!extension) {
 			throw new Error(`Extension not found. ${extension}`);
