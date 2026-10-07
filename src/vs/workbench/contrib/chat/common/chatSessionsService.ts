@@ -19,33 +19,6 @@ export namespace SessionType {
 
 export const localChatSessionType = SessionType.Local;
 
-const LOCAL_AGENT_HOST_SCHEME_PREFIX = 'agent-host-';
-const REMOTE_AGENT_HOST_SESSION_TYPE_PREFIX = 'remote-';
-
-export function isRemoteAgentHostSessionType(sessionType: string): boolean {
-	return sessionType.startsWith(REMOTE_AGENT_HOST_SESSION_TYPE_PREFIX);
-}
-
-export function parseRemoteAgentHostHarness(sessionType: string): string | undefined {
-	if (!isRemoteAgentHostSessionType(sessionType)) {
-		return undefined;
-	}
-	const harness = sessionType.slice(sessionType.lastIndexOf('-') + 1);
-	return harness || undefined;
-}
-
-export function isLocalAgentHostTarget(target: string): boolean {
-	return target === SessionType.AgentHostCopilot || target.startsWith(LOCAL_AGENT_HOST_SCHEME_PREFIX);
-}
-
-export function isRemoteAgentHostTarget(target: string): boolean {
-	return isRemoteAgentHostSessionType(target);
-}
-
-export function isAgentHostTarget(target: string): boolean {
-	return isLocalAgentHostTarget(target) || isRemoteAgentHostTarget(target);
-}
-
 export const enum ChatSessionStatus {
 	Failed = 0,
 	Completed = 1,

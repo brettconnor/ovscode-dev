@@ -30,8 +30,6 @@ import { ITerminalChatService } from '../../../../../terminal/browser/terminal.j
 import { TerminalContribCommandId, TerminalContribSettingId } from '../../../../../terminal/terminalContribExports.js';
 import { ChatContextKeys } from '../../../../common/actions/chatContextKeys.js';
 import { migrateLegacyTerminalToolSpecificData } from '../../../../common/chat.js';
-import { SessionType } from '../../../../common/chatSessionsService.js';
-import { getChatSessionType } from '../../../../common/model/chatUri.js';
 import { IChatToolInvocation, ToolConfirmKind, type IChatTerminalToolInvocationData, type ILegacyChatTerminalToolInvocationData } from '../../../../common/chatService/chatService.js';
 import { ILanguageModelToolsService } from '../../../../common/tools/languageModelToolsService.js';
 import { AcceptToolConfirmationActionId, SkipToolConfirmationActionId } from '../../../actions/chatToolActions.js';
@@ -119,11 +117,9 @@ export class ChatTerminalToolConfirmationSubPart extends BaseChatToolInvocationS
 
 		const hasCustomOptions = !!state.confirmationMessages.customOptions?.length;
 		const autoApproveEnabled = this.configurationService.getValue(TerminalContribSettingId.EnableAutoApprove) === true
-			&& (!hasCustomOptions || terminalData.autoApproveRuleResolvable === true);
-		// Custom actions typically come pre-computed from the run in terminal tool, but they can
-		// also be generated asynchronously for confirmations that arrive without them (eg. agent
-		// host sessions), so track them in a mutable local shared by the builder below and the
-		// button click handler.
+			&& !hasCustomOptions;
+		// Custom actions are pre-computed by the run in terminal tool and shared by the button
+		// builder and click handler.
 		let customActions = terminalCustomActions;
 		const buildMoreActions = (): (IChatConfirmationButton<TerminalNewAutoApproveButtonData> | Separator)[] | undefined => {
 			if (!autoApproveEnabled) {
@@ -229,22 +225,6 @@ export class ChatTerminalToolConfirmationSubPart extends BaseChatToolInvocationS
 			},
 		));
 		this.primaryAction = () => confirmWidget.runPrimaryAction();
-
-		// Agent Host Copilot confirmations need client-generated persistent rule actions.
-		if (autoApproveEnabled && !customActions && terminalData.autoApproveRuleResolvable && getChatSessionType(this.context.element.sessionResource) === SessionType.AgentHostCopilot) {
-			const commandForAnalysis = terminalData.commandLine.toolEdited ?? terminalData.commandLine.original;
-			const analysisLanguage = terminalData.language === 'powershell' ? 'powershell' : 'shellscript';
-			this.terminalChatService.getAutoApproveActions(commandForAnalysis, analysisLanguage).then(actions => {
-				if (this._store.isDisposed || !actions?.length) {
-					return;
-				}
-				if (toolInvocation.state.get().type !== IChatToolInvocation.StateKind.WaitingForConfirmation) {
-					return;
-				}
-				customActions = actions;
-				confirmWidget.updateButtons(this._createButtons(buildMoreActions()));
-			}, onUnexpectedError);
-		}
 
 		// Build the unsandboxed-execution reason and disclaimer markdown. When
 		// the risk badge is shown, surface them via its details hover (with

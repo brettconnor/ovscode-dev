@@ -27,9 +27,7 @@ import { IConfigurationService } from '../../../../../../platform/configuration/
 import { IContextKeyService } from '../../../../../../platform/contextkey/common/contextkey.js';
 import { IMarkdownRenderer } from '../../../../../../platform/markdown/browser/markdownRenderer.js';
 import { CHAT_OPEN_AGENT_HOST_CHAT_COMMAND_ID, ChatConfiguration } from '../../../common/constants.js';
-import { isAgentHostTarget } from '../../../common/chatSessionsService.js';
 import { formatCopilotCreditsLabel, getSubagentIsActive, IChatHookPart, IChatMarkdownContent, IChatToolInvocation, IChatToolInvocationSerialized, isLegacyChatTerminalToolInvocationData, ToolConfirmKind } from '../../../common/chatService/chatService.js';
-import { getChatSessionType } from '../../../common/model/chatUri.js';
 import { IChatRendererContent, isResponseVM } from '../../../common/model/chatViewModel.js';
 import { IRunSubagentToolInputParams } from '../../../common/tools/builtinTools/runSubagentTool.js';
 import { ChatTreeItem } from '../../chat.js';
@@ -338,7 +336,7 @@ export class ChatSubagentContentPart extends ChatThinkingStyleContentPart implem
 		}
 		const openChatOnly = !!this._openChatToolbar && this._shouldUseOpenChatPresentation() && (!!this._getChatResource() || this._isPhasePresentation());
 		this.domNode.classList.toggle('chat-subagent-open-chat-only', openChatOnly);
-		if (openChatOnly || this._shouldReserveOpenChatPresentation()) {
+		if (openChatOnly) {
 			dom.hide(this._collapseButton.element);
 			if (this.contentAnimationContainer) {
 				dom.hide(this.contentAnimationContainer);
@@ -404,12 +402,6 @@ export class ChatSubagentContentPart extends ChatThinkingStyleContentPart implem
 	private _shouldUseOpenChatPresentation(): boolean {
 		// The preference chooses a child-chat presentation; phases have no transcript to expand.
 		return this._isPhasePresentation() || this.configurationService.getValue<boolean>(ChatConfiguration.SubagentsUseRichRendering);
-	}
-
-	private _shouldReserveOpenChatPresentation(): boolean {
-		return this._shouldUseOpenChatPresentation()
-			&& isAgentHostTarget(getChatSessionType(this.context.element.sessionResource))
-			&& !IChatToolInvocation.isComplete(this._subagentToolInvocation);
 	}
 
 	private _shouldKeepCollapsedForCarouselConfirmation(): boolean {
