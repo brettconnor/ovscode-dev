@@ -14,13 +14,11 @@ import { isBoolean, isUndefined } from '../../../base/common/types.js';
 import { URI } from '../../../base/common/uri.js';
 import { generateUuid } from '../../../base/common/uuid.js';
 import { IConfigurationService } from '../../configuration/common/configuration.js';
-import { IExtensionGalleryService } from '../../extensionManagement/common/extensionManagement.js';
 import { IFileService } from '../../files/common/files.js';
 import { IInstantiationService } from '../../instantiation/common/instantiation.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../storage/common/storage.js';
 import { ITelemetryService } from '../../telemetry/common/telemetry.js';
 import { IUserDataProfile, IUserDataProfilesService } from '../../userDataProfile/common/userDataProfile.js';
-import { ExtensionsSynchroniser } from './extensionsSync.js';
 import { GlobalStateSynchroniser } from './globalStateSync.js';
 import { KeybindingsSynchroniser } from './keybindingsSync.js';
 import { PromptsSynchronizer } from './promptsSync/promptsSync.js';
@@ -670,7 +668,6 @@ class ProfileSynchronizer extends Disposable {
 		readonly collection: string | undefined,
 		@IUserDataSyncEnablementService private readonly userDataSyncEnablementService: IUserDataSyncEnablementService,
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
-		@IExtensionGalleryService private readonly extensionGalleryService: IExtensionGalleryService,
 		@IUserDataSyncStoreManagementService private readonly userDataSyncStoreManagementService: IUserDataSyncStoreManagementService,
 		@ITelemetryService private readonly telemetryService: ITelemetryService,
 		@IUserDataSyncLogService private readonly logService: IUserDataSyncLogService,
@@ -698,8 +695,8 @@ class ProfileSynchronizer extends Disposable {
 		if (this._enabled.some(([synchronizer]) => synchronizer.resource === syncResource)) {
 			return;
 		}
-		if (syncResource === SyncResource.Extensions && !this.extensionGalleryService.isEnabled()) {
-			this.logService.info('Skipping extensions sync because gallery is not configured');
+		if (syncResource === SyncResource.Extensions) {
+			this.logService.info('Skipping extension sync because the product does not sync installed extensions');
 			return;
 		}
 		if (syncResource === SyncResource.Profiles) {
@@ -742,7 +739,7 @@ class ProfileSynchronizer extends Disposable {
 			case SyncResource.Tasks: return this.instantiationService.createInstance(TasksSynchroniser, this.profile, this.collection);
 			case SyncResource.Mcp: return this.instantiationService.createInstance(McpSynchroniser, this.profile, this.collection);
 			case SyncResource.GlobalState: return this.instantiationService.createInstance(GlobalStateSynchroniser, this.profile, this.collection);
-			case SyncResource.Extensions: return this.instantiationService.createInstance(ExtensionsSynchroniser, this.profile, this.collection);
+			case SyncResource.Extensions: throw new Error('Extension sync is not supported');
 			case SyncResource.Profiles: return this.instantiationService.createInstance(UserDataProfilesManifestSynchroniser, this.profile, this.collection);
 		}
 	}

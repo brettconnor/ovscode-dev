@@ -47,8 +47,6 @@ import { IExtensionManifest, ExtensionType, IExtension as IPlatformExtension, Ta
 import { ILanguageService } from '../../../../editor/common/languages/language.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { FileAccess } from '../../../../base/common/network.js';
-import { IIgnoredExtensionsManagementService } from '../../../../platform/userDataSync/common/ignoredExtensions.js';
-import { IUserDataAutoSyncService, IUserDataSyncEnablementService, SyncResource } from '../../../../platform/userDataSync/common/userDataSync.js';
 import { isString, isUndefined } from '../../../../base/common/types.js';
 import { IExtensionManifestPropertiesService } from '../../../services/extensions/common/extensionManifestPropertiesService.js';
 import { IExtensionService, IExtensionsStatus as IExtensionRuntimeStatus, toExtension, toExtensionDescription } from '../../../services/extensions/common/extensions.js';
@@ -1005,8 +1003,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		@IProgressService private readonly progressService: IProgressService,
 		@IExtensionManagementServerService private readonly extensionManagementServerService: IExtensionManagementServerService,
 		@ILanguageService private readonly languageService: ILanguageService,
-		@IIgnoredExtensionsManagementService private readonly extensionsSyncManagementService: IIgnoredExtensionsManagementService,
-		@IUserDataAutoSyncService private readonly userDataAutoSyncService: IUserDataAutoSyncService,
 		@IProductService private readonly productService: IProductService,
 		@IExtensionManifestPropertiesService private readonly extensionManifestPropertiesService: IExtensionManifestPropertiesService,
 		@ILogService private readonly logService: ILogService,
@@ -1018,7 +1014,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		@IUserDataProfilesService private readonly userDataProfilesService: IUserDataProfilesService,
 		@IStorageService private readonly storageService: IStorageService,
 		@IDialogService private readonly dialogService: IDialogService,
-		@IUserDataSyncEnablementService private readonly userDataSyncEnablementService: IUserDataSyncEnablementService,
 		@IUpdateService private readonly updateService: IUpdateService,
 		@IUriIdentityService private readonly uriIdentityService: IUriIdentityService,
 		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
@@ -2142,7 +2137,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 
 		if (installable) {
 			if (installOptions.justification) {
-				const syncCheck = isUndefined(installOptions.isMachineScoped) && this.userDataSyncEnablementService.isEnabled() && this.userDataSyncEnablementService.isResourceEnabled(SyncResource.Extensions);
 				const buttons: IPromptButton<boolean>[] = [];
 				buttons.push({
 					label: isString(installOptions.justification) || !installOptions.justification.action
@@ -2158,16 +2152,9 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 					detail: isString(installOptions.justification) ? installOptions.justification : installOptions.justification.reason,
 					cancelButton: true,
 					buttons,
-					checkbox: syncCheck ? {
-						label: nls.localize('sync extension', "Sync this extension"),
-						checked: true,
-					} : undefined,
 				});
 				if (!result.result) {
 					throw new CancellationError();
-				}
-				if (syncCheck) {
-					installOptions.isMachineScoped = !result.checkboxChecked;
 				}
 			}
 			if (installable instanceof URI) {
@@ -2376,11 +2363,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 			extension.displayName, dependents[0].manifest.displayName, dependents[1].manifest.displayName);
 	}
 
-	isExtensionIgnoredToSync(extension: IExtension): boolean {
-		return extension.local ? !this.isInstalledExtensionSynced(extension.local)
-			: this.extensionsSyncManagementService.hasToNeverSyncExtension(extension.identifier.id);
-	}
-
 	async togglePreRelease(extension: IExtension): Promise<void> {
 		if (!extension.local) {
 			return;
@@ -2390,20 +2372,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 			return;
 		}
 		await this.install(extension, { installPreReleaseVersion: !extension.preRelease, preRelease: !extension.preRelease });
-	}
-
-	async toggleExtensionIgnoredToSync(extension: IExtension): Promise<void> {
-		const extensionsIncludingPackedExtensions = [extension, ...this.getAllPackedExtensions(extension, this.local)];
-		// Updated in sync to prevent race conditions
-		for (const e of extensionsIncludingPackedExtensions) {
-			const isIgnored = this.isExtensionIgnoredToSync(e);
-			if (e.local && isIgnored && e.local.isMachineScoped) {
-				await this.extensionManagementService.updateMetadata(e.local, { isMachineScoped: false });
-			} else {
-				await this.extensionsSyncManagementService.updateIgnoredExtensions(e.identifier.id, !isIgnored);
-			}
-		}
-		await this.userDataAutoSyncService.triggerSync(['IgnoredExtensionsUpdated']);
 	}
 
 	async toggleApplyExtensionToAllProfiles(extension: IExtension): Promise<void> {
@@ -2435,16 +2403,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 			extensions.push(this.webExtensions);
 		}
 		return extensions;
-	}
-
-	private isInstalledExtensionSynced(extension: ILocalExtension): boolean {
-		if (extension.isMachineScoped) {
-			return false;
-		}
-		if (this.extensionsSyncManagementService.hasToAlwaysSyncExtension(extension.identifier.id)) {
-			return true;
-		}
-		return !this.extensionsSyncManagementService.hasToNeverSyncExtension(extension.identifier.id);
 	}
 
 	private doInstall(extension: IExtension | undefined, installTask: () => Promise<ILocalExtension>, progressLocation?: ProgressLocation | string): Promise<IExtension> {

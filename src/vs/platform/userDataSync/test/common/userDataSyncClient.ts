@@ -33,7 +33,6 @@ import { NullTelemetryService } from '../../../telemetry/common/telemetryUtils.j
 import { IUriIdentityService } from '../../../uriIdentity/common/uriIdentity.js';
 import { UriIdentityService } from '../../../uriIdentity/common/uriIdentityService.js';
 import { ExtensionStorageService, IExtensionStorageService } from '../../../extensionManagement/common/extensionStorage.js';
-import { IgnoredExtensionsManagementService, IIgnoredExtensionsManagementService } from '../../common/ignoredExtensions.js';
 import { ALL_SYNC_RESOURCES, getDefaultIgnoredSettings, IUserData, IUserDataSyncLocalStoreService, IUserDataSyncLogService, IUserDataSyncEnablementService, IUserDataSyncService, IUserDataSyncStoreManagementService, IUserDataSyncStoreService, IUserDataSyncUtilService, registerConfiguration, ServerResource, SyncResource, IUserDataSynchroniser, IUserDataResourceManifest, IUserDataCollectionManifest, USER_DATA_SYNC_SCHEME, IUserDataManifest } from '../../common/userDataSync.js';
 import { IUserDataSyncAccountService, UserDataSyncAccountService } from '../../common/userDataSyncAccount.js';
 import { UserDataSyncLocalStoreService } from '../../common/userDataSyncLocalStoreService.js';
@@ -127,7 +126,6 @@ export class UserDataSyncClient extends Disposable {
 		});
 		this.instantiationService.stub(IGlobalExtensionEnablementService, this._register(this.instantiationService.createInstance(GlobalExtensionEnablementService)));
 		this.instantiationService.stub(IExtensionStorageService, this._register(this.instantiationService.createInstance(ExtensionStorageService)));
-		this.instantiationService.stub(IIgnoredExtensionsManagementService, this.instantiationService.createInstance(IgnoredExtensionsManagementService));
 		this.instantiationService.stub(IExtensionGalleryService, {
 			isEnabled() { return true; },
 			async getCompatibleExtension() { return null; }

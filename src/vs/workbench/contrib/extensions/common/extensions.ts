@@ -158,8 +158,6 @@ export interface IExtensionsWorkbenchService {
 	getExtensionsNotification(): IExtensionsNotification | undefined;
 
 	// Sync APIs
-	isExtensionIgnoredToSync(extension: IExtension): boolean;
-	toggleExtensionIgnoredToSync(extension: IExtension): Promise<void>;
 	toggleApplyExtensionToAllProfiles(extension: IExtension): Promise<void>;
 }
 
@@ -228,7 +226,6 @@ export class ExtensionContainers extends Disposable {
 	}
 }
 
-export const TOGGLE_IGNORE_EXTENSION_ACTION_ID = 'workbench.extensions.action.toggleIgnoreExtension';
 export const LIST_WORKSPACE_UNSUPPORTED_EXTENSIONS_COMMAND_ID = 'workbench.extensions.action.listWorkspaceUnsupportedExtensions';
 
 // Context Keys

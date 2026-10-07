@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { IStorageService, StorageScope } from '../../../../platform/storage/common/storage.js';
-import { AbstractExtensionsInitializer, IExtensionsInitializerPreviewResult } from '../../../../platform/userDataSync/common/extensionsSync.js';
 import { GlobalStateInitializer, UserDataSyncStoreTypeSynchronizer } from '../../../../platform/userDataSync/common/globalStateSync.js';
 import { KeybindingsInitializer } from '../../../../platform/userDataSync/common/keybindingsSync.js';
 import { SettingsInitializer } from '../../../../platform/userDataSync/common/settingsSync.js';
@@ -20,16 +19,10 @@ import { AuthenticationSessionInfo, getCurrentAuthenticationSessionInfo } from '
 import { getSyncAreaLabel } from '../common/userDataSync.js';
 import { isWeb } from '../../../../base/common/platform.js';
 import { Barrier, Promises } from '../../../../base/common/async.js';
-import { EXTENSION_INSTALL_SKIP_PUBLISHER_TRUST_CONTEXT, IExtensionGalleryService, IExtensionManagementService, IGlobalExtensionEnablementService, ILocalExtension } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IEnvironmentService } from '../../../../platform/environment/common/environment.js';
-import { IExtensionService, toExtensionDescription } from '../../extensions/common/extensions.js';
-import { areSameExtensions } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
-import { IIgnoredExtensionsManagementService } from '../../../../platform/userDataSync/common/ignoredExtensions.js';
 import { DisposableStore } from '../../../../base/common/lifecycle.js';
 import { isEqual } from '../../../../base/common/resources.js';
-import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { IUriIdentityService } from '../../../../platform/uriIdentity/common/uriIdentity.js';
-import { IExtensionStorageService } from '../../../../platform/extensionManagement/common/extensionStorage.js';
 import { TasksInitializer } from '../../../../platform/userDataSync/common/tasksSync.js';
 import { IUserDataProfilesService } from '../../../../platform/userDataProfile/common/userDataProfile.js';
 import { IBrowserWorkbenchEnvironmentService } from '../../environment/browser/environmentService.js';
@@ -176,64 +169,13 @@ export class UserDataSyncInitializer implements IUserDataInitializer {
 		return this.initialize([SyncResource.Settings, SyncResource.GlobalState]);
 	}
 
-	async initializeOtherResources(instantiationService: IInstantiationService): Promise<void> {
+	async initializeOtherResources(_instantiationService: IInstantiationService): Promise<void> {
 		try {
 			this.logService.trace(`UserDataInitializationService#initializeOtherResources`);
-			await Promise.allSettled([this.initialize([SyncResource.Keybindings, SyncResource.Snippets, SyncResource.Tasks]), this.initializeExtensions(instantiationService)]);
+			await this.initialize([SyncResource.Keybindings, SyncResource.Snippets, SyncResource.Tasks]);
 		} finally {
 			this.initializationFinished.open();
 		}
-	}
-
-	private async initializeExtensions(instantiationService: IInstantiationService): Promise<void> {
-		try {
-			await Promise.all([this.initializeInstalledExtensions(instantiationService), this.initializeNewExtensions(instantiationService)]);
-		} finally {
-			this.initialized.push(SyncResource.Extensions);
-		}
-	}
-
-	private initializeInstalledExtensionsPromise: Promise<void> | undefined;
-	async initializeInstalledExtensions(instantiationService: IInstantiationService): Promise<void> {
-		if (!this.initializeInstalledExtensionsPromise) {
-			this.initializeInstalledExtensionsPromise = (async () => {
-				this.logService.trace(`UserDataInitializationService#initializeInstalledExtensions`);
-				const extensionsPreviewInitializer = await this.getExtensionsPreviewInitializer(instantiationService);
-				if (extensionsPreviewInitializer) {
-					await instantiationService.createInstance(InstalledExtensionsInitializer, extensionsPreviewInitializer).initialize();
-				}
-			})();
-		}
-		return this.initializeInstalledExtensionsPromise;
-	}
-
-	private initializeNewExtensionsPromise: Promise<void> | undefined;
-	private async initializeNewExtensions(instantiationService: IInstantiationService): Promise<void> {
-		if (!this.initializeNewExtensionsPromise) {
-			this.initializeNewExtensionsPromise = (async () => {
-				this.logService.trace(`UserDataInitializationService#initializeNewExtensions`);
-				const extensionsPreviewInitializer = await this.getExtensionsPreviewInitializer(instantiationService);
-				if (extensionsPreviewInitializer) {
-					await instantiationService.createInstance(NewExtensionsInitializer, extensionsPreviewInitializer).initialize();
-				}
-			})();
-		}
-		return this.initializeNewExtensionsPromise;
-	}
-
-	private extensionsPreviewInitializerPromise: Promise<ExtensionsPreviewInitializer | null> | undefined;
-	private getExtensionsPreviewInitializer(instantiationService: IInstantiationService): Promise<ExtensionsPreviewInitializer | null> {
-		if (!this.extensionsPreviewInitializerPromise) {
-			this.extensionsPreviewInitializerPromise = (async () => {
-				const userDataSyncStoreClient = await this.createUserDataSyncStoreClient();
-				if (!userDataSyncStoreClient) {
-					return null;
-				}
-				const userData = await userDataSyncStoreClient.readResource(SyncResource.Extensions, null);
-				return instantiationService.createInstance(ExtensionsPreviewInitializer, userData);
-			})();
-		}
-		return this.extensionsPreviewInitializerPromise;
 	}
 
 	private async initialize(syncResources: SyncResource[]): Promise<void> {
@@ -272,153 +214,4 @@ export class UserDataSyncInitializer implements IUserDataInitializer {
 		throw new Error(`Cannot create initializer for ${syncResource}`);
 	}
 
-}
-
-class ExtensionsPreviewInitializer extends AbstractExtensionsInitializer {
-
-	private previewPromise: Promise<IExtensionsInitializerPreviewResult | null> | undefined;
-	private preview: IExtensionsInitializerPreviewResult | null = null;
-
-	constructor(
-		private readonly extensionsData: IUserData,
-		@IExtensionManagementService extensionManagementService: IExtensionManagementService,
-		@IIgnoredExtensionsManagementService ignoredExtensionsManagementService: IIgnoredExtensionsManagementService,
-		@IFileService fileService: IFileService,
-		@IUserDataProfilesService userDataProfilesService: IUserDataProfilesService,
-		@IEnvironmentService environmentService: IEnvironmentService,
-		@IUserDataSyncLogService logService: IUserDataSyncLogService,
-		@IStorageService storageService: IStorageService,
-		@IUriIdentityService uriIdentityService: IUriIdentityService,
-	) {
-		super(extensionManagementService, ignoredExtensionsManagementService, fileService, userDataProfilesService, environmentService, logService, storageService, uriIdentityService);
-	}
-
-	getPreview(): Promise<IExtensionsInitializerPreviewResult | null> {
-		if (!this.previewPromise) {
-			this.previewPromise = super.initialize(this.extensionsData).then(() => this.preview);
-		}
-		return this.previewPromise;
-	}
-
-	override initialize(): Promise<void> {
-		throw new Error('should not be called directly');
-	}
-
-	protected override async doInitialize(remoteUserData: IRemoteUserData): Promise<void> {
-		const remoteExtensions = await this.parseExtensions(remoteUserData);
-		if (!remoteExtensions) {
-			this.logService.info('Skipping initializing extensions because remote extensions does not exist.');
-			return;
-		}
-		const installedExtensions = await this.extensionManagementService.getInstalled();
-		this.preview = this.generatePreview(remoteExtensions, installedExtensions);
-	}
-}
-
-class InstalledExtensionsInitializer implements IUserDataSyncResourceInitializer {
-
-	constructor(
-		private readonly extensionsPreviewInitializer: ExtensionsPreviewInitializer,
-		@IGlobalExtensionEnablementService private readonly extensionEnablementService: IGlobalExtensionEnablementService,
-		@IExtensionStorageService private readonly extensionStorageService: IExtensionStorageService,
-		@IUserDataSyncLogService private readonly logService: IUserDataSyncLogService,
-	) {
-	}
-
-	async initialize(): Promise<void> {
-		const preview = await this.extensionsPreviewInitializer.getPreview();
-		if (!preview) {
-			return;
-		}
-
-		// 1. Initialise already installed extensions state
-		for (const installedExtension of preview.installedExtensions) {
-			const syncExtension = preview.remoteExtensions.find(({ identifier }) => areSameExtensions(identifier, installedExtension.identifier));
-			if (syncExtension?.state) {
-				const extensionState = this.extensionStorageService.getExtensionState(installedExtension, true) || {};
-				Object.keys(syncExtension.state).forEach(key => extensionState[key] = syncExtension.state![key]);
-				this.extensionStorageService.setExtensionState(installedExtension, extensionState, true);
-			}
-		}
-
-		// 2. Initialise extensions enablement
-		if (preview.disabledExtensions.length) {
-			for (const identifier of preview.disabledExtensions) {
-				this.logService.trace(`Disabling extension...`, identifier.id);
-				await this.extensionEnablementService.disableExtension(identifier);
-				this.logService.info(`Disabling extension`, identifier.id);
-			}
-		}
-	}
-}
-
-class NewExtensionsInitializer implements IUserDataSyncResourceInitializer {
-
-	constructor(
-		private readonly extensionsPreviewInitializer: ExtensionsPreviewInitializer,
-		@IExtensionService private readonly extensionService: IExtensionService,
-		@IExtensionStorageService private readonly extensionStorageService: IExtensionStorageService,
-		@IExtensionGalleryService private readonly galleryService: IExtensionGalleryService,
-		@IExtensionManagementService private readonly extensionManagementService: IExtensionManagementService,
-		@IUserDataSyncLogService private readonly logService: IUserDataSyncLogService,
-	) {
-	}
-
-	async initialize(): Promise<void> {
-		const preview = await this.extensionsPreviewInitializer.getPreview();
-		if (!preview) {
-			return;
-		}
-
-		const newlyEnabledExtensions: ILocalExtension[] = [];
-		const targetPlatform = await this.extensionManagementService.getTargetPlatform();
-		const galleryExtensions = await this.galleryService.getExtensions(preview.newExtensions, { targetPlatform, compatible: true }, CancellationToken.None);
-		for (const galleryExtension of galleryExtensions) {
-			try {
-				const extensionToSync = preview.remoteExtensions.find(({ identifier }) => areSameExtensions(identifier, galleryExtension.identifier));
-				if (!extensionToSync) {
-					continue;
-				}
-				if (extensionToSync.state) {
-					this.extensionStorageService.setExtensionState(galleryExtension, extensionToSync.state, true);
-				}
-				this.logService.trace(`Installing extension...`, galleryExtension.identifier.id);
-				const local = await this.extensionManagementService.installFromGallery(galleryExtension, {
-					isMachineScoped: false, /* set isMachineScoped to prevent install and sync dialog in web */
-					donotIncludePackAndDependencies: true,
-					installGivenVersion: !!extensionToSync.version,
-					installPreReleaseVersion: extensionToSync.preRelease,
-					context: { [EXTENSION_INSTALL_SKIP_PUBLISHER_TRUST_CONTEXT]: true }
-				});
-				if (!preview.disabledExtensions.some(identifier => areSameExtensions(identifier, galleryExtension.identifier))) {
-					newlyEnabledExtensions.push(local);
-				}
-				this.logService.info(`Installed extension.`, galleryExtension.identifier.id);
-			} catch (error) {
-				this.logService.error(error);
-			}
-		}
-
-		const canEnabledExtensions = newlyEnabledExtensions.filter(e => this.extensionService.canAddExtension(toExtensionDescription(e)));
-		if (!(await this.areExtensionsRunning(canEnabledExtensions))) {
-			await new Promise<void>((c, e) => {
-				const disposable = this.extensionService.onDidChangeExtensions(async () => {
-					try {
-						if (await this.areExtensionsRunning(canEnabledExtensions)) {
-							disposable.dispose();
-							c();
-						}
-					} catch (error) {
-						e(error);
-					}
-				});
-			});
-		}
-	}
-
-	private async areExtensionsRunning(extensions: ILocalExtension[]): Promise<boolean> {
-		await this.extensionService.whenInstalledExtensionsRegistered();
-		const runningExtensions = this.extensionService.extensions;
-		return extensions.every(e => runningExtensions.some(r => areSameExtensions({ id: r.identifier.value }, e.identifier)));
-	}
 }

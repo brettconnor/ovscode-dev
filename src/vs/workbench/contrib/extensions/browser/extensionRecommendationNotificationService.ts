@@ -20,7 +20,6 @@ import { INotificationHandle, INotificationService, IPromptChoice, IPromptChoice
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
 import { IUriIdentityService } from '../../../../platform/uriIdentity/common/uriIdentity.js';
-import { IUserDataSyncEnablementService, SyncResource } from '../../../../platform/userDataSync/common/userDataSync.js';
 import { IExtension, IExtensionsWorkbenchService } from '../common/extensions.js';
 import { IWorkbenchEnvironmentService } from '../../../services/environment/common/environmentService.js';
 import { EnablementState, IWorkbenchExtensionManagementService, IWorkbenchExtensionEnablementService } from '../../../services/extensionManagement/common/extensionManagement.js';
@@ -139,7 +138,6 @@ export class ExtensionRecommendationNotificationService extends Disposable imple
 		@IWorkbenchExtensionManagementService private readonly extensionManagementService: IWorkbenchExtensionManagementService,
 		@IWorkbenchExtensionEnablementService private readonly extensionEnablementService: IWorkbenchExtensionEnablementService,
 		@IExtensionIgnoredRecommendationsService private readonly extensionIgnoredRecommendationsService: IExtensionIgnoredRecommendationsService,
-		@IUserDataSyncEnablementService private readonly userDataSyncEnablementService: IUserDataSyncEnablementService,
 		@IWorkbenchEnvironmentService private readonly workbenchEnvironmentService: IWorkbenchEnvironmentService,
 		@IUriIdentityService private readonly uriIdentityService: IUriIdentityService,
 	) {
@@ -297,10 +295,6 @@ export class ExtensionRecommendationNotificationService extends Disposable imple
 			choices.push({
 				label: localize('install', "Install"),
 				run: () => installExtensions(false),
-				menu: this.userDataSyncEnablementService.isEnabled() && this.userDataSyncEnablementService.isResourceEnabled(SyncResource.Extensions) ? [{
-					label: localize('install and do no sync', "Install (Do not sync)"),
-					run: () => installExtensions(true)
-				}] : undefined,
 			});
 			choices.push(...[{
 				label: localize('show recommendations', "Show Recommendations"),

@@ -610,9 +610,6 @@ export class UserDataSyncWorkbenchContribution extends Disposable implements IWo
 			id: SyncResource.GlobalState,
 			label: getSyncAreaLabel(SyncResource.GlobalState),
 		}, {
-			id: SyncResource.Extensions,
-			label: getSyncAreaLabel(SyncResource.Extensions)
-		}, {
 			id: SyncResource.Profiles,
 			label: getSyncAreaLabel(SyncResource.Profiles),
 		}, {
@@ -664,7 +661,7 @@ export class UserDataSyncWorkbenchContribution extends Disposable implements IWo
 	private async turnOff(): Promise<void> {
 		const result = await this.dialogService.confirm({
 			message: localize('turn off sync confirmation', "Do you want to turn off sync?"),
-			detail: localize('turn off sync detail', "Your settings, keybindings, extensions, snippets and UI State will no longer be synced."),
+			detail: localize('turn off sync detail', "Your settings, keybindings, snippets and UI state will no longer be synced."),
 			primaryButton: localize({ key: 'turn off', comment: ['&& denotes a mnemonic'] }, "&&Turn off"),
 			checkbox: this.userDataSyncWorkbenchService.accountStatus === AccountStatus.Available ? {
 				label: localize('turn off sync everywhere', "Turn off sync on all your devices and clear the data from the cloud.")
@@ -681,7 +678,6 @@ export class UserDataSyncWorkbenchContribution extends Disposable implements IWo
 			case SyncResource.Keybindings: return this.userDataSyncEnablementService.setResourceEnablement(SyncResource.Keybindings, false);
 			case SyncResource.Snippets: return this.userDataSyncEnablementService.setResourceEnablement(SyncResource.Snippets, false);
 			case SyncResource.Tasks: return this.userDataSyncEnablementService.setResourceEnablement(SyncResource.Tasks, false);
-			case SyncResource.Extensions: return this.userDataSyncEnablementService.setResourceEnablement(SyncResource.Extensions, false);
 			case SyncResource.GlobalState: return this.userDataSyncEnablementService.setResourceEnablement(SyncResource.GlobalState, false);
 			case SyncResource.Profiles: return this.userDataSyncEnablementService.setResourceEnablement(SyncResource.Profiles, false);
 		}

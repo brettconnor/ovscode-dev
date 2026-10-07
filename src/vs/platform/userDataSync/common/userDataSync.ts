@@ -17,7 +17,7 @@ import { IHeaders } from '../../../base/parts/request/common/request.js';
 import { localize } from '../../../nls.js';
 import { allSettings, ConfigurationScope, Extensions as ConfigurationExtensions, IConfigurationRegistry, IRegisteredConfigurationPropertySchema, getAllConfigurationProperties, parseScope } from '../../configuration/common/configurationRegistry.js';
 import { IEnvironmentService } from '../../environment/common/environment.js';
-import { EXTENSION_IDENTIFIER_PATTERN, IExtensionIdentifier } from '../../extensionManagement/common/extensionManagement.js';
+import { IExtensionIdentifier } from '../../extensionManagement/common/extensionManagement.js';
 import { IExtensionManifest } from '../../extensions/common/extensions.js';
 import { createDecorator } from '../../instantiation/common/instantiation.js';
 import { Extensions as JSONExtensions, IJSONContributionRegistry } from '../../jsonschemas/common/jsonContributionRegistry.js';
@@ -72,7 +72,6 @@ export const USER_DATA_SYNC_CONFIGURATION_SCOPE = 'settingsSync';
 
 export interface IUserDataSyncConfiguration {
 	keybindingsPerPlatform?: boolean;
-	ignoredExtensions?: string[];
 	ignoredSettings?: string[];
 }
 
@@ -92,20 +91,6 @@ export function registerConfiguration(): IDisposable {
 				description: localize('settingsSync.keybindingsPerPlatform', "Synchronize keybindings for each platform."),
 				default: true,
 				scope: ConfigurationScope.APPLICATION,
-				tags: ['sync', 'usesOnlineServices']
-			},
-			'settingsSync.ignoredExtensions': {
-				'type': 'array',
-				markdownDescription: localize('settingsSync.ignoredExtensions', "List of extensions to be ignored while synchronizing. The identifier of an extension is always `${publisher}.${name}`. For example: `vscode.csharp`."),
-				items: [{
-					type: 'string',
-					pattern: EXTENSION_IDENTIFIER_PATTERN,
-					errorMessage: localize('app.extension.identifier.errorMessage', "Expected format '${publisher}.${name}'. Example: 'vscode.csharp'.")
-				}],
-				'default': [],
-				'scope': ConfigurationScope.APPLICATION,
-				uniqueItems: true,
-				disallowSyncIgnore: true,
 				tags: ['sync', 'usesOnlineServices']
 			},
 			'settingsSync.ignoredSettings': {
@@ -178,7 +163,7 @@ export const enum SyncResource {
 	Profiles = 'profiles',
 	WorkspaceState = 'workspaceState',
 }
-export const ALL_SYNC_RESOURCES: SyncResource[] = [SyncResource.Settings, SyncResource.Keybindings, SyncResource.Snippets, SyncResource.Prompts, SyncResource.Tasks, SyncResource.Extensions, SyncResource.GlobalState, SyncResource.Profiles, SyncResource.Mcp];
+export const ALL_SYNC_RESOURCES: SyncResource[] = [SyncResource.Settings, SyncResource.Keybindings, SyncResource.Snippets, SyncResource.Prompts, SyncResource.Tasks, SyncResource.GlobalState, SyncResource.Profiles, SyncResource.Mcp];
 
 export function getPathSegments(collection: string | undefined, ...paths: string[]): string[] {
 	return collection ? [collection, ...paths] : paths;
