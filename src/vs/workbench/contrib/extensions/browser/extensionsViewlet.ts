@@ -270,7 +270,7 @@ export class ExtensionsViewletViewsContribution extends Disposable implements IW
 			id: 'workbench.views.extensions.searchRecentlyUpdated',
 			name: localize2('recently updated', "Recently Updated"),
 			ctorDescriptor: new SyncDescriptor(RecentlyUpdatedExtensionsView, [{}]),
-			when: ContextKeyExpr.or(SearchExtensionUpdatesContext, ContextKeyExpr.has('searchRecentlyUpdatedExtensions')),
+			when: ContextKeyExpr.has('searchRecentlyUpdatedExtensions'),
 			order: 2,
 		});
 
