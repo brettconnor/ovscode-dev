@@ -980,7 +980,6 @@ export class DropDownExtensionActionViewItem extends ActionViewItem {
 
 async function getContextMenuActionsGroups(extension: IExtension | undefined | null, contextKeyService: IContextKeyService, instantiationService: IInstantiationService): Promise<[string, Array<MenuItemAction | SubmenuItemAction>][]> {
 	return instantiationService.invokeFunction(async accessor => {
-		const extensionsWorkbenchService = accessor.get(IExtensionsWorkbenchService);
 		const extensionEnablementService = accessor.get(IWorkbenchExtensionEnablementService);
 		const menuService = accessor.get(IMenuService);
 		const extensionRecommendationsService = accessor.get(IExtensionRecommendationsService);
