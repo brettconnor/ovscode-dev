@@ -19,7 +19,6 @@ import { ExtensionGalleryService } from '../../../../../platform/extensionManage
 import { IURLService } from '../../../../../platform/url/common/url.js';
 import { TestInstantiationService } from '../../../../../platform/instantiation/test/common/instantiationServiceMock.js';
 import { Event, Emitter } from '../../../../../base/common/event.js';
-import { IPager } from '../../../../../base/common/paging.js';
 import { ITelemetryService } from '../../../../../platform/telemetry/common/telemetry.js';
 import { NullTelemetryService } from '../../../../../platform/telemetry/common/telemetryUtils.js';
 import { IWorkspaceContextService } from '../../../../../platform/workspace/common/workspace.js';
@@ -147,7 +146,7 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 
 		instantiationService.stubPromise(IExtensionManagementService, 'getInstalled', []);
 		instantiationService.stub(IExtensionGalleryService, 'isEnabled', true);
-		instantiationService.stubPromise(IExtensionGalleryService, 'query', aPage());
+		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions());
 		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', []);
 		instantiationService.stubPromise(INotificationService, 'prompt', 0);
 		(<TestExtensionEnablementService>instantiationService.get(IWorkbenchExtensionEnablementService)).reset();
@@ -181,11 +180,11 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 		});
 
 		testObject = await aWorkbenchService();
-		instantiationService.stubPromise(IExtensionGalleryService, 'query', aPage(expected));
+		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions(expected));
 
-		return testObject.queryGallery(CancellationToken.None).then(pagedResponse => {
+		return testObject.getExtensions([{ id: 'test' }], CancellationToken.None).then(pagedResponse => {
 			assert.strictEqual(1, pagedResponse.firstPage.length);
-			const actual = pagedResponse.firstPage[0];
+			const actual = pagedResponse[0];
 
 			assert.strictEqual(ExtensionType.User, actual.type);
 			assert.strictEqual('expectedName', actual.name);
@@ -330,7 +329,7 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 			coreTranslations: []
 		});
 		instantiationService.stubPromise(IExtensionManagementService, 'getInstalled', [local1, local2]);
-		instantiationService.stubPromise(IExtensionGalleryService, 'query', aPage(gallery1));
+		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions(gallery1));
 		instantiationService.stubPromise(IExtensionGalleryService, 'getCompatibleExtension', gallery1);
 		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', [gallery1]);
 		testObject = await aWorkbenchService();
@@ -381,10 +380,10 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 	test('test extension state computation', async () => {
 		const gallery = aGalleryExtension('gallery1');
 		testObject = await aWorkbenchService();
-		instantiationService.stubPromise(IExtensionGalleryService, 'query', aPage(gallery));
+		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions(gallery));
 
-		return testObject.queryGallery(CancellationToken.None).then(page => {
-			const extension = page.firstPage[0];
+		return testObject.getExtensions([{ id: 'test' }], CancellationToken.None).then(page => {
+			const extension = page[0];
 			assert.strictEqual(ExtensionState.Uninstalled, extension.state);
 
 			const identifier = gallery.identifier;
@@ -419,7 +418,7 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 	test('test extension doesnot show outdated for system extensions', async () => {
 		const local = aLocalExtension('a', { version: '1.0.1' }, { type: ExtensionType.System });
 		instantiationService.stubPromise(IExtensionManagementService, 'getInstalled', [local]);
-		instantiationService.stubPromise(IExtensionGalleryService, 'query', aPage(aGalleryExtension(local.manifest.name, { identifier: local.identifier, version: '1.0.2' })));
+		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions(aGalleryExtension(local.manifest.name, { identifier: local.identifier, version: '1.0.2' })));
 		testObject = await aWorkbenchService();
 		await testObject.queryLocal();
 
@@ -441,7 +440,7 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 	test('test canInstall returns false for a system extension', async () => {
 		const local = aLocalExtension('a', { version: '1.0.1' }, { type: ExtensionType.System });
 		instantiationService.stubPromise(IExtensionManagementService, 'getInstalled', [local]);
-		instantiationService.stubPromise(IExtensionGalleryService, 'query', aPage(aGalleryExtension(local.manifest.name, { identifier: local.identifier })));
+		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions(aGalleryExtension(local.manifest.name, { identifier: local.identifier })));
 		testObject = await aWorkbenchService();
 		const target = testObject.local[0];
 
@@ -452,7 +451,7 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 		const local = aLocalExtension('a', { version: '1.0.1' }, { type: ExtensionType.User });
 		instantiationService.stubPromise(IExtensionManagementService, 'getInstalled', [local]);
 		const gallery = aGalleryExtension(local.manifest.name, { identifier: local.identifier });
-		instantiationService.stubPromise(IExtensionGalleryService, 'query', aPage(gallery));
+		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions(gallery));
 		instantiationService.stubPromise(IExtensionGalleryService, 'getCompatibleExtension', gallery);
 		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', [gallery]);
 		testObject = await aWorkbenchService();
@@ -465,10 +464,10 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 	test('test onchange event is triggered while installing', async () => {
 		const gallery = aGalleryExtension('gallery1');
 		testObject = await aWorkbenchService();
-		instantiationService.stubPromise(IExtensionGalleryService, 'query', aPage(gallery));
+		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions(gallery));
 
-		const page = await testObject.queryGallery(CancellationToken.None);
-		const extension = page.firstPage[0];
+		const page = await testObject.getExtensions([{ id: 'test' }], CancellationToken.None);
+		const extension = page[0];
 		assert.strictEqual(ExtensionState.Uninstalled, extension.state);
 
 		installEvent.fire({ identifier: gallery.identifier, source: gallery, profileLocation: null! });
@@ -483,11 +482,11 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 	test('test onchange event is triggered when installation is finished', async () => {
 		const gallery = aGalleryExtension('gallery1');
 		testObject = await aWorkbenchService();
-		instantiationService.stubPromise(IExtensionGalleryService, 'query', aPage(gallery));
+		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions(gallery));
 		const target = sinon.spy();
 
-		return testObject.queryGallery(CancellationToken.None).then(page => {
-			const extension = page.firstPage[0];
+		return testObject.getExtensions([{ id: 'test' }], CancellationToken.None).then(page => {
+			const extension = page[0];
 			assert.strictEqual(ExtensionState.Uninstalled, extension.state);
 
 			disposableStore.add(testObject.onChange(target));
@@ -531,9 +530,9 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 			.then(() => instantiationService.get(IWorkbenchExtensionEnablementService).setEnablement([aLocalExtension('c')], EnablementState.DisabledWorkspace))
 			.then(async () => {
 				testObject = await aWorkbenchService();
-				instantiationService.stubPromise(IExtensionGalleryService, 'query', aPage(aGalleryExtension('a')));
-				return testObject.queryGallery(CancellationToken.None).then(pagedResponse => {
-					const actual = pagedResponse.firstPage[0];
+				instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions(aGalleryExtension('a')));
+				return testObject.getExtensions([{ id: 'test' }], CancellationToken.None).then(pagedResponse => {
+					const actual = pagedResponse[0];
 					assert.strictEqual(actual.enablementState, EnablementState.EnabledGlobally);
 				});
 			});
@@ -1537,9 +1536,9 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 		return <IGalleryExtension>galleryExtension;
 	}
 
-	function aPage<T>(...objects: T[]): IPager<T> {
-		return { firstPage: objects, total: objects.length, pageSize: objects.length, getPage: () => null! };
-	}
+	function aGalleryExtensions<T>(...objects: T[]): T[] {
+	return objects;
+}
 
 	function aMultiExtensionManagementServerService(instantiationService: TestInstantiationService, localExtensionManagementService?: IProfileAwareExtensionManagementService, remoteExtensionManagementService?: IProfileAwareExtensionManagementService): IExtensionManagementServerService {
 		const localExtensionManagementServer: IExtensionManagementServer = {

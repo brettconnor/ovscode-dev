@@ -10,11 +10,10 @@ import { index } from '../../../../base/common/arrays.js';
 import { CancelablePromise, createCancelablePromise } from '../../../../base/common/async.js';
 import { CancellationError, isCancellationError } from '../../../../base/common/errors.js';
 import { Disposable, MutableDisposable } from '../../../../base/common/lifecycle.js';
-import { IPager, singlePagePager } from '../../../../base/common/paging.js';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
 import {
-	IExtensionGalleryService, ILocalExtension, IGalleryExtension, IQueryOptions,
-	InstallExtensionEvent, DidUninstallExtensionEvent, InstallOperation, WEB_EXTENSION_TAG, InstallExtensionResult,
+	IExtensionGalleryService, ILocalExtension, IGalleryExtension,
+	InstallExtensionEvent, DidUninstallExtensionEvent, InstallOperation, InstallExtensionResult,
 	IExtensionsControlManifest, IExtensionInfo, IExtensionQueryOptions, IDeprecationInfo, isTargetPlatformCompatible,
 	InstallOptions, IProductVersion,
 	UninstallExtensionInfo,
@@ -42,7 +41,6 @@ import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { IExtensionManifest, ExtensionType, IExtension as IPlatformExtension, TargetPlatform, ExtensionIdentifier, IExtensionIdentifier, IExtensionDescription, isApplicationScopedExtension } from '../../../../platform/extensions/common/extensions.js';
-import { ILanguageService } from '../../../../editor/common/languages/language.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { FileAccess } from '../../../../base/common/network.js';
 import { isString, isUndefined } from '../../../../base/common/types.js';
@@ -943,7 +941,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		@IHostService private readonly hostService: IHostService,
 		@IProgressService private readonly progressService: IProgressService,
 		@IExtensionManagementServerService private readonly extensionManagementServerService: IExtensionManagementServerService,
-		@ILanguageService private readonly languageService: ILanguageService,
 		@IProductService private readonly productService: IProductService,
 		@IExtensionManifestPropertiesService private readonly extensionManifestPropertiesService: IExtensionManifestPropertiesService,
 		@ILogService private readonly logService: ILogService,
@@ -1191,33 +1188,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		return this.local;
 	}
 
-	queryGallery(token: CancellationToken): Promise<IPager<IExtension>>;
-	queryGallery(options: IQueryOptions, token: CancellationToken): Promise<IPager<IExtension>>;
-	async queryGallery(arg1: any, arg2?: any): Promise<IPager<IExtension>> {
-		if (!this.galleryService.isEnabled()) {
-			return singlePagePager([]);
-		}
-
-		const options: IQueryOptions = CancellationToken.isCancellationToken(arg1) ? {} : arg1;
-		const token: CancellationToken = CancellationToken.isCancellationToken(arg1) ? arg1 : arg2;
-		options.text = options.text ? this.resolveQueryText(options.text) : options.text;
-		options.includePreRelease = isUndefined(options.includePreRelease) ? this.extensionManagementService.preferPreReleases : options.includePreRelease;
-
-		const extensionsControlManifest = await this.extensionManagementService.getExtensionsControlManifest();
-		const pager = await this.galleryService.query(options, token);
-		this.syncInstalledExtensionsWithGallery(pager.firstPage);
-		return {
-			firstPage: pager.firstPage.map(gallery => this.fromGallery(gallery, extensionsControlManifest)),
-			total: pager.total,
-			pageSize: pager.pageSize,
-			getPage: async (pageIndex, token) => {
-				const page = await pager.getPage(pageIndex, token);
-				this.syncInstalledExtensionsWithGallery(page);
-				return page.map(gallery => this.fromGallery(gallery, extensionsControlManifest));
-			}
-		};
-	}
-
 	getExtensions(extensionInfos: IExtensionInfo[], token: CancellationToken): Promise<IExtension[]>;
 	getExtensions(extensionInfos: IExtensionInfo[], options: IExtensionQueryOptions, token: CancellationToken): Promise<IExtension[]>;
 	async getExtensions(extensionInfos: IExtensionInfo[], arg1: any, arg2?: any): Promise<IExtension[]> {
@@ -1381,28 +1351,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		return this.extensionsNotification;
 	}
 
-	private resolveQueryText(text: string): string {
-		text = text.replace(/@web/g, `tag:"${WEB_EXTENSION_TAG}"`);
-
-		const extensionRegex = /\bext:([^\s]+)\b/g;
-		if (extensionRegex.test(text)) {
-			text = text.replace(extensionRegex, (m, ext) => {
-
-				// Get curated keywords
-				const lookup = this.productService.extensionKeywords || {};
-				const keywords = lookup[ext] || [];
-
-				// Get mode name
-				const languageId = this.languageService.guessLanguageIdByFilepathOrFirstLine(URI.file(`.${ext}`));
-				const languageName = languageId && this.languageService.getLanguageName(languageId);
-				const languageTag = languageName ? ` tag:"${languageName}"` : '';
-
-				// Construct a rich query
-				return `tag:"__ext_${ext}" tag:"__ext_.${ext}" ${keywords.map(tag => `tag:"${tag}"`).join(' ')}${languageTag} tag:"${ext}"`;
-			});
-		}
-		return text.substr(0, 350);
-	}
 
 	private fromGallery(gallery: IGalleryExtension, extensionsControlManifest: IExtensionsControlManifest): IExtension {
 		let extension = this.getInstalledExtensionMatchingGallery(gallery);
