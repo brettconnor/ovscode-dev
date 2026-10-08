@@ -5,7 +5,6 @@
 
 import './media/chatContextUsageDetails.css';
 import * as dom from '../../../../../../base/browser/dom.js';
-import { toAction, type IAction } from '../../../../../../base/common/actions.js';
 import { Disposable } from '../../../../../../base/common/lifecycle.js';
 import { autorun, type IObservable } from '../../../../../../base/common/observable.js';
 import { localize } from '../../../../../../nls.js';
@@ -15,11 +14,8 @@ import { WorkbenchButtonBar } from '../../../../../../platform/actions/browser/b
 import { IContextKeyService } from '../../../../../../platform/contextkey/common/contextkey.js';
 import { getActionBarActions } from '../../../../../../platform/actions/browser/menuEntryActionViewItem.js';
 import { formatCopilotCreditsLabel } from '../../../common/chatService/chatService.js';
-import type { IChatWidget } from '../../chat.js';
 
 const $ = dom.$;
-
-const COMPACT_AGENT_HOST_CONVERSATION_ACTION_ID = 'workbench.action.chat.compactAgentHostConversation';
 
 export interface IChatContextUsagePromptTokenDetail {
 	category: string;
@@ -58,7 +54,6 @@ export class ChatContextUsageDetails extends Disposable {
 	private readonly actionsSection: HTMLElement;
 
 	constructor(
-		private _chatWidget: IChatWidget | undefined,
 		private readonly _dataObservable: IObservable<IChatContextUsageData | undefined>,
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
 		@IMenuService private readonly menuService: IMenuService,
@@ -123,10 +118,8 @@ export class ChatContextUsageDetails extends Disposable {
 		const menu = this._register(this.menuService.createMenu(MenuId.ChatContextUsageActions, this.contextKeyService));
 		const updateActions = () => {
 			const actions = getActionBarActions(menu.getActions({ shouldForwardArgs: true }), () => true);
-			const primaryActions = actions.primary.map(action => this.withActionContext(action));
-			const secondaryActions = actions.secondary.map(action => this.withActionContext(action));
-			buttonBar.update(primaryActions, secondaryActions);
-			this.actionsSection.style.display = primaryActions.length > 0 || secondaryActions.length > 0 ? '' : 'none';
+			buttonBar.update(actions.primary, actions.secondary);
+			this.actionsSection.style.display = actions.primary.length > 0 || actions.secondary.length > 0 ? '' : 'none';
 		};
 		this._register(menu.onDidChange(updateActions));
 		updateActions();
@@ -138,28 +131,6 @@ export class ChatContextUsageDetails extends Disposable {
 				this._render(data);
 			}
 		}));
-	}
-
-	setChatWidget(widget: IChatWidget): void {
-		this._chatWidget = widget;
-	}
-
-	private withActionContext(action: IAction): IAction {
-		// Only the workbench-owned compact action can receive the in-memory widget.
-		// Extension-contributed commands must stay argument-free because widgets are not serializable across the extension host boundary.
-		if (action.id !== COMPACT_AGENT_HOST_CONVERSATION_ACTION_ID) {
-			return action;
-		}
-
-		return toAction({
-			id: action.id,
-			label: action.label,
-			tooltip: action.tooltip,
-			class: action.class,
-			enabled: action.enabled,
-			checked: action.checked,
-			run: () => action.run(this._chatWidget),
-		});
 	}
 
 	private _render(data: IChatContextUsageData): void {
