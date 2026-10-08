@@ -29,7 +29,7 @@ suite('ChatContextUsageDetails', () => {
 	function createDetails(initial: IChatContextUsageData | undefined) {
 		const instaService = workbenchInstantiationService(undefined, disposables);
 		const observable = observableValue<IChatContextUsageData | undefined>('test', initial);
-		const details = disposables.add(instaService.createInstance(ChatContextUsageDetails, undefined, observable));
+		const details = disposables.add(instaService.createInstance(ChatContextUsageDetails, observable));
 		return { details, observable };
 	}
 
