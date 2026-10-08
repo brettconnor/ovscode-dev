@@ -92,13 +92,6 @@ export function getMcpServerCustomizationMigrationCandidateKey(candidate: IMcpSe
 	]);
 }
 
-export interface IAgentHostMcpServerSupportCoverage {
-	/** Some installed servers may be absent or disabled because MCP access is restricted. */
-	readonly restrictedByMcpAccess: boolean;
-	/** Customization policy may prevent otherwise supported servers from reaching the Agent Host. */
-	readonly restrictedByCustomizationPolicy: boolean;
-}
-
 export interface McpServerCustomizationMigration {
 	readonly type: CustomizationMigrationType.McpServers;
 	readonly servers: readonly IMcpServerCustomizationMigrationItem[];
@@ -106,8 +99,6 @@ export interface McpServerCustomizationMigration {
 	readonly exclusions: readonly IMcpServerCustomizationMigrationExclusion[];
 	/** Whether all lazy MCP collections known to the client have loaded; when false, servers may be missing. */
 	readonly discoveryComplete: boolean;
-	/** Snapshot-wide restrictions that may limit inventory or delivery, independent of per-server support. */
-	readonly coverage: IAgentHostMcpServerSupportCoverage;
 }
 
 export const enum McpServerCustomizationMigrationFailureReason {
