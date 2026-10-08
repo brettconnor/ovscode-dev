@@ -25,8 +25,11 @@ import { ChatInputPart } from '../../../../browser/widget/input/chatInputPart.js
 import { ChatInputNotificationWidget, IChatInputNotificationDelegate, IChatInputNotificationModelSelection } from '../../../../browser/widget/input/chatInputNotificationWidget.js';
 import { isByokModel } from '../../../../common/chatSelectedModel.js';
 import { ILanguageModelChatMetadata, ILanguageModelChatMetadataAndIdentifier, ILanguageModelConfigurationSchema } from '../../../../common/languageModels.js';
-import { localChatSessionType, SessionType } from '../../../../common/chatSessionsService.js';
+import { localChatSessionType } from '../../../../common/chatSessionsService.js';
 import { getChatSessionType } from '../../../../common/model/chatUri.js';
+
+const testAgentHostSessionType = 'test-agent-host';
+const testCopilotCliSessionType = 'test-copilot-cli';
 
 class TestCommandService implements ICommandService {
 	declare readonly _serviceBrand: undefined;
@@ -142,7 +145,7 @@ suite('ChatInputNotificationWidget', () => {
 
 		assert.strictEqual(widget.domNode.querySelector('.chat-input-notification-header')?.textContent, 'Local only');
 
-		currentSessionType.set(SessionType.AgentHostCopilot, undefined);
+		currentSessionType.set(testAgentHostSessionType, undefined);
 		assert.strictEqual(widget.domNode.querySelector('.chat-input-notification-header'), null);
 
 		currentSessionType.set(localChatSessionType, undefined);
@@ -173,15 +176,15 @@ suite('ChatInputNotificationWidget', () => {
 			autoDismissOnMessage: false,
 			sessionTypes: [localChatSessionType],
 		});
-		currentSessionType.set(SessionType.AgentHostCopilot, undefined);
+		currentSessionType.set(testAgentHostSessionType, undefined);
 
 		assert.deepStrictEqual(visibilityChanges, [true, false]);
 	});
 
 	test('reactively applies session resource filter when the session changes', () => {
-		const firstSession = URI.parse('vscode-chat-session://agent-host-copilotcli/session-1');
-		const secondSession = URI.parse('vscode-chat-session://agent-host-copilotcli/session-2');
-		const currentSessionType = observableValue<string | undefined>('currentSessionType', SessionType.AgentHostCopilot);
+		const firstSession = URI.parse('vscode-chat-session://test-agent-host/session-1');
+		const secondSession = URI.parse('vscode-chat-session://test-agent-host/session-2');
+		const currentSessionType = observableValue<string | undefined>('currentSessionType', testAgentHostSessionType);
 		const currentSessionResource = observableValue<URI | undefined>('currentSessionResource', firstSession);
 		const notificationService = createNotificationService();
 		const instantiationService = store.add(workbenchInstantiationService(undefined, store));
@@ -316,9 +319,9 @@ suite('ChatInputNotificationWidget', () => {
 			this: typeof harness,
 			event?: { previousSessionResource: URI | undefined; currentSessionResource: URI | undefined },
 		) => void;
-		const untitled = URI.parse('agent-host-copilotcli:/untitled-1');
-		const materialized = URI.parse('agent-host-copilotcli:/session-1');
-		const second = URI.parse('agent-host-copilotcli:/session-2');
+		const untitled = URI.parse('test-agent-host:/untitled-1');
+		const materialized = URI.parse('test-agent-host:/session-1');
+		const second = URI.parse('test-agent-host:/session-2');
 
 		update.call(harness);
 		const firstSession = deferredNotificationsEnabled.get();
@@ -391,8 +394,8 @@ suite('ChatInputNotificationWidget', () => {
 	});
 
 	test('auto-dismiss on message only applies to the sending session', () => {
-		const firstSession = URI.parse('vscode-chat-session://agent-host-copilotcli/session-1');
-		const secondSession = URI.parse('vscode-chat-session://agent-host-copilotcli/session-2');
+		const firstSession = URI.parse('vscode-chat-session://test-agent-host/session-1');
+		const secondSession = URI.parse('vscode-chat-session://test-agent-host/session-2');
 		const notificationService = createNotificationService();
 
 		for (const [id, sessionResource] of [['first', firstSession], ['second', secondSession]] as const) {
@@ -408,7 +411,7 @@ suite('ChatInputNotificationWidget', () => {
 			});
 		}
 
-		notificationService.handleMessageSent(context({ sessionType: SessionType.AgentHostCopilot, sessionResource: firstSession }));
+		notificationService.handleMessageSent(context({ sessionType: testAgentHostSessionType, sessionResource: firstSession }));
 
 		assert.deepStrictEqual({
 			inFirstSession: notificationService.getActiveNotification(n => n.id === 'first')?.id,
@@ -421,7 +424,7 @@ suite('ChatInputNotificationWidget', () => {
 
 	test('auto-dismiss respects input-instance ownership even when two inputs show the same session', () => {
 		const notificationService = createNotificationService();
-		const sessionResource = URI.from({ scheme: SessionType.AgentHostCopilot, path: '/untitled-session' });
+		const sessionResource = URI.from({ scheme: testAgentHostSessionType, path: '/untitled-session' });
 		const owner = URI.from({ scheme: Schemas.vscodeChatInput, path: '/owner' });
 		const other = URI.from({ scheme: Schemas.vscodeChatInput, path: '/other' });
 		notificationService.setNotification({
@@ -1021,8 +1024,8 @@ suite('ChatInputNotificationWidget', () => {
 		});
 	});
 
-	test('matches Agent Host notifications against the resource scheme', () => {
-		const sessionResource = URI.from({ scheme: 'agent-host-copilotcli', path: '/untitled-session' });
+	test('matches a notification against a session resource scheme', () => {
+		const sessionResource = URI.from({ scheme: 'test-agent-host', path: '/untitled-session' });
 		const { notificationService, widget } = createWidget({
 			delegate: { modelTargetChatSessionType: constObservable(getChatSessionType(sessionResource)) },
 		});
@@ -1031,14 +1034,14 @@ suite('ChatInputNotificationWidget', () => {
 			id: 'agent-host-promo',
 			message: 'Agent Host promo',
 			actions: [],
-			sessionTypes: ['agent-host-copilotcli'],
+			sessionTypes: ['test-agent-host'],
 		});
 
 		assert.strictEqual(widget.domNode.querySelector('.chat-input-notification-header')?.textContent, 'Agent Host promo');
 	});
 
-	test('matches a notification scoped to both Copilot model targets', () => {
-		const currentSessionType = observableValue<string | undefined>('currentSessionType', SessionType.AgentHostCopilot);
+	test('matches a notification scoped to multiple session targets', () => {
+		const currentSessionType = observableValue<string | undefined>('currentSessionType', testAgentHostSessionType);
 		const { notificationService, widget } = createWidget({
 			delegate: { modelTargetChatSessionType: currentSessionType },
 		});
@@ -1047,11 +1050,11 @@ suite('ChatInputNotificationWidget', () => {
 			id: 'copilot-model-setup',
 			message: 'Choose how you want to use Copilot.',
 			actions: [],
-			sessionTypes: [SessionType.AgentHostCopilot, SessionType.CopilotCLI],
+			sessionTypes: [testAgentHostSessionType, testCopilotCliSessionType],
 		});
 		const text = () => widget.domNode.querySelector('.chat-input-notification-header')?.textContent;
 		const agentHostText = text();
-		currentSessionType.set(SessionType.CopilotCLI, undefined);
+		currentSessionType.set(testCopilotCliSessionType, undefined);
 		const copilotCliText = text();
 
 		assert.deepStrictEqual({
@@ -1086,11 +1089,11 @@ suite('ChatInputNotificationWidget', () => {
 			resolveBody: () => ({ description: 'Agent Host body', actions: [] }),
 			dismissible: true,
 			autoDismissOnMessage: false,
-			sessionTypes: [SessionType.AgentHostCopilot],
+			sessionTypes: [testAgentHostSessionType],
 		});
 		assert.strictEqual(lastAnnounced()?.notification, undefined, 'nothing should be announced in a non-matching session');
 
-		currentSessionType.set(SessionType.AgentHostCopilot, undefined);
+		currentSessionType.set(testAgentHostSessionType, undefined);
 		assert.deepStrictEqual({
 			id: lastAnnounced()?.notification?.id,
 			description: lastAnnounced()?.body?.description,

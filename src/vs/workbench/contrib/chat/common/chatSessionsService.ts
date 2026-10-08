@@ -5,16 +5,9 @@
 
 import { URI } from '../../../../base/common/uri.js';
 
-/** Session identifiers still used by the workbench while Agent Host is being removed. */
+/** The local Chat session type. */
 export namespace SessionType {
-	export const CopilotCLI = 'copilotcli';
-	export const CopilotCloud = 'copilot-cloud-agent';
 	export const Local = 'local';
-	export const Codex = 'openai-codex';
-	export const Growth = 'copilot-growth';
-	export const AgentHostCopilot = 'agent-host-copilotcli';
-	export const AgentHostClaude = 'agent-host-claude';
-	export const AgentHostCodex = 'agent-host-codex';
 }
 
 export const localChatSessionType = SessionType.Local;

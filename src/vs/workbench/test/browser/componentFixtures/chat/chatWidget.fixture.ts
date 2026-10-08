@@ -43,7 +43,6 @@ import { IProductService } from '../../../../../platform/product/common/productS
 import { TestConfigurationService } from '../../../../../platform/configuration/test/common/testConfigurationService.js';
 import { CHAT_OPEN_AGENT_HOST_CHAT_COMMAND_ID, ChatAgentLocation, ChatConfiguration, ChatModeKind, ChatProgressAnimation, ChatProgressVerbosity, ThinkingDisplayMode } from '../../../../contrib/chat/common/constants.js';
 import { PROMPT_TIMELINE_STICKY_SCROLL_SETTING } from '../../../../contrib/chat/common/promptTimeline.js';
-import { SessionType } from '../../../../contrib/chat/common/chatSessionsService.js';
 import { IChatEditingService, IChatEditingSession, IEditSessionEntryDiff } from '../../../../contrib/chat/common/editing/chatEditingService.js';
 import { IChatResponseFileChangesService, IChatResponseFileEdit } from '../../../../contrib/chat/browser/chatResponseFileChangesService.js';
 import { MockChatService } from '../../../../contrib/chat/test/common/chatService/mockChatService.js';
@@ -392,10 +391,10 @@ export async function renderChatWidget(context: ComponentFixtureContext, options
 	// Build a real ChatModel populated with hand-crafted requests/responses, then drive a
 	// real ChatViewModel + ChatListWidget — the same components used in production.
 	// The turn changes summary only renders for agent host sessions, whose frontend
-	// resource uses the session type as the scheme (e.g. `agent-host-copilotcli:/…`),
+	// resource uses the session type as the scheme (e.g. `test-agent-host:/…`),
 	// which is what `getChatSessionType` / `toAgentHostBackendSessionUri` recognize.
 	const sessionResource = isAgentHostSession
-		? URI.from({ scheme: SessionType.AgentHostCopilot, path: '/turn-pills-session' })
+		? URI.from({ scheme: 'test-agent-host', path: '/turn-pills-session' })
 		: undefined;
 	const chatService = instantiationService.get(IChatService) as MockChatService;
 	const editingSession = options.editingSession;
