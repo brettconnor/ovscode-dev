@@ -427,7 +427,6 @@ export async function renderChatWidget(context: ComponentFixtureContext, options
 			undefined,
 			message.timestamp,
 			undefined,
-			undefined,
 			message.requestHidden,
 			message.requestSource,
 		);
