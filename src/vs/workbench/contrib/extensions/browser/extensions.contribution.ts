@@ -17,7 +17,7 @@ import { IClipboardService } from '../../../../platform/clipboard/common/clipboa
 import { CommandsRegistry, ICommandService } from '../../../../platform/commands/common/commands.js';
 import { Extensions as ConfigurationExtensions, ConfigurationScope, IConfigurationRegistry } from '../../../../platform/configuration/common/configurationRegistry.js';
 import { ContextKeyExpr, IContextKeyService, RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
-import { ExtensionGalleryManifestStatus, ExtensionGalleryResourceType, ExtensionGalleryAuthProviderConfigKey, ExtensionGalleryServiceUrlConfigKey, getExtensionGalleryManifestResourceUri, IExtensionGalleryManifest, IExtensionGalleryManifestService } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
+import { ExtensionGalleryResourceType, ExtensionGalleryAuthProviderConfigKey, ExtensionGalleryServiceUrlConfigKey, getExtensionGalleryManifestResourceUri, IExtensionGalleryManifest, IExtensionGalleryManifestService } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
 import { ExtensionRequestsTimeoutConfigKey, ExtensionsLocalizedLabel, IExtensionManagementService, VerifyExtensionSignatureConfigKey } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { areSameExtensions } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { ExtensionStorageService } from '../../../../platform/extensionManagement/common/extensionStorage.js';
@@ -46,7 +46,7 @@ import { IPreferencesService } from '../../../services/preferences/common/prefer
 import { IViewsService } from '../../../services/views/common/viewsService.js';
 import { WORKSPACE_TRUST_EXTENSION_SUPPORT } from '../../../services/workspaces/common/workspaceTrust.js';
 import { IWebview } from '../../webview/browser/webview.js';
-import { AutoRestartConfigurationKey, CONTEXT_HAS_GALLERY, DefaultViewsContext, ExtensionEditorTab, EXTENSIONS_CATEGORY, extensionsFilterSubMenu, extensionsSearchActionsMenu, IExtensionArg, IExtensionsViewPaneContainer, IExtensionsWorkbenchService, LIST_WORKSPACE_UNSUPPORTED_EXTENSIONS_COMMAND_ID, THEME_ACTIONS_GROUP, VIEWLET_ID } from '../common/extensions.js';
+import { AutoRestartConfigurationKey, DefaultViewsContext, ExtensionEditorTab, EXTENSIONS_CATEGORY, extensionsFilterSubMenu, extensionsSearchActionsMenu, IExtensionArg, IExtensionsViewPaneContainer, IExtensionsWorkbenchService, LIST_WORKSPACE_UNSUPPORTED_EXTENSIONS_COMMAND_ID, THEME_ACTIONS_GROUP, VIEWLET_ID } from '../common/extensions.js';
 import { ExtensionsInput } from '../common/extensionsInput.js';
 import { KeymapExtensions } from '../common/extensionsUtils.js';
 import { ExtensionEditor } from './extensionEditor.js';
@@ -426,8 +426,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 			hasWebServerContext.set(true);
 		}
 
-		this.updateHasGalleryContext();
-		this._register(extensionGalleryManifestService.onDidChangeExtensionGalleryManifestStatus(() => this.updateHasGalleryContext()));
 		extensionGalleryManifestService.getExtensionGalleryManifest()
 			.then(extensionGalleryManifest => {
 				this.updateGalleryCapabilitiesContexts(extensionGalleryManifest);
@@ -435,10 +433,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 			});
 		this.registerGlobalActions();
 		this.registerContextMenuActions();
-	}
-
-	private updateHasGalleryContext(): void {
-		CONTEXT_HAS_GALLERY.bindTo(this.contextKeyService).set(this.extensionGalleryManifestService.extensionGalleryManifestStatus === ExtensionGalleryManifestStatus.Available);
 	}
 
 	private async updateGalleryCapabilitiesContexts(extensionGalleryManifest: IExtensionGalleryManifest | null): Promise<void> {
@@ -473,19 +467,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 			f1: true,
 			run: async (accessor: ServicesAccessor) => {
 				await accessor.get(IExtensionsWorkbenchService).openSearch('');
-			}
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.installExtensions',
-			title: localize2('installExtensions', 'Install Extensions'),
-			category: ExtensionsLocalizedLabel,
-			menu: {
-				id: MenuId.CommandPalette,
-				when: ContextKeyExpr.and(CONTEXT_HAS_GALLERY, ContextKeyExpr.or(CONTEXT_HAS_LOCAL_SERVER, CONTEXT_HAS_REMOTE_SERVER, CONTEXT_HAS_WEB_SERVER))
-			},
-			run: async (accessor: ServicesAccessor) => {
-				accessor.get(IViewsService).openViewContainer(VIEWLET_ID, true);
 			}
 		});
 

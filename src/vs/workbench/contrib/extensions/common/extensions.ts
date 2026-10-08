@@ -221,7 +221,6 @@ export const LIST_WORKSPACE_UNSUPPORTED_EXTENSIONS_COMMAND_ID = 'workbench.exten
 
 // Context Keys
 export const DefaultViewsContext = new RawContextKey<boolean>('defaultExtensionViews', true);
-export const CONTEXT_HAS_GALLERY = new RawContextKey<boolean>('hasGallery', false);
 export const ExtensionResultsListFocused = new RawContextKey<boolean>('extensionResultListFocused ', true);
 export const SearchAgentPluginsContext = new RawContextKey<boolean>('searchAgentPlugins', false);
 
