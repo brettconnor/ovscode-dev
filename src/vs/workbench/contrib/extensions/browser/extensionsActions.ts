@@ -1963,14 +1963,6 @@ export class ExtensionStatusAction extends ExtensionAction {
 			return;
 		}
 
-		if (this.extension.gallery && this.extension.state === ExtensionState.Uninstalled) {
-			const result = await this.extensionsWorkbenchService.canInstall(this.extension);
-			if (result !== true) {
-				this.updateStatus({ icon: warningIcon, message: result }, true);
-				return;
-			}
-		}
-
 		if (!this.extension.local ||
 			!this.extension.server ||
 			this.extension.state !== ExtensionState.Installed
