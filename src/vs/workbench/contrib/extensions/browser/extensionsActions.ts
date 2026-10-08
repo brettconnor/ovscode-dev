@@ -443,9 +443,8 @@ export class InstallAction extends ExtensionAction {
 			let detail: string | MarkdownString = localize('deprecated message', "This extension is deprecated as it is no longer being maintained.");
 			enum DeprecationChoice {
 				InstallAnyway = 0,
-				ShowAlternateExtension = 1,
-				ConfigureSettings = 2,
-				Cancel = 3
+				ConfigureSettings = 1,
+				Cancel = 2
 			}
 			const buttons: IPromptButton<DeprecationChoice>[] = [
 				{
@@ -456,17 +455,6 @@ export class InstallAction extends ExtensionAction {
 
 			if (this.extension.deprecationInfo.extension) {
 				detail = localize('deprecated with alternate extension message', "This extension is deprecated. Use the {0} extension instead.", this.extension.deprecationInfo.extension.displayName);
-
-				const alternateExtension = this.extension.deprecationInfo.extension;
-				buttons.push({
-					label: localize({ key: 'Show alternate extension', comment: ['&& denotes a mnemonic'] }, "&&Open {0}", this.extension.deprecationInfo.extension.displayName),
-					run: async () => {
-						const [extension] = await this.extensionsWorkbenchService.getExtensions([{ id: alternateExtension.id, preRelease: alternateExtension.preRelease }], CancellationToken.None);
-						await this.extensionsWorkbenchService.open(extension);
-
-						return DeprecationChoice.ShowAlternateExtension;
-					}
-				});
 			} else if (this.extension.deprecationInfo.settings) {
 				detail = localize('deprecated with alternate settings message', "This extension is deprecated as this functionality is now built-in to VS Code.");
 
@@ -1961,8 +1949,8 @@ export class ExtensionStatusAction extends ExtensionAction {
 
 		if (this.extension.deprecationInfo) {
 			if (this.extension.deprecationInfo.extension) {
-				const link = `[${this.extension.deprecationInfo.extension.displayName}](${createCommandUri('extension.open', this.extension.deprecationInfo.extension.id)})`;
-				this.updateStatus({ icon: warningIcon, message: new MarkdownString(localize('deprecated with alternate extension tooltip', "This extension is deprecated. Use the {0} extension instead.", link)) }, true);
+				const message = new MarkdownString(localize('deprecated with alternate extension tooltip', "This extension is deprecated. Use the {0} extension instead.", this.extension.deprecationInfo.extension.displayName));
+				this.updateStatus({ icon: warningIcon, message }, true);
 			} else if (this.extension.deprecationInfo.settings) {
 				const link = `[${localize('settings', "settings")}](${createCommandUri('workbench.action.openSettings', this.extension.deprecationInfo.settings.map(setting => `@id:${setting}`).join(' '))}})`;
 				this.updateStatus({ icon: warningIcon, message: new MarkdownString(localize('deprecated with alternate settings tooltip', "This extension is deprecated as this functionality is now built-in to VS Code. Configure these {0} to use this functionality.", link)) }, true);
