@@ -923,7 +923,6 @@ async function getContextMenuActionsGroups(extension: IExtension | undefined | n
 			cksOverlay.push(['isDefaultApplicationScopedExtension', extension.local && isApplicationScopedExtension(extension.local.manifest)]);
 			cksOverlay.push(['isApplicationScopedExtension', extension.local && extension.local.isApplicationScoped]);
 			cksOverlay.push(['isWorkspaceScopedExtension', extension.isWorkspaceScoped]);
-			cksOverlay.push(['isGalleryExtension', !!extension.identifier.uuid]);
 			if (extension.local) {
 				cksOverlay.push(['extensionSource', extension.local.source]);
 			}
@@ -1142,8 +1141,7 @@ export class MenuItemExtensionAction extends ExtensionAction {
 			const extensionArg: IExtensionArg = {
 				id: this.extension.identifier.id,
 				version: this.extension.version,
-				location: this.extension.local?.location,
-				galleryLink: this.extension.url
+				location: this.extension.local?.location
 			};
 			await this.action.run(id, extensionArg);
 		}

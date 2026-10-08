@@ -215,10 +215,6 @@ export class Extension implements IExtension {
 		return this.gallery ? this.gallery.description : this.getManifestFromLocalOrResource()?.description ?? '';
 	}
 
-	get url(): string | undefined {
-		return this.gallery?.detailsLink;
-	}
-
 	get iconUrl(): string | undefined {
 		return this.galleryIconUrl || this.resourceExtensionIconUrl || this.localIconUrl || this.defaultIconUrl;
 	}
@@ -296,10 +292,6 @@ export class Extension implements IExtension {
 
 	get ratingCount(): number | undefined {
 		return this.gallery ? this.gallery.ratingCount : undefined;
-	}
-
-	get ratingUrl(): string | undefined {
-		return this.gallery?.ratingLink;
 	}
 
 	get outdated(): boolean {

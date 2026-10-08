@@ -278,10 +278,6 @@ export class RatingsWidget extends ExtensionWidget {
 			return;
 		}
 
-		if (!this.extension.url) {
-			return;
-		}
-
 		const rating = Math.round(this.extension.rating * 2) / 2;
 		if (this.small) {
 			append(this.container, $('span' + ThemeIcon.asCSSSelector(starFullIcon)));
@@ -289,7 +285,7 @@ export class RatingsWidget extends ExtensionWidget {
 			const count = append(this.container, $('span.count'));
 			count.textContent = String(rating);
 		} else {
-			const element = append(this.container, $('span.rating.clickable', { tabIndex: 0 }));
+			const element = append(this.container, $('span.rating'));
 			for (let i = 1; i <= 5; i++) {
 				if (rating >= i) {
 					append(element, $('span' + ThemeIcon.asCSSSelector(starFullIcon)));
@@ -306,10 +302,6 @@ export class RatingsWidget extends ExtensionWidget {
 
 			this.containerHover = this._register(this.hoverService.setupManagedHover(getDefaultHoverDelegate('mouse'), element, ''));
 			this.containerHover.update(localize('ratedLabel', "Average rating: {0} out of 5", rating));
-			element.setAttribute('role', 'link');
-			if (this.extension.ratingUrl) {
-				this.disposables.add(onClick(element, () => this.openerService.open(URI.parse(this.extension!.ratingUrl!))));
-			}
 		}
 	}
 
@@ -325,7 +317,6 @@ export class PublisherWidget extends ExtensionWidget {
 	constructor(
 		readonly container: HTMLElement,
 		private small: boolean,
-		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
 		@IHoverService private readonly hoverService: IHoverService,
 		@IOpenerService private readonly openerService: IOpenerService,
 	) {
@@ -367,10 +358,6 @@ export class PublisherWidget extends ExtensionWidget {
 			}
 			append(this.element, publisherDisplayName);
 		} else {
-			this.element.classList.toggle('clickable', !!this.extension.url);
-			this.element.setAttribute('role', 'button');
-			this.element.tabIndex = 0;
-
 			this.containerHover = this.disposables.add(this.hoverService.setupManagedHover(getDefaultHoverDelegate('mouse'), this.element, localize('publisher', "Publisher ({0})", this.extension.publisherDisplayName)));
 			append(this.element, publisherDisplayName);
 
@@ -384,10 +371,6 @@ export class PublisherWidget extends ExtensionWidget {
 
 				append(verifiedPublisher, $('span.extension-verified-publisher-domain', undefined, publisherDomainLink.authority.startsWith('www.') ? publisherDomainLink.authority.substring(4) : publisherDomainLink.authority));
 				this.disposables.add(onClick(verifiedPublisher, () => this.openerService.open(publisherDomainLink)));
-			}
-
-			if (this.extension.url) {
-				this.disposables.add(onClick(this.element, () => this.extensionsWorkbenchService.openSearch(`publisher:"${this.extension?.publisherDisplayName}"`)));
 			}
 		}
 
@@ -823,7 +806,7 @@ export class ExtensionHoverWidget extends ExtensionWidget {
 					markdown.appendText(`  |  `);
 				}
 				const rating = Math.round(this.extension.rating * 2) / 2;
-				markdown.appendMarkdown(`$(${starFullIcon.id}) [${rating}](${this.extension.url}&ssr=false#review-details)`);
+				markdown.appendMarkdown(`$(${starFullIcon.id}) ${rating}`);
 				addSeparator = true;
 			}
 			if (this.extension.publisherSponsorLink) {

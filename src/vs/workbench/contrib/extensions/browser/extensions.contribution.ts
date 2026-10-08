@@ -17,7 +17,7 @@ import { IClipboardService } from '../../../../platform/clipboard/common/clipboa
 import { CommandsRegistry, ICommandService } from '../../../../platform/commands/common/commands.js';
 import { Extensions as ConfigurationExtensions, ConfigurationScope, IConfigurationRegistry } from '../../../../platform/configuration/common/configurationRegistry.js';
 import { ContextKeyExpr, IContextKeyService, RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
-import { ExtensionGalleryResourceType, ExtensionGalleryAuthProviderConfigKey, ExtensionGalleryServiceUrlConfigKey, getExtensionGalleryManifestResourceUri, IExtensionGalleryManifest, IExtensionGalleryManifestService } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
+import { ExtensionGalleryAuthProviderConfigKey, ExtensionGalleryServiceUrlConfigKey, IExtensionGalleryManifest, IExtensionGalleryManifestService } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
 import { ExtensionRequestsTimeoutConfigKey, ExtensionsLocalizedLabel, IExtensionManagementService, VerifyExtensionSignatureConfigKey } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { areSameExtensions } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { ExtensionStorageService } from '../../../../platform/extensionManagement/common/extensionStorage.js';
@@ -384,7 +384,6 @@ export const CONTEXT_HAS_REMOTE_SERVER = new RawContextKey<boolean>('hasRemoteSe
 export const CONTEXT_HAS_WEB_SERVER = new RawContextKey<boolean>('hasWebServer', false);
 const CONTEXT_GALLERY_ALL_PUBLIC_REPOSITORY_SIGNED = new RawContextKey<boolean>('galleryAllPublicRepositorySigned', false);
 const CONTEXT_GALLERY_ALL_PRIVATE_REPOSITORY_SIGNED = new RawContextKey<boolean>('galleryAllPrivateRepositorySigned', false);
-const CONTEXT_GALLERY_HAS_EXTENSION_LINK = new RawContextKey<boolean>('galleryHasExtensionLink', false);
 
 async function runAction<T = void>(action: IAction): Promise<T> {
 	try {
@@ -438,7 +437,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 	private async updateGalleryCapabilitiesContexts(extensionGalleryManifest: IExtensionGalleryManifest | null): Promise<void> {
 		CONTEXT_GALLERY_ALL_PUBLIC_REPOSITORY_SIGNED.bindTo(this.contextKeyService).set(!!extensionGalleryManifest?.capabilities?.signing?.allPublicRepositorySigned);
 		CONTEXT_GALLERY_ALL_PRIVATE_REPOSITORY_SIGNED.bindTo(this.contextKeyService).set(!!extensionGalleryManifest?.capabilities?.signing?.allPrivateRepositorySigned);
-		CONTEXT_GALLERY_HAS_EXTENSION_LINK.bindTo(this.contextKeyService).set(!!(extensionGalleryManifest && getExtensionGalleryManifestResourceUri(extensionGalleryManifest, ExtensionGalleryResourceType.ExtensionDetailsViewUri)));
 	}
 
 	// Global actions
@@ -795,9 +793,7 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 					const description = localize('extensionInfoDescription', 'Description: {0}', extension.description);
 					const verision = localize('extensionInfoVersion', 'Version: {0}', extension.version);
 					const publisher = localize('extensionInfoPublisher', 'Publisher: {0}', extension.publisherDisplayName);
-					const link = extension.url ? localize('extensionInfoVSMarketplaceLink', 'VS Marketplace Link: {0}', `${extension.url}`) : null;
-					const clipboardStr = `${name}\n${id}\n${description}\n${verision}\n${publisher}${link ? '\n' + link : ''}`;
-					await clipboardService.writeText(clipboardStr);
+					await clipboardService.writeText(`${name}\n${id}\n${description}\n${verision}\n${publisher}`);
 				}
 			}
 		});
@@ -810,22 +806,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 				group: '1_copy'
 			},
 			run: async (accessor: ServicesAccessor, id: string) => accessor.get(IClipboardService).writeText(id)
-		});
-
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.copyLink',
-			title: localize2('workbench.extensions.action.copyLink', 'Copy Link'),
-			menu: {
-				id: MenuId.ExtensionContext,
-				group: '1_copy',
-				when: ContextKeyExpr.and(ContextKeyExpr.has('isGalleryExtension'), CONTEXT_GALLERY_HAS_EXTENSION_LINK),
-			},
-			run: async (accessor: ServicesAccessor, _, extension: IExtensionArg) => {
-				const clipboardService = accessor.get(IClipboardService);
-				if (extension.galleryLink) {
-					await clipboardService.writeText(extension.galleryLink);
-				}
-			}
 		});
 
 		this.registerExtensionAction({
