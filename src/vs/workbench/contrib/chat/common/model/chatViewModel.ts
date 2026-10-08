@@ -133,7 +133,6 @@ export interface IChatRequestViewModel {
 	readonly isSystemInitiated?: boolean;
 	readonly requestSource?: IChatRequestModel['requestSource'];
 	readonly systemInitiatedLabel?: string;
-	readonly origin?: IChatRequestModel['origin'];
 }
 
 export interface IChatResponseRenderData {
@@ -525,10 +524,6 @@ class ChatRequestViewModel implements IChatRequestViewModel {
 
 	get requestTimestamp() {
 		return this._model.requestTimestamp;
-	}
-
-	get origin() {
-		return this._model.origin;
 	}
 
 	get pendingKind() {
