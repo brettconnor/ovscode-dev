@@ -100,7 +100,7 @@
 }
 
 /* Toolbar hosting the contributed "Open Subagent" pill (via
-	`MenuId.ChatSubagentContent`). Sits at the start of the subagent header row,
+	the removed child-session navigation action. Sits at the start of the phase header row,
 	before the streaming title, so it keeps a fixed position; the pill itself is
 	rendered and styled by the Agents-window contribution. */
 .chat-subagent-part .chat-subagent-open-chat-toolbar {

@@ -4,47 +4,35 @@
  *--------------------------------------------------------------------------------------------*/
 
 import './media/chatSubagentOpenChat.css';
-import { $, addDisposableListener, EventHelper, EventLike, EventType, isHTMLElement, WindowIntervalTimer } from '../../../../../../base/browser/dom.js';
-import { StandardKeyboardEvent } from '../../../../../../base/browser/keyboardEvent.js';
+import { $, addDisposableListener, EventType, WindowIntervalTimer } from '../../../../../../base/browser/dom.js';
 import { BaseActionViewItem, IActionViewItemOptions } from '../../../../../../base/browser/ui/actionbar/actionViewItems.js';
 import { createPixelSpinner } from '../../../../../../base/browser/ui/pixelSpinner/pixelSpinner.js';
-import { Action, IAction } from '../../../../../../base/common/actions.js';
+import { IAction } from '../../../../../../base/common/actions.js';
 import { Codicon } from '../../../../../../base/common/codicons.js';
-import { Emitter } from '../../../../../../base/common/event.js';
 import { MarkdownString } from '../../../../../../base/common/htmlContent.js';
-import { KeyCode } from '../../../../../../base/common/keyCodes.js';
-import { Disposable, DisposableStore, IDisposable, MutableDisposable, toDisposable } from '../../../../../../base/common/lifecycle.js';
+import { DisposableStore, MutableDisposable, toDisposable } from '../../../../../../base/common/lifecycle.js';
 import { ThemeIcon } from '../../../../../../base/common/themables.js';
-import { URI } from '../../../../../../base/common/uri.js';
-import { localize, localize2 } from '../../../../../../nls.js';
+import { localize } from '../../../../../../nls.js';
 import { IAccessibilityService } from '../../../../../../platform/accessibility/common/accessibility.js';
-import { IActionViewItemService } from '../../../../../../platform/actions/browser/actionViewItemService.js';
-import { Action2, MenuId, MenuItemAction, registerAction2 } from '../../../../../../platform/actions/common/actions.js';
 import { IConfigurationService } from '../../../../../../platform/configuration/common/configuration.js';
 import { IHoverService } from '../../../../../../platform/hover/browser/hover.js';
-import { IInstantiationService, ServicesAccessor } from '../../../../../../platform/instantiation/common/instantiation.js';
+import { IInstantiationService } from '../../../../../../platform/instantiation/common/instantiation.js';
 import { IMarkdownRendererService } from '../../../../../../platform/markdown/browser/markdownRenderer.js';
-import { INotificationService } from '../../../../../../platform/notification/common/notification.js';
-import { IWorkbenchContribution, registerWorkbenchContribution2, WorkbenchPhase } from '../../../../../common/contributions.js';
-import { ACTIVE_GROUP } from '../../../../../services/editor/common/editorService.js';
 import { formatElapsedTime } from '../../../common/chatProgressFormatting.js';
 import { formatCopilotCreditsLabel } from '../../../common/chatService/chatService.js';
-import { CHAT_OPEN_AGENT_HOST_CHAT_COMMAND_ID, ChatConfiguration } from '../../../common/constants.js';
+import { ChatConfiguration } from '../../../common/constants.js';
 import { AUTO_RAW_MODEL_ID, ILanguageModelsService } from '../../../common/languageModels.js';
-import { IChatWidgetService } from '../../chat.js';
 import { getChatMarkdownRenderOptions } from '../chatContentMarkdownRenderer.js';
 import { renderFileWidgets } from './chatInlineAnchorWidget.js';
 import { IChatMarkdownAnchorService } from './chatMarkdownAnchorService.js';
 import { getCompactCodicon } from '../../chatIcons.js';
 
-export interface IOpenSubagentChatContext {
-	readonly chatResource: string;
+export interface ISubagentPillContext {
+	readonly chatResource?: string;
 	readonly isChatAvailable?: boolean;
 	readonly parentSessionResource?: string;
 	readonly title?: string;
 	readonly agentType?: string;
-	/** Open the subagent chat to the side (in a new group) rather than in place. */
-	readonly toSide?: boolean;
 	readonly confirmationCount?: number;
 	readonly confirmationActive?: boolean;
 	readonly startedAt?: number;
@@ -62,46 +50,12 @@ export interface IOpenSubagentChatContext {
 	readonly activeToolIcon?: ThemeIcon;
 }
 
-export type SubagentPillContext = Omit<IOpenSubagentChatContext, 'chatResource' | 'isChatAvailable'>;
+export type SubagentPillContext = Omit<ISubagentPillContext, 'chatResource' | 'isChatAvailable'>;
 
 export type SubagentChatStatus = 'running' | 'waiting' | 'completed' | 'failed' | 'cancelled';
 
-export interface ISubagentChatOpener {
-	open(context: IOpenSubagentChatContext): Promise<boolean>;
-}
-
-class SubagentChatOpenerRegistry {
-	private readonly openers = new Set<ISubagentChatOpener>();
-
-	register(opener: ISubagentChatOpener): IDisposable {
-		this.openers.add(opener);
-		return toDisposable(() => this.openers.delete(opener));
-	}
-
-	async open(context: IOpenSubagentChatContext): Promise<boolean> {
-		for (const opener of this.openers) {
-			if (await opener.open(context)) {
-				return true;
-			}
-		}
-		return false;
-	}
-}
-
-export const subagentChatOpenerRegistry = new SubagentChatOpenerRegistry();
-
-function asOpenSubagentChatContext(context: unknown): IOpenSubagentChatContext | undefined {
-	if (typeof context === 'string') {
-		return { chatResource: context };
-	}
-	if (context && typeof context === 'object' && typeof (context as IOpenSubagentChatContext).chatResource === 'string') {
-		return context as IOpenSubagentChatContext;
-	}
-	return undefined;
-}
-
-export function getSubagentEditorResource(_context: IOpenSubagentChatContext): URI | undefined {
-	return undefined;
+function asSubagentPillContext(context: unknown): ISubagentPillContext | undefined {
+	return context && typeof context === 'object' ? context as ISubagentPillContext : undefined;
 }
 
 /** Compares known model identities, falling back to labels for legacy invocations. A concrete model always shows under an Auto parent. */
@@ -137,70 +91,9 @@ export function shouldAnimateSubagentToolTransition(displayedToolCallId: string 
 	return displayedIsTool !== targetIsTool || displayedToolCallId !== targetToolCallId;
 }
 
-function createOpenSubagentAction(action: IAction): Action {
-	const proxy = new Action(action.id, action.label, action.class, false, context => action.run(context));
-	proxy.tooltip = action.tooltip;
-	return proxy;
-}
-
-function createEditorOpenSubagentAction(action: IAction, chatWidgetService: IChatWidgetService, notificationService: INotificationService): Action {
-	const proxy = new Action(action.id, action.label, action.class, false, async rawContext => {
-		const context = asOpenSubagentChatContext(rawContext);
-		const resource = context && getSubagentEditorResource(context);
-		if (!resource) {
-			notificationService.error(localize('chat.subagent.openChat.invalidResource', "The subagent chat could not be opened."));
-			return;
-		}
-		await chatWidgetService.openSession(resource, ACTIVE_GROUP, {
-			pinned: true,
-			revealIfOpened: true,
-			title: context.title ? { preferred: context.title } : undefined,
-		});
-	});
-	proxy.tooltip = action.tooltip;
-	return proxy;
-}
-
-class OpenSubagentChatAction extends Action2 {
-	constructor() {
-		super({
-			id: CHAT_OPEN_AGENT_HOST_CHAT_COMMAND_ID,
-			title: localize2('chat.subagent.openChat', "Open Subagent"),
-			icon: Codicon.commentDiscussion,
-			f1: false,
-			menu: { id: MenuId.ChatSubagentContent, group: 'navigation' },
-		});
-	}
-
-	override async run(accessor: ServicesAccessor, rawContext?: unknown): Promise<void> {
-		const notificationService = accessor.get(INotificationService);
-		const chatWidgetService = accessor.get(IChatWidgetService);
-		const context = asOpenSubagentChatContext(rawContext);
-		if (!context) {
-			throw new Error('Cannot open a subagent chat without a chat resource');
-		}
-		if (await subagentChatOpenerRegistry.open(context)) {
-			return;
-		}
-		const resource = getSubagentEditorResource(context);
-		if (!resource) {
-			notificationService.error(localize('chat.subagent.openChat.invalidResource', "The subagent chat could not be opened."));
-			return;
-		}
-		await chatWidgetService.openSession(resource, ACTIVE_GROUP, {
-			pinned: true,
-			revealIfOpened: true,
-			title: context.title ? { preferred: context.title } : undefined,
-		});
-	}
-}
-registerAction2(OpenSubagentChatAction);
-
-export class OpenSubagentChatActionViewItem extends BaseActionViewItem {
-	private readonly _sourceAction: IAction;
+export class SubagentProgressPillActionViewItem extends BaseActionViewItem {
 	private readonly _showElapsedOnly: boolean;
 	private _resolvedTitle: string | undefined;
-	private _trackedEnabled: boolean | undefined;
 	private _reportedAgentType: string | undefined;
 	private _reportedModelName: string | undefined;
 	private _reportedCredits: number | undefined;
@@ -212,9 +105,6 @@ export class OpenSubagentChatActionViewItem extends BaseActionViewItem {
 	private readonly _activeToolRendered = this._register(new MutableDisposable());
 	private readonly _activeToolFileWidgets = this._register(new DisposableStore());
 	private readonly _pillHover = this._register(new MutableDisposable());
-	private readonly _enabledTracker = this._register(new MutableDisposable());
-	private _enabledTrackerFactory: ((context: IOpenSubagentChatContext, update: (enabled: boolean) => void) => IDisposable) | undefined;
-	private _dragDataProvider: ((context: IOpenSubagentChatContext, event: DragEvent) => boolean) | undefined;
 	private _labelElement: HTMLElement | undefined;
 	private _agentTypeElement: HTMLElement | undefined;
 	private _pillContentElement: HTMLElement | undefined;
@@ -242,23 +132,17 @@ export class OpenSubagentChatActionViewItem extends BaseActionViewItem {
 		context: unknown,
 		action: IAction,
 		options: IActionViewItemOptions & { readonly showElapsedOnly?: boolean },
-		openInEditor: boolean = false,
+		_openInEditor: boolean = false,
 		@IMarkdownRendererService private readonly markdownRendererService: IMarkdownRendererService,
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
 		@IChatMarkdownAnchorService private readonly chatMarkdownAnchorService: IChatMarkdownAnchorService,
 		@IAccessibilityService private readonly accessibilityService: IAccessibilityService,
-		@IChatWidgetService chatWidgetService: IChatWidgetService,
-		@INotificationService notificationService: INotificationService,
 		@ILanguageModelsService protected readonly languageModelsService: ILanguageModelsService,
 		@IHoverService private readonly hoverService: IHoverService,
 		@IConfigurationService private readonly configurationService: IConfigurationService,
 	) {
-		super(context, openInEditor ? createEditorOpenSubagentAction(action, chatWidgetService, notificationService) : createOpenSubagentAction(action), options);
-		this._sourceAction = action;
-		this._showElapsedOnly = options.showElapsedOnly ?? openInEditor;
-		if (this._action instanceof Action) {
-			this._register(this._action);
-		}
+		super(context, action, options);
+		this._showElapsedOnly = options.showElapsedOnly ?? false;
 		this._register(this.accessibilityService.onDidChangeReducedMotion(() => {
 			if (this.accessibilityService.isMotionReduced()) {
 				this._finishToolTransition();
@@ -301,69 +185,16 @@ export class OpenSubagentChatActionViewItem extends BaseActionViewItem {
 		pillHeader.append(pillContent, this._durationElement, this._creditsElement);
 		container.append(pillHeader, this._activeToolElement);
 		this._pillHover.value = this.hoverService.setupDelayedHover(pillContent, () => ({ content: this.getTooltip() ?? '' }));
-		if (this.options.draggable) {
-			this._register(addDisposableListener(container, EventType.DRAG_START, (event: DragEvent) => {
-				const context = this.navigationContext;
-				if (!this.action.enabled || !context || !this._dragDataProvider?.(context, event)) {
-					event.preventDefault();
-				}
-			}));
-			this._register(addDisposableListener(container, EventType.KEY_DOWN, event => {
-				const keyboardEvent = new StandardKeyboardEvent(event);
-				if (keyboardEvent.altKey && keyboardEvent.keyCode === KeyCode.Enter) {
-					EventHelper.stop(event, true);
-					this._openToSide();
-				}
-			}));
-		}
 		this._update();
-	}
-
-	override onClick(event: EventLike, preserveFocus: boolean = false): void {
-		const target = (event as MouseEvent).target;
-		if (!this._pillContentElement || !isHTMLElement(target) || !this._pillContentElement.contains(target)) {
-			EventHelper.stop(event, true);
-			return;
-		}
-		// Alt-click opens the subagent chat to the side (in a new group) rather
-		// than in place. Thread the intent through the action context.
-		if ((event as MouseEvent).altKey) {
-			if (this._openToSide()) {
-				EventHelper.stop(event, true);
-				return;
-			}
-		}
-		super.onClick(event, preserveFocus);
-	}
-
-	private _openToSide(): boolean {
-		const context = this.navigationContext;
-		if (!this.action.enabled || !context) {
-			return false;
-		}
-		this.actionRunner.run(this.action, { ...context, toSide: true });
-		return true;
 	}
 
 	override setActionContext(newContext: unknown): void {
-		const previousResource = this.navigationContext?.chatResource;
 		super.setActionContext(newContext);
-		const resource = this.navigationContext?.chatResource;
-		if (resource !== previousResource) {
-			this._trackedEnabled = undefined;
-			this._resolvedTitle = undefined;
-			this._reportedModelName = undefined;
-			this._restartEnabledTracker();
-		}
 		this._update();
 	}
 
-	protected get navigationContext(): IOpenSubagentChatContext | undefined {
-		return asOpenSubagentChatContext(this._context);
-	}
-
 	protected get pillContext(): SubagentPillContext | undefined {
-		return this.navigationContext;
+		return asSubagentPillContext(this._context);
 	}
 
 	protected get modelName(): string | undefined {
@@ -393,9 +224,6 @@ export class OpenSubagentChatActionViewItem extends BaseActionViewItem {
 			return;
 		}
 		const context = this.pillContext;
-		const navigationContext = this.navigationContext;
-		const enabled = this._trackedEnabled ?? (!!navigationContext && !!getSubagentEditorResource(navigationContext));
-		this._setEnabled(enabled);
 		this._setResolvedTitle(context?.title || this._resolvedTitle);
 		this._setAgentType(context?.agentType);
 		this._reportedModelName = this.modelName;
@@ -413,36 +241,6 @@ export class OpenSubagentChatActionViewItem extends BaseActionViewItem {
 			!!activeToolLabel,
 		);
 		this.updateTooltip();
-		this.updateEnabled();
-		this.updateAriaLabel();
-	}
-
-	trackEnabled(tracker: (context: IOpenSubagentChatContext, update: (enabled: boolean) => void) => IDisposable): void {
-		this._enabledTrackerFactory = tracker;
-		this._restartEnabledTracker();
-	}
-
-	setDragDataProvider(provider: (context: IOpenSubagentChatContext, event: DragEvent) => boolean): void {
-		this._dragDataProvider = provider;
-	}
-
-	private _restartEnabledTracker(): void {
-		const context = this.navigationContext;
-		if (!context || !this._enabledTrackerFactory) {
-			this._enabledTracker.clear();
-			return;
-		}
-		this._enabledTracker.value = this._enabledTrackerFactory(context, enabled => {
-			this._trackedEnabled = enabled;
-			this._setEnabled(enabled);
-		});
-	}
-
-	private _setEnabled(enabled: boolean): void {
-		const context = this.navigationContext;
-		const canOpen = enabled && !!context && context.isChatAvailable !== false;
-		this._action.enabled = canOpen;
-		this._sourceAction.enabled = canOpen;
 		this.updateEnabled();
 		this.updateAriaLabel();
 	}
@@ -718,15 +516,11 @@ export class OpenSubagentChatActionViewItem extends BaseActionViewItem {
 	}
 
 	protected override getTooltip(): string | undefined {
-		const details: string[] = [];
-		if (!this._action.enabled) {
-			details.push(localize('chat.subagent.openChat.unavailable', "Subagent chat is not available yet."));
-		} else if (this._confirmationCount > 0) {
+		const details: string[] = [this._resolvedTitle || this._action.label];
+		if (this._confirmationCount > 0) {
 			details.push(this._confirmationCount === 1
-				? localize('chat.subagent.openChat.confirmationTooltip', "Open subagent chat (1 confirmation needed)")
-				: localize('chat.subagent.openChat.confirmationsTooltip', "Open subagent chat ({0} confirmations needed)", this._confirmationCount));
-		} else {
-			details.push(this._resolvedTitle ? localize('chat.subagent.openChat.aria', "Open subagent chat: {0}", this._resolvedTitle) : this._action.label);
+				? localize('chat.subagent.confirmationTooltip', "1 confirmation needed")
+				: localize('chat.subagent.confirmationsTooltip', "{0} confirmations needed", this._confirmationCount));
 		}
 		if (this._reportedAgentType) {
 			details.push(localize('chat.subagent.agentTypeTooltip', "Subagent type: {0}", this._reportedAgentType));
@@ -751,25 +545,19 @@ export class OpenSubagentChatActionViewItem extends BaseActionViewItem {
 		if (!this.element) {
 			return;
 		}
-		const enabled = this._action.enabled;
-		const hidden = !this.pillContext;
-		this.element.classList.toggle('disabled', !enabled);
-		this.element.classList.toggle('hidden', hidden);
-		this.element.setAttribute('role', 'button');
-		this.element.draggable = !!this.options.draggable;
-		this.element.setAttribute('aria-disabled', String(!enabled));
-		this.element.setAttribute('aria-hidden', String(hidden));
+		this.element.classList.remove('disabled');
+		this.element.classList.toggle('hidden', !this.pillContext);
+		this.element.setAttribute('role', 'group');
+		this.element.removeAttribute('aria-disabled');
+		this.element.removeAttribute('tabindex');
+		this.element.draggable = false;
 	}
 
 	protected override updateAriaLabel(): void {
 		if (!this.element) {
 			return;
 		}
-		const label = this._resolvedTitle
-			? this._action.enabled
-				? localize('chat.subagent.openChat.aria', "Open subagent chat: {0}", this._resolvedTitle)
-				: localize('chat.subagent.pendingChat.aria', "Subagent: {0}", this._resolvedTitle)
-			: this._action.label;
+		const label = this._resolvedTitle || this._action.label;
 		const status = this._renderedStatus === 'running'
 			? localize('chat.subagent.status.working', "Subagent is working")
 			: this._renderedStatus === 'waiting'
@@ -777,7 +565,7 @@ export class OpenSubagentChatActionViewItem extends BaseActionViewItem {
 				: this._renderedStatus === 'completed'
 					? localize('chat.subagent.status.completed', "Subagent completed")
 					: undefined;
-		const agentType = this._reportedAgentType ? localize('chat.subagent.agentTypeAria', "Subagent type {0}", this._reportedAgentType) : undefined;
+		const agentType = this._reportedAgentType ? localize('chat.subagent.agentAria', "Subagent type {0}", this._reportedAgentType) : undefined;
 		const model = this._reportedModelName ? localize('chat.subagent.modelAria', "Model {0}", this._reportedModelName) : undefined;
 		const activeTool = this._displayedToolAccessibleLabel && this._displayedActivityIsTool
 			? localize('chat.subagent.activeToolAria', "Active tool {0}", this._displayedToolAccessibleLabel)
@@ -787,22 +575,3 @@ export class OpenSubagentChatActionViewItem extends BaseActionViewItem {
 		this.element.setAttribute('aria-label', [label, agentType, status, model, activeTool, duration, credits].filter(Boolean).join('. '));
 	}
 }
-
-class EditorOpenSubagentChatActionViewItemContribution extends Disposable implements IWorkbenchContribution {
-	static readonly ID = 'workbench.contrib.editorOpenSubagentChatActionViewItem';
-
-	constructor(
-		@IActionViewItemService actionViewItemService: IActionViewItemService,
-	) {
-		super();
-		const onDidRegister = this._register(new Emitter<void>());
-		this._register(actionViewItemService.register(MenuId.ChatSubagentContent, CHAT_OPEN_AGENT_HOST_CHAT_COMMAND_ID, (action, options, instantiationService) => {
-			if (!(action instanceof MenuItemAction)) {
-				return undefined;
-			}
-			return instantiationService.createInstance(OpenSubagentChatActionViewItem, undefined, action, options, true);
-		}, onDidRegister.event));
-		onDidRegister.fire();
-	}
-}
-registerWorkbenchContribution2(EditorOpenSubagentChatActionViewItemContribution.ID, EditorOpenSubagentChatActionViewItemContribution, WorkbenchPhase.BlockStartup);

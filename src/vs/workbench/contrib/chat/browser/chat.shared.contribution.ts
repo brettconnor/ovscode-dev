@@ -201,7 +201,6 @@ import { ToolResultCompressorService } from './tools/toolResultCompressorService
 import { ConfigureToolSets, UserToolSetsContributions } from './tools/toolSetsContribution.js';
 import { UtilityModelContribution, UtilitySmallModelContribution } from './utilityModelContribution.js';
 import { ChatViewsWelcomeHandler } from './viewsWelcome/chatViewsWelcomeHandler.js';
-import './widget/chatContentParts/chatSubagentOpenChat.js';
 import { ChatFindAccessibilityHelp } from './widget/chatFind/chatFindAccessibilityHelp.js';
 import { ChatWidget } from './widget/chatWidget.js';
 import { ChatWidgetService } from './widget/chatWidgetService.js';
@@ -2022,11 +2021,6 @@ configurationRegistry.registerConfiguration({
 			experiment: {
 				mode: 'auto'
 			},
-		},
-		[ChatConfiguration.SubagentsUseRichRendering]: {
-			type: 'boolean',
-			description: nls.localize('chat.subagents.useRichRendering', "Controls whether subagents in chat editors use a rich presentation that opens each subagent in its own editor instead of rendering its full activity inline in the parent chat."),
-			default: true,
 		},
 		[ChatConfiguration.SubagentsShowCreditUsage]: {
 			type: 'boolean',

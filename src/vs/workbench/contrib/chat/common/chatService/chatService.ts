@@ -1215,15 +1215,8 @@ export interface IChatSubagentToolInvocationData {
 	startedAt?: number;
 	/** Final elapsed duration in milliseconds. Set when the subagent stops. */
 	duration?: number;
-	/**
-	 * Serializable URI of a distinct subagent chat, including a prospective URI; undefined when no target is known.
-	 * Presence does not imply readiness: use {@link isChatAvailable} to gate navigation.
-	 */
+	/** Legacy serialized child-session metadata retained for transcript compatibility; the workbench no longer routes to child sessions. */
 	chatResource?: string;
-	/**
-	 * `true` means the provider reports the chat available; `false` means it is not yet or no longer available.
-	 * `undefined` preserves legacy navigation behavior based on the resource and opener.
-	 */
 	isChatAvailable?: boolean;
 }
 

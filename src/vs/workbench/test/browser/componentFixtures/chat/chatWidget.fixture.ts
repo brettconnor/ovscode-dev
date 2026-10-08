@@ -41,7 +41,7 @@ import { ILinkPresentationService } from '../../../../../platform/dataChannel/co
 import { IFileService } from '../../../../../platform/files/common/files.js';
 import { IProductService } from '../../../../../platform/product/common/productService.js';
 import { TestConfigurationService } from '../../../../../platform/configuration/test/common/testConfigurationService.js';
-import { CHAT_OPEN_AGENT_HOST_CHAT_COMMAND_ID, ChatAgentLocation, ChatConfiguration, ChatModeKind, ChatProgressAnimation, ChatProgressVerbosity, ThinkingDisplayMode } from '../../../../contrib/chat/common/constants.js';
+import { ChatAgentLocation, ChatConfiguration, ChatModeKind, ChatProgressAnimation, ChatProgressVerbosity, ThinkingDisplayMode } from '../../../../contrib/chat/common/constants.js';
 import { PROMPT_TIMELINE_STICKY_SCROLL_SETTING } from '../../../../contrib/chat/common/promptTimeline.js';
 import { IChatEditingService, IChatEditingSession, IEditSessionEntryDiff } from '../../../../contrib/chat/common/editing/chatEditingService.js';
 import { IChatResponseFileChangesService, IChatResponseFileEdit } from '../../../../contrib/chat/browser/chatResponseFileChangesService.js';
@@ -163,7 +163,6 @@ export interface IChatWidgetFixtureOptions {
 	readonly terminalToolsInThinking?: boolean;
 	readonly simpleTerminalCollapsible?: boolean;
 	readonly thinkingPhrases?: readonly string[];
-	readonly richSubagents?: boolean;
 	readonly editingSession?: IChatEditingSession;
 }
 
@@ -341,15 +340,9 @@ export async function renderChatWidget(context: ComponentFixtureContext, options
 			menuService.addItem(menuId, item);
 		}
 	}
-	if (hasSubagents) {
-		const action = instantiationService.createInstance(MenuItemAction, { id: CHAT_OPEN_AGENT_HOST_CHAT_COMMAND_ID, title: 'Open Subagent' }, undefined, { shouldForwardArgs: true }, undefined, undefined);
-		instantiationService.stub(IMenuService, instantiationService.get(IMenuService), 'getMenuActions', (id: MenuId): ReturnType<IMenuService['getMenuActions']> =>
-			id === MenuId.ChatSubagentContent ? [['navigation', [action]]] : []);
-	}
 
 	const configService = instantiationService.get(IConfigurationService) as TestConfigurationService;
 	if (hasSubagents) {
-		configService.setUserConfiguration(ChatConfiguration.SubagentsUseRichRendering, options.richSubagents ?? true);
 	}
 	configService.setUserConfiguration('chat', {
 		editor: { fontSize: 13, fontFamily: 'default', fontWeight: 'default', lineHeight: 0, wordWrap: 'off' },
@@ -1141,7 +1134,6 @@ interface IPersistentProgressScenarioOptions {
 	readonly expandThinking?: boolean;
 	readonly submitInteraction?: 'question' | 'planReview' | 'elicitation';
 	readonly activityUpdates?: boolean;
-	readonly richSubagents?: boolean;
 	readonly expandTerminal?: boolean;
 	readonly expandToolDetails?: boolean;
 	readonly height?: number;
@@ -1161,7 +1153,6 @@ async function renderPersistentProgressScenario(context: ComponentFixtureContext
 		collapseCompletedResponses: false,
 		terminalToolsInThinking: options.terminalToolsInThinking,
 		simpleTerminalCollapsible: options.simpleTerminalCollapsible,
-		richSubagents: options.richSubagents,
 		agentHostSession: messages.some(message => message.assistant?.some(part => part.kind === 'subagent')),
 		thinkingPhrases: options.activityUpdates ? ['Considering', 'Reviewing', 'Connecting the pieces'] : progressAnimation === ChatProgressAnimation.Off ? ['Working'] : undefined,
 		width: options.width,
@@ -1462,7 +1453,7 @@ async function renderPersistentProgressScenario(context: ComponentFixtureContext
 	if (response.querySelectorAll('.chat-subagent-part').length !== expectedSubagents) {
 		throw new Error('Subagent content did not use the subagent renderer');
 	}
-	if (expectedSubagents && options.richSubagents !== false && response.querySelectorAll('.chat-subagent-pill-widget').length !== expectedSubagents) {
+	if (expectedSubagents && response.querySelectorAll('.chat-subagent-pill-widget').length !== expectedSubagents) {
 		throw new Error('Subagents did not use the rich pill renderer');
 	}
 }
@@ -1503,7 +1494,7 @@ function defineThinkingStyleScenarios(thinkingStyle: ThinkingDisplayMode, defaul
 		// subagent pills expand inside it (independent of this setting), which the headless
 		// harness treats as a fixture error. The enabled variant still covers this scenario.
 		...(defaults.progressAnimation === ChatProgressAnimation.Off && thinkingStyle === ThinkingDisplayMode.FixedScrolling ? {} : {
-			ExpandedSubagents: scenario(parallelSubagentMessages(), { richSubagents: false, expandThinking: true }, false),
+			ExpandedSubagents: scenario(parallelSubagentMessages(), { expandThinking: true }, false),
 		}),
 		McpStarting: scenario(PERSISTENT_PROGRESS_MCP_STARTING, {}, false),
 		McpAutostart: scenario(PERSISTENT_PROGRESS_MCP_AUTOSTART, {}, false),

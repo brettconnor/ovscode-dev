@@ -19,7 +19,6 @@ import { upcastPartial } from '../../../../../../../base/test/common/mock.js';
 import { runWithFakedTimers } from '../../../../../../../base/test/common/virtualScheduling/index.js';
 import { mainWindow } from '../../../../../../../base/browser/window.js';
 import { TestMenuService, workbenchInstantiationService } from '../../../../../../test/browser/workbenchTestServices.js';
-import { IChatWidgetService } from '../../../../browser/chat.js';
 import { ChatCollapsibleContentPart } from '../../../../browser/widget/chatContentParts/chatCollapsibleContentPart.js';
 import { ChatSubagentContentPart } from '../../../../browser/widget/chatContentParts/chatSubagentContentPart.js';
 import { IChatHookPart, IChatMarkdownContent, IChatSubagentToolInvocationData, IChatToolInvocation, IChatToolInvocationSerialized, ToolConfirmKind } from '../../../../common/chatService/chatService.js';
@@ -47,9 +46,11 @@ import { IActionViewItemFactory, IActionViewItemService } from '../../../../../.
 import { IMenuActionOptions, IMenuService, MenuId, MenuItemAction } from '../../../../../../../platform/actions/common/actions.js';
 import { IContextKeyService } from '../../../../../../../platform/contextkey/common/contextkey.js';
 import { ICommandService } from '../../../../../../../platform/commands/common/commands.js';
-import { CHAT_OPEN_AGENT_HOST_CHAT_COMMAND_ID, CHAT_SUBAGENT_RESOURCE_QUERY_PARAM, ChatConfiguration, ChatProgressAnimation } from '../../../../common/constants.js';
-import { formatCompactSubagentDuration, getSubagentEditorResource, IOpenSubagentChatContext, OpenSubagentChatActionViewItem, shouldAnimateSubagentToolTransition, shouldShowSubagentModel } from '../../../../browser/widget/chatContentParts/chatSubagentOpenChat.js';
+import { ChatConfiguration, ChatProgressAnimation } from '../../../../common/constants.js';
+import { formatCompactSubagentDuration, ISubagentPillContext, SubagentProgressPillActionViewItem, shouldAnimateSubagentToolTransition, shouldShowSubagentModel } from '../../../../browser/widget/chatContentParts/chatSubagentOpenChat.js';
 import { FusionPhasePillActionViewItem, ISubagentPhaseContext } from '../../../../browser/widget/chatContentParts/fusionPhasePillActionViewItem.js';
+
+const TEST_CHAT_SUBAGENT_CONTENT_MENU = new MenuId('TestChatSubagentContent');
 
 class TestOpenChatActionViewItem extends ActionViewItem {
 	constructor(sourceAction: IAction, options: IActionViewItemOptions) {
@@ -60,7 +61,7 @@ class TestOpenChatActionViewItem extends ActionViewItem {
 	}
 }
 
-class TestOpenSubagentChatActionViewItem extends OpenSubagentChatActionViewItem {
+class TestSubagentProgressPillActionViewItem extends SubagentProgressPillActionViewItem {
 	get tooltip(): string | undefined {
 		return this.getTooltip();
 	}
@@ -96,7 +97,7 @@ class TestActionViewItemService implements IActionViewItemService {
 	}
 
 	lookUp(menu: MenuId, commandId: string | MenuId): IActionViewItemFactory | undefined {
-		if (!this._providerAvailable || menu !== MenuId.ChatSubagentContent || commandId !== CHAT_OPEN_AGENT_HOST_CHAT_COMMAND_ID) {
+		if (!this._providerAvailable || menu !== TEST_CHAT_SUBAGENT_CONTENT_MENU || commandId !== 'test.openSubagentChat') {
 			return undefined;
 		}
 		return this.actionViewItemFactory ?? ((action, options) => new TestOpenChatActionViewItem(action, options));
@@ -118,7 +119,7 @@ class TestSubagentMenuService extends TestMenuService {
 
 	override getMenuActions(id: MenuId, contextKeyService: IContextKeyService, options?: IMenuActionOptions): ReturnType<IMenuService['getMenuActions']> {
 		this.getMenuActionsCalls++;
-		if (id === MenuId.ChatSubagentContent) {
+		if (id === TEST_CHAT_SUBAGENT_CONTENT_MENU) {
 			return [['navigation', [this.openChatAction]]];
 		}
 		return super.getMenuActions(id, contextKeyService, options);
@@ -355,7 +356,7 @@ suite('ChatSubagentContentPart', () => {
 			onDidChangeLanguageModelVendors: Event.None,
 		});
 		menuService = new TestSubagentMenuService(new MenuItemAction(
-			{ id: CHAT_OPEN_AGENT_HOST_CHAT_COMMAND_ID, title: 'Open Subagent' },
+			{ id: 'test.openSubagentChat', title: 'Open Subagent' },
 			undefined,
 			{ shouldForwardArgs: true },
 			undefined,
@@ -364,7 +365,6 @@ suite('ChatSubagentContentPart', () => {
 			instantiationService.get(ICommandService),
 		));
 		instantiationService.stub(IMenuService, menuService);
-		(instantiationService.get(IConfigurationService) as TestConfigurationService).setUserConfiguration(ChatConfiguration.SubagentsUseRichRendering, true);
 		(instantiationService.get(IConfigurationService) as TestConfigurationService).setUserConfiguration(ChatConfiguration.SubagentsShowCreditUsage, true);
 
 		// Mock list pool and editor pool
@@ -420,13 +420,12 @@ suite('ChatSubagentContentPart', () => {
 		return isHTMLElement(wrapper) ? wrapper : undefined;
 	}
 
-	function getOpenChatContext(part: ChatSubagentContentPart): IOpenSubagentChatContext | undefined {
-		return (part as unknown as { _openChatToolbar?: { actionBar?: { context?: IOpenSubagentChatContext } } })._openChatToolbar?.actionBar?.context;
+	function getOpenChatContext(part: ChatSubagentContentPart): ISubagentPillContext | undefined {
+		return (part as unknown as { _openChatToolbar?: { actionBar?: { context?: ISubagentPillContext } } })._openChatToolbar?.actionBar?.context;
 	}
 
 	suite('Basic rendering', () => {
 		test('expanded subagents omit their working row when the parent owns progress', () => {
-			(instantiationService.get(IConfigurationService) as TestConfigurationService).setUserConfiguration(ChatConfiguration.SubagentsUseRichRendering, false);
 			const snapshots = [false, true].map(suppressProgressShimmer => {
 				const part = createPart(createMockToolInvocation(), { ...createMockRenderContext(), suppressProgressShimmer });
 				getCollapseButton(part)?.click();
@@ -442,7 +441,6 @@ suite('ChatSubagentContentPart', () => {
 		});
 
 		test('renders a replayed Fusion phase in the compact pill without a chat link or action provider', () => {
-			(instantiationService.get(IConfigurationService) as TestConfigurationService).setUserConfiguration(ChatConfiguration.SubagentsUseRichRendering, false);
 			actionViewItemService.setProviderAvailable(false);
 			const part = createPart(createMockSerializedToolInvocation({
 				toolId: 'hydrafusion_phase',
@@ -501,56 +499,6 @@ suite('ChatSubagentContentPart', () => {
 				switched: { title: 'Main pass', model: 'model-b', running: true },
 				completed: { title: 'Main pass', model: 'model-b', running: false },
 				activity: 'Generating output', samePill: true, failed: true, duration: '2s', activityHidden: true,
-			});
-		});
-
-		test('phase pills never open or drag a child chat and describe phases accessibly', async () => {
-			let opened = 0;
-			let tracked = 0;
-			let dragged = 0;
-			instantiationService.stub(IChatWidgetService, upcastPartial<IChatWidgetService>({
-				openSession: async () => { opened++; return undefined; },
-			}));
-			const context: ISubagentPhaseContext = {
-				presentation: 'phase', phaseStatus: 'running', title: 'Main pass',
-				isActive: true, modelName: 'model-a', parentModelName: 'model-a',
-			};
-			const action = store.add(new Action('phase', 'Phase'));
-			const item = store.add(instantiationService.createInstance(TestFusionPhasePillActionViewItem, context, action, { draggable: true }, true));
-			const container = mainWindow.document.createElement('div');
-			item.render(container);
-			item.setFocusable(true);
-			item.focus();
-			item.trackEnabled(() => { tracked++; return { dispose() { } }; });
-			item.setDragDataProvider(() => { dragged++; return true; });
-			const content = container.querySelector<HTMLElement>('.chat-subagent-pill-content');
-			assert.ok(content);
-			content.click();
-			content.dispatchEvent(new MouseEvent('click', { altKey: true, bubbles: true, cancelable: true }));
-			for (const key of ['Enter', ' ']) {
-				container.dispatchEvent(new KeyboardEvent('keydown', { key, keyCode: key === 'Enter' ? 13 : 32, bubbles: true, cancelable: true }));
-				container.dispatchEvent(new KeyboardEvent('keyup', { key, keyCode: key === 'Enter' ? 13 : 32, bubbles: true, cancelable: true }));
-			}
-			container.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, altKey: true, bubbles: true, cancelable: true }));
-			const drag = new DragEvent('dragstart', { bubbles: true, cancelable: true });
-			container.dispatchEvent(drag);
-			await item.actionRunner.run(item.action, context);
-			const cancelled = { ...context, phaseStatus: 'cancelled', isActive: false, startedAt: 1000, duration: 2000 } satisfies ISubagentPhaseContext;
-			item.setActionContext(cancelled);
-			assert.deepStrictEqual({
-				opened, tracked, dragged, dragPrevented: drag.defaultPrevented,
-				enabled: item.action.enabled, draggable: container.draggable,
-				tabIndex: container.tabIndex, focusable: container.hasAttribute('tabindex'), focused: item.isFocused(),
-				role: container.getAttribute('role'), ariaDisabled: container.getAttribute('aria-disabled'),
-				phaseTooltip: item.tooltip, model: container.querySelector('.chat-subagent-pill-model')?.textContent,
-				cancelled: container.getAttribute('aria-label')?.includes('Phase cancelled'),
-				cancelledIcon: !!container.querySelector('.codicon-circle-slash'),
-			}, {
-				opened: 0, tracked: 0, dragged: 0, dragPrevented: true,
-				enabled: false, draggable: false, role: 'group', ariaDisabled: null,
-				tabIndex: -1, focusable: false, focused: false,
-				phaseTooltip: 'HydraFusion phase: Main pass\nPhase cancelled\nModel: model-a', model: 'model-a',
-				cancelled: true, cancelledIcon: true,
 			});
 		});
 
@@ -698,7 +646,7 @@ suite('ChatSubagentContentPart', () => {
 					instantiationService.stub(IAccessibilityService, new class extends TestAccessibilityService {
 						override isMotionReduced(): boolean { return reducedMotion; }
 					}());
-					const context: ISubagentPhaseContext | IOpenSubagentChatContext = phase
+					const context: ISubagentPhaseContext | ISubagentPillContext = phase
 						? { presentation: 'phase', phaseStatus: 'running', title: 'Main pass', activityLabel: 'Reading files' }
 						: {
 							chatResource: 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call',
@@ -708,7 +656,7 @@ suite('ChatSubagentContentPart', () => {
 					const action = store.add(new Action('activity', 'Activity'));
 					const item = store.add(phase
 						? instantiationService.createInstance(FusionPhasePillActionViewItem, context, action, {}, false)
-						: instantiationService.createInstance(OpenSubagentChatActionViewItem, context, action, {}, false));
+						: instantiationService.createInstance(SubagentProgressPillActionViewItem, context, action, {}, false));
 					const container = $('div');
 					item.render(container);
 					const label = container.querySelector('.chat-subagent-pill-active-tool-label');
@@ -743,12 +691,12 @@ suite('ChatSubagentContentPart', () => {
 			instantiationService.stub(IAccessibilityService, new class extends TestAccessibilityService {
 				override isMotionReduced(): boolean { return true; }
 			}());
-			const context: IOpenSubagentChatContext = {
+			const context: ISubagentPillContext = {
 				chatResource: 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call',
 				parentSessionResource: 'agent-host-copilotcli:/session', title: 'Review code', isActive: true,
 				activeToolCallId: 'tool-1', activeToolLabel: 'Working on it...', activeToolIcon: Codicon.comment,
 			};
-			const item = store.add(instantiationService.createInstance(OpenSubagentChatActionViewItem, context, store.add(new Action('activity', 'Activity')), {}, false));
+			const item = store.add(instantiationService.createInstance(SubagentProgressPillActionViewItem, context, store.add(new Action('activity', 'Activity')), {}, false));
 			const container = $('div');
 			item.render(container);
 			const counts = [markdownRenderCount];
@@ -843,39 +791,6 @@ suite('ChatSubagentContentPart', () => {
 			]);
 		});
 
-		test('ordinary subagent pills retain navigation, focus, drag and model presentation', () => {
-			const opened: unknown[] = [];
-			let dragged = false;
-			const action = store.add(new Action('openSubagent', 'Open Subagent', undefined, true, context => { opened.push(context); }));
-			const context: IOpenSubagentChatContext = {
-				chatResource: 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call',
-				parentSessionResource: 'agent-host-copilotcli:/session',
-				title: 'Review code', modelId: 'child-model', modelName: 'Child Model', parentModelId: 'parent-model',
-				isActive: true,
-			};
-			const item = store.add(instantiationService.createInstance(TestOpenSubagentChatActionViewItem, context, action, { draggable: true }, false));
-			item.setDragDataProvider(() => { dragged = true; return true; });
-			const container = $('div');
-			item.render(container);
-			item.setFocusable(true);
-			const pill = container.querySelector<HTMLElement>('.chat-subagent-pill-content')!;
-			pill.click();
-			pill.dispatchEvent(new MouseEvent('click', { altKey: true, bubbles: true, cancelable: true }));
-			const drag = new DragEvent('dragstart', { bubbles: true, cancelable: true });
-			container.dispatchEvent(drag);
-			assert.deepStrictEqual({
-				opened, dragged, dragPrevented: drag.defaultPrevented, enabled: item.action.enabled,
-				role: container.getAttribute('role'), tabIndex: container.tabIndex, draggable: container.draggable,
-				model: container.querySelector('.chat-subagent-pill-model')?.textContent,
-				tooltip: item.tooltip, ariaLabel: container.getAttribute('aria-label'),
-			}, {
-				opened: [context, { ...context, toSide: true }], dragged: true, dragPrevented: false, enabled: true,
-				role: 'button', tabIndex: 0, draggable: true, model: 'Child Model',
-				tooltip: 'Open subagent chat: Review code\nModel: Child Model',
-				ariaLabel: 'Open subagent chat: Review code. Subagent is working. Model Child Model',
-			});
-		});
-
 		test('should create subagent part with correct classes', () => {
 			const toolInvocation = createMockToolInvocation();
 			const context = createMockRenderContext(false);
@@ -943,7 +858,6 @@ suite('ChatSubagentContentPart', () => {
 
 		test('should preserve inline rendering when rich subagent rendering is disabled', () => {
 			const configService = instantiationService.get(IConfigurationService) as TestConfigurationService;
-			configService.setUserConfiguration(ChatConfiguration.SubagentsUseRichRendering, false);
 			const part = createPart(createMockToolInvocation({
 				toolSpecificData: {
 					kind: 'subagent',
@@ -960,25 +874,6 @@ suite('ChatSubagentContentPart', () => {
 				hasChatClass: false,
 				hasToolbar: false,
 				collapseButtonVisible: true,
-			});
-		});
-
-		test('should derive the editor resource from the parent session and subagent chat id', () => {
-			const resource = getSubagentEditorResource({
-				chatResource: 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call',
-				parentSessionResource: 'agent-host-copilotcli:/session',
-			});
-
-			assert.deepStrictEqual(resource && {
-				scheme: resource.scheme,
-				path: resource.path,
-				fragment: resource.fragment,
-				chatResource: new URLSearchParams(resource.query).get(CHAT_SUBAGENT_RESOURCE_QUERY_PARAM),
-			}, {
-				scheme: 'agent-host-copilotcli',
-				path: '/session',
-				fragment: 'subagent/tool-call',
-				chatResource: 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call',
 			});
 		});
 
@@ -1005,7 +900,7 @@ suite('ChatSubagentContentPart', () => {
 			};
 			const action = store.add(new Action('openSubagent', 'Open Subagent'));
 			const viewItem = store.add(instantiationService.createInstance(
-				TestOpenSubagentChatActionViewItem,
+				TestSubagentProgressPillActionViewItem,
 				{
 					chatResource: 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call',
 					parentSessionResource: 'agent-host-copilotcli:/session',
@@ -1068,7 +963,7 @@ suite('ChatSubagentContentPart', () => {
 		test('should render the specialized subagent type before the title', () => {
 			const action = store.add(new Action('openSubagent', 'Open Subagent'));
 			const viewItem = store.add(instantiationService.createInstance(
-				OpenSubagentChatActionViewItem,
+				SubagentProgressPillActionViewItem,
 				{
 					chatResource: 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call',
 					parentSessionResource: 'agent-host-copilotcli:/session',
@@ -1115,7 +1010,7 @@ suite('ChatSubagentContentPart', () => {
 		test('should settle a queued same-tool label update without starting another transition', () => {
 			const action = store.add(new Action('openSubagent', 'Open Subagent'));
 			const viewItem = store.add(instantiationService.createInstance(
-				OpenSubagentChatActionViewItem,
+				SubagentProgressPillActionViewItem,
 				undefined,
 				action,
 				{},
@@ -1150,7 +1045,7 @@ suite('ChatSubagentContentPart', () => {
 		test('should reserve an activity row before the first tool call', () => {
 			const action = store.add(new Action('openSubagent', 'Open Subagent'));
 			const viewItem = store.add(instantiationService.createInstance(
-				OpenSubagentChatActionViewItem,
+				SubagentProgressPillActionViewItem,
 				{
 					chatResource: 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call',
 					parentSessionResource: 'agent-host-copilotcli:/session',
@@ -1178,7 +1073,7 @@ suite('ChatSubagentContentPart', () => {
 		});
 
 		test('persistent progress leaves rich subagent pill activity unchanged', () => {
-			const context: IOpenSubagentChatContext = {
+			const context: ISubagentPillContext = {
 				chatResource: 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call',
 				parentSessionResource: 'agent-host-copilotcli:/session',
 				isActive: true,
@@ -1186,7 +1081,7 @@ suite('ChatSubagentContentPart', () => {
 			const snapshots = [false, true].map(enabled => {
 				(instantiationService.get(IConfigurationService) as TestConfigurationService).setUserConfiguration(ChatConfiguration.PersistentProgress, enabled ? ChatProgressAnimation.Weave : ChatProgressAnimation.Off);
 				const action = store.add(new Action('openSubagent', 'Open Subagent'));
-				const viewItem = store.add(instantiationService.createInstance(OpenSubagentChatActionViewItem, context, action, {}, false));
+				const viewItem = store.add(instantiationService.createInstance(SubagentProgressPillActionViewItem, context, action, {}, false));
 				const container = mainWindow.document.createElement('div');
 				viewItem.render(container);
 				return {
@@ -1200,7 +1095,7 @@ suite('ChatSubagentContentPart', () => {
 		});
 
 		test('should clear the busy affordances when the background subagent completes', () => {
-			const context: IOpenSubagentChatContext = {
+			const context: ISubagentPillContext = {
 				chatResource: 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call',
 				parentSessionResource: 'agent-host-copilotcli:/session',
 				title: 'Review picker',
@@ -1211,7 +1106,7 @@ suite('ChatSubagentContentPart', () => {
 				activeToolLabel: 'Search the codebase',
 			};
 			const action = store.add(new Action('openSubagent', 'Open Subagent'));
-			const viewItem = store.add(instantiationService.createInstance(OpenSubagentChatActionViewItem, context, action, {}, true));
+			const viewItem = store.add(instantiationService.createInstance(SubagentProgressPillActionViewItem, context, action, {}, true));
 			const container = mainWindow.document.createElement('div');
 			viewItem.render(container);
 			const wasRunning = container.classList.contains('chat-subagent-running');
@@ -1238,7 +1133,7 @@ suite('ChatSubagentContentPart', () => {
 		});
 
 		test('shows a differing model as soon as it is known while the agent is running', () => {
-			const context: IOpenSubagentChatContext = {
+			const context: ISubagentPillContext = {
 				chatResource: 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call',
 				parentSessionResource: 'agent-host-copilotcli:/session',
 				title: 'Review changes',
@@ -1248,7 +1143,7 @@ suite('ChatSubagentContentPart', () => {
 				parentModelName: 'GPT-5.5',
 			};
 			const action = store.add(new Action('openSubagent', 'Open Subagent'));
-			const viewItem = store.add(instantiationService.createInstance(OpenSubagentChatActionViewItem, context, action, {}, true));
+			const viewItem = store.add(instantiationService.createInstance(SubagentProgressPillActionViewItem, context, action, {}, true));
 			const container = mainWindow.document.createElement('div');
 			viewItem.render(container);
 			const model = container.querySelector<HTMLElement>('.chat-subagent-pill-model');
@@ -1278,7 +1173,7 @@ suite('ChatSubagentContentPart', () => {
 			['subscription', 'agent-host-codex:chatgpt/gpt-5.4', 'GPT-5.4', 'GPT-5.4 (ChatGPT)'],
 		]) {
 			test(`compares ${label} model identity independently of its display name`, () => {
-				const context: IOpenSubagentChatContext = {
+				const context: ISubagentPillContext = {
 					chatResource: 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call',
 					parentSessionResource: 'agent-host-copilotcli:/session',
 					isActive: true,
@@ -1288,7 +1183,7 @@ suite('ChatSubagentContentPart', () => {
 					modelName,
 				};
 				const action = store.add(new Action('openSubagent', 'Open Subagent'));
-				const viewItem = store.add(instantiationService.createInstance(OpenSubagentChatActionViewItem, context, action, {}, true));
+				const viewItem = store.add(instantiationService.createInstance(SubagentProgressPillActionViewItem, context, action, {}, true));
 				const container = mainWindow.document.createElement('div');
 				viewItem.render(container);
 				const model = container.querySelector<HTMLElement>('.chat-subagent-pill-model');
@@ -1319,7 +1214,7 @@ suite('ChatSubagentContentPart', () => {
 		test('should hide the activity row while a confirmation is shown', () => {
 			const action = store.add(new Action('openSubagent', 'Open Subagent'));
 			const viewItem = store.add(instantiationService.createInstance(
-				OpenSubagentChatActionViewItem,
+				SubagentProgressPillActionViewItem,
 				{
 					chatResource: 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call',
 					parentSessionResource: 'agent-host-copilotcli:/session',
@@ -1349,7 +1244,7 @@ suite('ChatSubagentContentPart', () => {
 		test('should sanitize agent-provided markdown in active tool labels', () => {
 			const action = store.add(new Action('openSubagent', 'Open Subagent'));
 			const viewItem = store.add(instantiationService.createInstance(
-				OpenSubagentChatActionViewItem,
+				SubagentProgressPillActionViewItem,
 				{
 					chatResource: 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call',
 					parentSessionResource: 'agent-host-copilotcli:/session',
@@ -1376,7 +1271,7 @@ suite('ChatSubagentContentPart', () => {
 			};
 			const action = store.add(new Action('openSubagent', 'Open Subagent'));
 			const viewItem = store.add(instantiationService.createInstance(
-				OpenSubagentChatActionViewItem,
+				SubagentProgressPillActionViewItem,
 				baseContext,
 				action,
 				{},
@@ -1414,90 +1309,10 @@ suite('ChatSubagentContentPart', () => {
 			});
 		});
 
-		for (const [mode, parentComplete] of [['sync', false], ['background', false], ['background', true]] as const) {
-			test(`shows changing progress and opens the same child before and after completion (${mode}, parentComplete=${parentComplete})`, async () => {
-				actionViewItemService.actionViewItemFactory = (action, options, service) =>
-					service.createInstance(OpenSubagentChatActionViewItem, undefined, action, options, true);
-				const openedResources: URI[] = [];
-				instantiationService.stub(IChatWidgetService, upcastPartial<IChatWidgetService>({
-					openSession: async resource => {
-						openedResources.push(resource);
-						return undefined;
-					},
-				}));
-				const chatResource = 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call';
-				const data: IChatSubagentToolInvocationData = {
-					kind: 'subagent', description: 'Review fixture behavior',
-					chatResource, hasStarted: true, isChatAvailable: true, isActive: true,
-				};
-				const invocation = new ChatToolInvocation(
-					{ invocationMessage: 'Delegating review', toolSpecificData: data },
-					{ id: 'task', displayName: 'Task', modelDescription: 'Delegate work', source: ToolDataSource.Internal },
-					'tool-call', undefined, { mode },
-				);
-				if (mode === 'background') {
-					await invocation.didExecuteTool({ content: [{ kind: 'text', value: 'Agent started in background.' }] });
-				}
-				const part = createPart(invocation, createMockRenderContext(parentComplete, URI.parse('agent-host-copilotcli:/session')));
-				const pill = part.domNode.querySelector<HTMLElement>('.chat-subagent-pill-widget');
-				const button = pill?.querySelector<HTMLElement>('.chat-subagent-pill-content');
-				assert.ok(pill && button);
-				const tool = (id: string, label: string) => new ChatToolInvocation(
-					{ invocationMessage: label, icon: Codicon.search },
-					{ id: 'review_step', displayName: 'Review Step', modelDescription: 'Review fixture behavior', source: ToolDataSource.Internal },
-					id, invocation.toolCallId, {},
-				);
-				const snapshot = () => ({
-					running: pill.classList.contains('chat-subagent-running'),
-					progress: pill.querySelector('.chat-subagent-pill-active-tool-label')?.textContent,
-					clickable: pill.getAttribute('aria-disabled') !== 'true',
-				});
-				const first = tool('first-step', 'Read the fixture code');
-				part.trackToolState(first);
-				const initial = snapshot();
-				const launchCompleteWhileChildRuns = IChatToolInvocation.isComplete(invocation);
-
-				await first.didExecuteTool(undefined);
-				const second = tool('second-step', 'Run the regression tests');
-				part.trackToolState(second);
-				const progressed = snapshot();
-				button.click();
-
-				await second.didExecuteTool(undefined);
-				if (mode === 'sync') {
-					await invocation.didExecuteTool(undefined);
-				}
-				data.isActive = false;
-				invocation.notifyToolSpecificDataChanged();
-				const completed = snapshot();
-				button.click();
-
-				const expectedOpened = { scheme: 'agent-host-copilotcli', path: '/session', fragment: 'subagent/tool-call', chatResource };
-				assert.deepStrictEqual({
-					launchCompleteWhileChildRuns,
-					initial,
-					progressed,
-					completed,
-					opened: openedResources.map(resource => ({
-						scheme: resource.scheme,
-						path: resource.path,
-						fragment: resource.fragment,
-						chatResource: new URLSearchParams(resource.query).get(CHAT_SUBAGENT_RESOURCE_QUERY_PARAM),
-					})),
-				}, {
-					launchCompleteWhileChildRuns: mode === 'background',
-					initial: { running: true, progress: 'Read the fixture code', clickable: true },
-					progressed: { running: true, progress: 'Run the regression tests', clickable: true },
-					completed: { running: false, progress: '', clickable: true },
-					opened: [expectedOpened, expectedOpened],
-				});
-			});
-		}
-
 		for (const completedLaunch of [false, true]) {
 			test(`refreshes canonical model identity when the display name is unchanged (completedLaunch=${completedLaunch})`, async () => {
 				actionViewItemService.actionViewItemFactory = (action, options, service) =>
-					service.createInstance(OpenSubagentChatActionViewItem, undefined, action, options, true);
+					service.createInstance(SubagentProgressPillActionViewItem, undefined, action, options, true);
 				const parentModelId = 'agent-host-copilotcli:provider-a/model';
 				const otherModelId = 'agent-host-copilotcli:provider-b/model';
 				const data: IChatSubagentToolInvocationData = {
@@ -1554,49 +1369,11 @@ suite('ChatSubagentContentPart', () => {
 			});
 		}
 
-		test('should open the subagent chat directly in an editor', async () => {
-			let openedResource: URI | undefined;
-			instantiationService.stub(IChatWidgetService, upcastPartial<IChatWidgetService>({
-				openSession: async resource => {
-					openedResource = resource;
-					return undefined;
-				},
-			}));
-			const action = store.add(new Action('openSubagent', 'Open Subagent'));
-			const viewItem = store.add(instantiationService.createInstance(
-				OpenSubagentChatActionViewItem,
-				{
-					chatResource: 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call',
-					parentSessionResource: 'agent-host-copilotcli:/session',
-					title: 'Review correctness risks',
-				},
-				action,
-				{},
-				true,
-			));
-
-			await viewItem.action.run({
-				chatResource: 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call',
-				parentSessionResource: 'agent-host-copilotcli:/session',
-				title: 'Review correctness risks',
-			});
-
-			assert.deepStrictEqual(openedResource && {
-				scheme: openedResource.scheme,
-				path: openedResource.path,
-				fragment: openedResource.fragment,
-			}, {
-				scheme: 'agent-host-copilotcli',
-				path: '/session',
-				fragment: 'subagent/tool-call',
-			});
-		});
-
 		test('should trigger pointer activation only from the bordered pill', () => {
 			let runCount = 0;
 			const action = store.add(new Action('openSubagent', 'Open Subagent', undefined, true, () => { runCount++; }));
 			const viewItem = store.add(instantiationService.createInstance(
-				OpenSubagentChatActionViewItem,
+				SubagentProgressPillActionViewItem,
 				{
 					chatResource: 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call',
 					parentSessionResource: 'agent-host-copilotcli:/session',
@@ -1625,75 +1402,9 @@ suite('ChatSubagentContentPart', () => {
 			});
 		});
 
-		test('should keep rich activity visible while opening the subagent chat is unavailable', () => {
-			let runCount = 0;
-			const action = store.add(new Action('openSubagent', 'Open Subagent', undefined, true, () => { runCount++; }));
-			const viewItem = store.add(instantiationService.createInstance(
-				TestOpenSubagentChatActionViewItem,
-				{
-					chatResource: 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call',
-					parentSessionResource: 'agent-host-copilotcli:/session',
-					title: 'Review child chat lifecycle',
-					isActive: true,
-					activeToolCallId: 'child-search',
-					activeToolLabel: 'Search the codebase',
-				},
-				action,
-				{},
-				false,
-			));
-			const ready = observableValue('ready', false);
-			viewItem.trackEnabled((_context, update) => autorun(reader => update(ready.read(reader))));
-			const container = $('li.action-item');
-			const toolbar = $('.chat-subagent-open-chat-toolbar', undefined, $('.actions-container', undefined, container));
-			mainWindow.document.body.appendChild(toolbar);
-			disposables.add({ dispose: () => toolbar.remove() });
-			viewItem.render(container);
-			const pill = container.querySelector<HTMLElement>('.chat-subagent-pill-content');
-			assert.ok(pill);
-			pill.click();
-			const beforeReady = {
-				display: mainWindow.getComputedStyle(container).display,
-				enabled: viewItem.action.enabled,
-				ariaHidden: container.getAttribute('aria-hidden'),
-				ariaDisabled: container.getAttribute('aria-disabled'),
-				label: container.querySelector('.chat-subagent-pill-label')?.textContent,
-				activity: container.querySelector('.chat-subagent-pill-active-tool-label')?.textContent,
-				cursor: mainWindow.getComputedStyle(pill).cursor,
-				tooltip: viewItem.tooltip,
-				runCount,
-			};
-
-			ready.set(true, undefined);
-			pill.click();
-
-			assert.deepStrictEqual({
-				beforeReady,
-				afterReady: {
-					display: mainWindow.getComputedStyle(container).display,
-					enabled: viewItem.action.enabled,
-					ariaHidden: container.getAttribute('aria-hidden'),
-					runCount,
-				},
-			}, {
-				beforeReady: {
-					display: 'inline-flex',
-					enabled: false,
-					ariaHidden: 'false',
-					ariaDisabled: 'true',
-					label: 'Review child chat lifecycle',
-					activity: 'Search the codebase',
-					cursor: 'default',
-					tooltip: 'Subagent chat is not available yet.\nActive tool: Search the codebase',
-					runCount: 0,
-				},
-				afterReady: { display: 'inline-flex', enabled: true, ariaHidden: 'false', runCount: 1 },
-			});
-		});
-
 		test('should retain the rich header when the launch completes before the child chat is available', () => {
 			actionViewItemService.actionViewItemFactory = (action, options, service) =>
-				service.createInstance(OpenSubagentChatActionViewItem, undefined, action, options, true);
+				service.createInstance(SubagentProgressPillActionViewItem, undefined, action, options, true);
 			const data: IChatSubagentToolInvocationData = {
 				kind: 'subagent',
 				description: 'Review child chat lifecycle',
@@ -1739,13 +1450,13 @@ suite('ChatSubagentContentPart', () => {
 		});
 
 		test('should only enable a prospective subagent resource after its chat is available', () => {
-			const context: IOpenSubagentChatContext = {
+			const context: ISubagentPillContext = {
 				chatResource: 'ahp-chat://subagent/Y29waWxvdGNsaTovc2Vzc2lvbg/tool-call',
 				parentSessionResource: 'agent-host-copilotcli:/session',
 				isChatAvailable: false,
 			};
 			const action = store.add(new Action('openSubagent', 'Open Subagent'));
-			const viewItem = store.add(instantiationService.createInstance(OpenSubagentChatActionViewItem, context, action, {}, true));
+			const viewItem = store.add(instantiationService.createInstance(SubagentProgressPillActionViewItem, context, action, {}, true));
 			viewItem.render(mainWindow.document.createElement('div'));
 			const beforeHydration = viewItem.action.enabled;
 			viewItem.setActionContext({ ...context, isChatAvailable: true });
@@ -1820,7 +1531,7 @@ suite('ChatSubagentContentPart', () => {
 			const listeningBeforeRegistration = actionViewItemService.hasChangeListeners;
 
 			actionViewItemService.setProviderAvailable(true);
-			actionViewItemService.fireDidChange(MenuId.ChatSubagentContent);
+			actionViewItemService.fireDidChange(TEST_CHAT_SUBAGENT_CONTENT_MENU);
 
 			const collapseButton = getCollapseButton(part);
 			const animationContainer = part.domNode.querySelector<HTMLElement>('.chat-collapsible-content-animation');
@@ -1890,7 +1601,7 @@ suite('ChatSubagentContentPart', () => {
 		for (const serialized of [false, true]) {
 			test(`should hide the background launch acknowledgment in rich ${serialized ? 'serialized' : 'live'} subagents`, async () => {
 				actionViewItemService.actionViewItemFactory = (action, options, service) =>
-					service.createInstance(OpenSubagentChatActionViewItem, undefined, action, options, true);
+					service.createInstance(SubagentProgressPillActionViewItem, undefined, action, options, true);
 				const acknowledgment = 'Agent started in background. You will be notified when it completes.';
 				const data: IChatSubagentToolInvocationData = {
 					kind: 'subagent',
@@ -1921,8 +1632,7 @@ suite('ChatSubagentContentPart', () => {
 					acknowledgmentRendered: part.domNode.textContent?.includes(acknowledgment),
 				};
 
-				(instantiationService.get(IConfigurationService) as TestConfigurationService).setUserConfiguration(ChatConfiguration.SubagentsUseRichRendering, false);
-				const inlinePart = createPart(toolInvocation, context);
+					const inlinePart = createPart(toolInvocation, context);
 				const inlineButton = getCollapseButton(inlinePart);
 				assert.ok(inlineButton);
 				inlineButton.click();
@@ -2676,7 +2386,7 @@ suite('ChatSubagentContentPart', () => {
 
 		test('a started child remains active after the parent response has completed', async () => {
 			actionViewItemService.actionViewItemFactory = (action, options, service) =>
-				service.createInstance(OpenSubagentChatActionViewItem, undefined, action, options, true);
+				service.createInstance(SubagentProgressPillActionViewItem, undefined, action, options, true);
 			const data: IChatSubagentToolInvocationData = {
 				kind: 'subagent', hasStarted: true, isActive: true, isChatAvailable: true,
 				description: 'Late child', chatResource: 'ahp-chat://subagent/test/late-child',
@@ -3707,7 +3417,7 @@ suite('ChatSubagentContentPart', () => {
 
 		test('highlights a completed parent pill when its retained subagent needs approval', () => {
 			actionViewItemService.actionViewItemFactory = (action, options, service) =>
-				service.createInstance(OpenSubagentChatActionViewItem, undefined, action, options, true);
+				service.createInstance(SubagentProgressPillActionViewItem, undefined, action, options, true);
 			const part = createPart(createMockToolInvocation({
 				stateType: IChatToolInvocation.StateKind.Completed,
 				toolSpecificData: {

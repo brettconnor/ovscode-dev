@@ -78,7 +78,6 @@ export enum ChatConfiguration {
 	SubagentToolCustomAgents = 'chat.customAgentInSubagent.enabled',
 	SubagentsAllowInvocationsFromSubagents = 'chat.subagents.allowInvocationsFromSubagents',
 	SubagentsDefaultToAuto = 'chat.subagents.defaultToAuto',
-	SubagentsUseRichRendering = 'chat.subagents.useRichRendering',
 	SubagentsShowCreditUsage = 'chat.subagents.showCreditUsage',
 	ShowCodeBlockProgressAnimation = 'chat.agent.codeBlockProgress',
 	RestoreLastPanelSession = 'chat.restoreLastPanelSession',
@@ -400,8 +399,6 @@ export function isVisibleEditorChatSessionType(
 }
 
 export const MANAGE_CHAT_COMMAND_ID = 'workbench.action.chat.manage';
-export const CHAT_OPEN_AGENT_HOST_CHAT_COMMAND_ID = 'workbench.action.chat.openAgentHostChat';
-export const CHAT_SUBAGENT_RESOURCE_QUERY_PARAM = 'subagentChatResource';
 
 export const ChatEditorTitleMaxLength = 30;
 

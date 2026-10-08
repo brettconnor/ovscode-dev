@@ -39,7 +39,7 @@ import { ChatWidget } from '../../../browser/widget/chatWidget.js';
 import { ChatInputPart } from '../../../browser/widget/input/chatInputPart.js';
 import { ChatToolConfirmationCarouselPart } from '../../../browser/widget/chatContentParts/toolInvocationParts/chatToolConfirmationCarouselPart.js';
 import { ChatSubagentContentPart } from '../../../browser/widget/chatContentParts/chatSubagentContentPart.js';
-import { OpenSubagentChatActionViewItem } from '../../../browser/widget/chatContentParts/chatSubagentOpenChat.js';
+import { SubagentProgressPillActionViewItem } from '../../../browser/widget/chatContentParts/chatSubagentOpenChat.js';
 import { ChatThinkingContentPart } from '../../../browser/widget/chatContentParts/chatThinkingContentPart.js';
 import { ChatMarkdownContentPart } from '../../../browser/widget/chatContentParts/chatMarkdownContentPart.js';
 import { aggregateChatEditDiffs } from '../../../browser/widget/chatContentParts/chatEditStatsButton.js';
@@ -48,7 +48,7 @@ import { ChatSystemNotificationContentPart } from '../../../browser/widget/chatC
 import { ChatCollapsibleContentPart } from '../../../browser/widget/chatContentParts/chatCollapsibleContentPart.js';
 import { ChatRequestQueueKind, ConfirmationOptionKind, ConfirmedReason, ElicitationState, IChatMcpServersStartingSlow, IChatQuestionCarousel, IChatService, IChatSubagentToolInvocationData, IChatTask, IChatTerminalToolInvocationData, IChatToolInputInvocationData, IChatToolInvocation, IChatToolInvocationSerialized, ToolConfirmKind } from '../../../common/chatService/chatService.js';
 import { formatChatRequestTimestamp, formatChatResponseDetails, formatElapsedTime } from '../../../common/chatProgressFormatting.js';
-import { CHAT_OPEN_AGENT_HOST_CHAT_COMMAND_ID, ChatAgentLocation, ChatConfiguration, ChatModeKind, ChatProgressAnimation, ChatProgressVerbosity, CollapsedToolsDisplayMode, ThinkingDisplayMode } from '../../../common/constants.js';
+import { ChatAgentLocation, ChatConfiguration, ChatModeKind, ChatProgressAnimation, ChatProgressVerbosity, CollapsedToolsDisplayMode, ThinkingDisplayMode } from '../../../common/constants.js';
 import { ILanguageModelsService } from '../../../common/languageModels.js';
 import { ChatModel } from '../../../common/model/chatModel.js';
 import { ChatViewModel, IChatPendingDividerViewModel, IChatRendererContent, IChatResponseViewModel, IChatViewModel, isRequestVM, isResponseVM } from '../../../common/model/chatViewModel.js';
@@ -89,6 +89,8 @@ import { AgentEditorCommentsBridge, IAgentEditorCommentsBridge } from '../../../
 import { ChatPlanReviewPart } from '../../../browser/widget/chatContentParts/chatPlanReviewPart.js';
 import { ITerminalChatService, ITerminalConfigurationService, ITerminalService } from '../../../../terminal/browser/terminal.js';
 import { AccessibilityWorkbenchSettingId } from '../../../../accessibility/browser/accessibilityConfiguration.js';
+
+const TEST_CHAT_SUBAGENT_CONTENT_MENU = new MenuId('TestChatSubagentContent');
 
 suite('ChatListRenderer', () => {
 	const store = ensureNoDisposablesAreLeakedInTestSuite();
@@ -1830,7 +1832,6 @@ suite('ChatListRenderer', () => {
 	for (const thinkingStyle of [ThinkingDisplayMode.Collapsed, ThinkingDisplayMode.CollapsedPreview, ThinkingDisplayMode.FixedScrolling]) {
 		test(`persistent footer survives parallel subagents and completion notices (${thinkingStyle})`, async () => {
 			const { configurationService, model, request, renderer, template, node, container } = createPersistentProgressRenderer({ thinkingStyle, chatMode: ChatModeKind.Agent, collapsedTools: CollapsedToolsDisplayMode.Always });
-			configurationService.setUserConfiguration(ChatConfiguration.SubagentsUseRichRendering, false);
 			model.acceptResponseProgress(request, { kind: 'thinking', id: 'preparing', value: '**Preparing subagents**\nStarting independent calculations.' });
 			renderer.renderElement(node, 0, template);
 			const footer = template.value.querySelector<HTMLElement>('.chat-working-progress');
@@ -3936,7 +3937,6 @@ suite('ChatListRenderer', () => {
 		});
 		const { disposables, configurationService, model, request, renderer, template, node } = setup;
 		try {
-			configurationService.setUserConfiguration(ChatConfiguration.SubagentsUseRichRendering, false);
 			const subagent = new ChatToolInvocation(
 				{ invocationMessage: 'Delegating work', pastTenseMessage: 'Delegated work', toolSpecificData: { kind: 'subagent', description: 'Write tests', isActive: true } },
 				{ id: 'task', displayName: 'Task', modelDescription: 'Delegate work', source: ToolDataSource.Internal },
@@ -3979,7 +3979,6 @@ suite('ChatListRenderer', () => {
 	for (const expandBeforeCompletion of [false, true]) {
 		test(`a background subagent that outlives a persistent response shows its own working row (expanded ${expandBeforeCompletion ? 'before' : 'after'} completion)`, async () => {
 			const { configurationService, container, model, request, renderer, template, node } = createPersistentProgressRenderer({ chatMode: ChatModeKind.Agent });
-			configurationService.setUserConfiguration(ChatConfiguration.SubagentsUseRichRendering, false);
 			const child = new ChatToolInvocation(
 				{ invocationMessage: 'Compute in the background', toolSpecificData: { kind: 'subagent', hasStarted: true, isActive: true, description: 'Compute in the background' } },
 				{ id: 'task', displayName: 'Task', modelDescription: 'Task', source: ToolDataSource.Internal },
@@ -6351,7 +6350,6 @@ suite('ChatListRenderer', () => {
 		const configurationService = new TestConfigurationService();
 		configurationService.setUserConfiguration(ChatConfiguration.PersistentProgress, ChatProgressAnimation.Off);
 		configurationService.setUserConfiguration('chat.agent.thinking.collapsedTools', CollapsedToolsDisplayMode.Always);
-		configurationService.setUserConfiguration(ChatConfiguration.SubagentsUseRichRendering, true);
 		configurationService.setUserConfiguration(ChatConfiguration.CollapseCompletedResponses, true);
 		configurationService.setUserConfiguration(ChatConfiguration.ToolConfirmationCarousel, !!chatWidgetService);
 		configurationService.setUserConfiguration('chat.checkpoints.enabled', false);
@@ -6553,16 +6551,16 @@ suite('ChatListRenderer', () => {
 	});
 
 	function installSubagentPillRenderer(instantiationService: ReturnType<typeof workbenchInstantiationService>): void {
-		const openAction = instantiationService.createInstance(MenuItemAction, { id: CHAT_OPEN_AGENT_HOST_CHAT_COMMAND_ID, title: 'Open Subagent' }, undefined, undefined, undefined, undefined);
+		const openAction = instantiationService.createInstance(MenuItemAction, { id: 'test.openSubagentChat', title: 'Open Subagent' }, undefined, undefined, undefined, undefined);
 		instantiationService.stub(IMenuService, new class extends TestMenuService {
 			override getMenuActions(id: MenuId): [string, MenuItemAction[]][] {
-				return id === MenuId.ChatSubagentContent ? [['navigation', [openAction]]] : [];
+				return id === TEST_CHAT_SUBAGENT_CONTENT_MENU ? [['navigation', [openAction]]] : [];
 			}
 		}());
 		instantiationService.stub(IActionViewItemService, new class extends NullActionViewItemService {
 			override lookUp(menu: MenuId, commandId: string | MenuId): IActionViewItemFactory | undefined {
-				return menu === MenuId.ChatSubagentContent && commandId === CHAT_OPEN_AGENT_HOST_CHAT_COMMAND_ID
-					? (action, options, instantiationService) => instantiationService.createInstance(OpenSubagentChatActionViewItem, undefined, action, options, false)
+				return menu === TEST_CHAT_SUBAGENT_CONTENT_MENU && commandId === 'test.openSubagentChat'
+					? (action, options, instantiationService) => instantiationService.createInstance(SubagentProgressPillActionViewItem, undefined, action, options, false)
 					: undefined;
 			}
 		}());
@@ -7883,7 +7881,6 @@ suite('ChatListRenderer', () => {
 		const configurationService = new TestConfigurationService();
 		configurationService.setUserConfiguration(ChatConfiguration.PersistentProgress, ChatProgressAnimation.Off);
 		configurationService.setUserConfiguration('chat.agent.thinking.collapsedTools', CollapsedToolsDisplayMode.Off);
-		configurationService.setUserConfiguration(ChatConfiguration.SubagentsUseRichRendering, false);
 		configurationService.setUserConfiguration('chat.checkpoints.enabled', false);
 		configurationService.setUserConfiguration('chat.checkpoints.showFileChanges', false);
 		instantiationService.stub(IConfigurationService, configurationService);
