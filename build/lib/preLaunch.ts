@@ -67,10 +67,6 @@ async function main() {
 	await ensureNodeModules();
 	await getElectron();
 	await ensureCompiled();
-
-	// Can't require this until after dependencies are installed
-	const { getBuiltInExtensions } = await import('./builtInExtensions.ts');
-	await getBuiltInExtensions();
 }
 
 if (import.meta.main) {

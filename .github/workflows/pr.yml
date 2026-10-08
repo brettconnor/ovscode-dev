@@ -72,24 +72,6 @@ jobs:
         run: npm run typecheck
         working-directory: build
 
-      - name: Prepare built-in extensions cache key
-        shell: pwsh
-        run: node build/azure-pipelines/common/computeBuiltInDepsCacheKey.ts > .build/builtindepshash
-
-      - name: Restore built-in extensions cache
-        id: cache-builtin-extensions
-        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          enableCrossOsArchive: true
-          path: .build/builtInExtensions
-          key: "builtin-extensions-${{ hashFiles('.build/builtindepshash') }}"
-
-      - name: Download built-in extensions
-        if: steps.cache-builtin-extensions.outputs.cache-hit != 'true'
-        run: node build/lib/builtInExtensions.ts
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Check Markdown editor manifests
         run: |
           npm run markdown-editor-package-json-check

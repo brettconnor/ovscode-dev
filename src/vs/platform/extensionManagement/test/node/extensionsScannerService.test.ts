@@ -46,7 +46,6 @@ class ExtensionsScannerService extends AbstractExtensionsScannerService implemen
 		super(
 			URI.file(nativeEnvironmentService.builtinExtensionsPath),
 			URI.file(nativeEnvironmentService.extensionsPath),
-			joinPath(nativeEnvironmentService.userHome, '.vscode-oss-dev', 'extensions', 'control.json'),
 			userDataProfilesService.defaultProfile,
 			userDataProfilesService, extensionsProfileScannerService, fileService, logService, nativeEnvironmentService, productService, uriIdentityService, instantiationService);
 	}
@@ -238,28 +237,6 @@ suite('NativeExtensionsScanerService Test', () => {
 		assert.deepStrictEqual(actual.length, 2);
 		assert.deepStrictEqual(actual[0].identifier, { id: 'pub.name' });
 		assert.deepStrictEqual(actual[1].identifier, { id: 'pub.name2' });
-	});
-
-	test('scan system extensions include additional builtin extensions', async () => {
-		instantiationService.stub(IProductService, {
-			version: '1.66.0',
-			builtInExtensionsEnabledWithAutoUpdates: [],
-			builtInExtensions: [
-				{ name: 'pub.name2', version: '', repo: '', metadata: undefined },
-				{ name: 'pub.name', version: '', repo: '', metadata: undefined }
-			]
-		});
-		await anExtension(anExtensionManifest({ 'name': 'name2', 'publisher': 'pub' }), joinPath(ROOT, 'additional'));
-		const extensionLocation = await anExtension(anExtensionManifest({ 'name': 'name', 'publisher': 'pub' }), joinPath(ROOT, 'additional'));
-		await aSystemExtension(anExtensionManifest({ 'name': 'name', 'publisher': 'pub', version: '1.0.1' }));
-		await instantiationService.get(IFileService).writeFile(joinPath(instantiationService.get(INativeEnvironmentService).userHome, '.vscode-oss-dev', 'extensions', 'control.json'), VSBuffer.fromString(JSON.stringify({ 'pub.name2': 'disabled', 'pub.name': extensionLocation.fsPath })));
-		const testObject: IExtensionsScannerService = disposables.add(instantiationService.createInstance(ExtensionsScannerService));
-
-		const actual = await testObject.scanSystemExtensions({ checkControlFile: true });
-
-		assert.deepStrictEqual(actual.length, 1);
-		assert.deepStrictEqual(actual[0].identifier, { id: 'pub.name' });
-		assert.deepStrictEqual(actual[0].manifest.version, '1.0.0');
 	});
 
 	test('scan all user extensions with default nls replacements', async () => {

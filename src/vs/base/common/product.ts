@@ -7,13 +7,6 @@ import { IStringDictionary } from './collections.js';
 import { PlatformName } from './platform.js';
 import { IExtensionConfigurationPolicyReference, IPolicy } from './policy.js';
 
-export interface IBuiltInExtension {
-	readonly name: string;
-	readonly version: string;
-	readonly repo: string;
-	readonly metadata: unknown;
-}
-
 export interface IProductWalkthrough {
 	id: string;
 	steps: IProductWalkthroughStep[];
@@ -121,7 +114,6 @@ export interface IProductConfiguration {
 	readonly dataFolderName: string; // location for extensions (e.g. ~/.vscode-insiders)
 	readonly sharedDataFolderName: string; // location for shared data (e.g. ~/.vscode-insiders-shared)
 
-	readonly builtInExtensions?: IBuiltInExtension[];
 	readonly walkthroughMetadata?: IProductWalkthrough[];
 	readonly featuredExtensions?: IFeaturedExtension[];
 

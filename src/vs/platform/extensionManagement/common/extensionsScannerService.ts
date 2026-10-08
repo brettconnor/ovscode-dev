@@ -12,7 +12,7 @@ import { getNodeType, parse, ParseError } from '../../../base/common/json.js';
 import { getParseErrorMessage } from '../../../base/common/jsonErrorMessages.js';
 import { Disposable } from '../../../base/common/lifecycle.js';
 import { ResourceMap } from '../../../base/common/map.js';
-import { FileAccess, Schemas } from '../../../base/common/network.js';
+import { Schemas } from '../../../base/common/network.js';
 import * as path from '../../../base/common/path.js';
 import * as platform from '../../../base/common/platform.js';
 import { basename, isEqual, joinPath } from '../../../base/common/resources.js';
@@ -104,10 +104,6 @@ interface LocalizedMessages {
 	default: URI | null;
 }
 
-interface IBuiltInExtensionControl {
-	[name: string]: 'marketplace' | 'disabled' | string;
-}
-
 function getProductBuiltInExtensionsEnabledWithAutoUpdates(productService: IProductService, environmentService: IEnvironmentService): Set<string> {
 	const result = new Set<string>();
 	for (const id of productService.builtInExtensionsEnabledWithAutoUpdates) {
@@ -121,7 +117,6 @@ function getProductBuiltInExtensionsEnabledWithAutoUpdates(productService: IProd
 }
 
 export type SystemExtensionsScanOptions = {
-	readonly checkControlFile?: boolean;
 	readonly language?: string;
 };
 
@@ -176,7 +171,6 @@ export abstract class AbstractExtensionsScannerService extends Disposable implem
 	constructor(
 		readonly systemExtensionsLocation: URI,
 		readonly userExtensionsLocation: URI,
-		private readonly extensionsControlLocation: URI,
 		currentProfile: IUserDataProfile,
 		@IUserDataProfilesService private readonly userDataProfilesService: IUserDataProfilesService,
 		@IExtensionsProfileScannerService protected readonly extensionsProfileScannerService: IExtensionsProfileScannerService,
@@ -214,11 +208,7 @@ export abstract class AbstractExtensionsScannerService extends Disposable implem
 	}
 
 	async scanSystemExtensions(scanOptions: SystemExtensionsScanOptions): Promise<IScannedExtension[]> {
-		const promises: Promise<IRelaxedScannedExtension[]>[] = [];
-		promises.push(this.scanDefaultSystemExtensions(scanOptions.language));
-		promises.push(this.scanDevSystemExtensions(scanOptions.language, !!scanOptions.checkControlFile));
-		const [defaultSystemExtensions, devSystemExtensions] = await Promise.all(promises);
-		let allSystemExtensions = [...defaultSystemExtensions, ...devSystemExtensions];
+		let allSystemExtensions = await this.scanDefaultSystemExtensions(scanOptions.language);
 
 		if (this.environmentService.skipBuiltinExtensions?.length) {
 			const skipSet = new Set(this.environmentService.skipBuiltinExtensions.map(id => id.toLowerCase()));
@@ -446,43 +436,6 @@ export abstract class AbstractExtensionsScannerService extends Disposable implem
 		const result = await extensionsScanner.scanExtensions(extensionsScannerInput);
 		this.logService.trace('Scanned system extensions:', result.length);
 		return result;
-	}
-
-	private async scanDevSystemExtensions(language: string | undefined, checkControlFile: boolean): Promise<IRelaxedScannedExtension[]> {
-		const devSystemExtensionsList = this.environmentService.isBuilt ? [] : this.productService.builtInExtensions;
-		if (!devSystemExtensionsList?.length) {
-			return [];
-		}
-
-		this.logService.trace('Started scanning dev system extensions');
-		const builtinExtensionControl = checkControlFile ? await this.getBuiltInExtensionControl() : {};
-		const devSystemExtensionsLocations: URI[] = [];
-		const devSystemExtensionsLocation = URI.file(path.normalize(path.join(FileAccess.asFileUri('').fsPath, '..', '.build', 'builtInExtensions')));
-		for (const extension of devSystemExtensionsList) {
-			const controlState = builtinExtensionControl[extension.name] || 'marketplace';
-			switch (controlState) {
-				case 'disabled':
-					break;
-				case 'marketplace':
-					devSystemExtensionsLocations.push(joinPath(devSystemExtensionsLocation, extension.name));
-					break;
-				default:
-					devSystemExtensionsLocations.push(URI.file(controlState));
-					break;
-			}
-		}
-		const result = await Promise.all(devSystemExtensionsLocations.map(async location => this.extensionsScanner.scanExtension((await this.createExtensionScannerInput(location, false, ExtensionType.System, language, true, undefined, this.getProductVersion())))));
-		this.logService.trace('Scanned dev system extensions:', result.length);
-		return coalesce(result);
-	}
-
-	private async getBuiltInExtensionControl(): Promise<IBuiltInExtensionControl> {
-		try {
-			const content = await this.fileService.readFile(this.extensionsControlLocation);
-			return JSON.parse(content.value.toString());
-		} catch (error) {
-			return {};
-		}
 	}
 
 	private async createExtensionScannerInput(location: URI, profile: boolean, type: ExtensionType, language: string | undefined, validate: boolean, profileScanOptions: IProfileExtensionsScanOptions | undefined, productVersion: IProductVersion): Promise<ExtensionScannerInput> {

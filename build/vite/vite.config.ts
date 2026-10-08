@@ -19,7 +19,7 @@ function injectBuiltinExtensionsPlugin(): Plugin {
 
 	async function loadBuiltinExtensions() {
 		if (!builtinExtensionsCache) {
-			builtinExtensionsCache = await getScannedBuiltinExtensions(path.resolve(__dirname, '../../'));
+			builtinExtensionsCache = await getScannedWebExtensions(path.resolve(__dirname, '../../'));
 			console.log(`Found ${builtinExtensionsCache!.length} built-in extensions.`);
 		}
 		return builtinExtensionsCache;
@@ -49,12 +49,10 @@ function injectBuiltinExtensionsPlugin(): Plugin {
 		return str.replace(/[&<>"'`]/g, escapeCharacter);
 	}
 
-	const prebuiltExtensionsLocation = '.build/builtInExtensions';
-	async function getScannedBuiltinExtensions(vsCodeDevLocation: string) {
+	async function getScannedWebExtensions(vsCodeDevLocation: string) {
 		// use the build utility as to not duplicate the code
 		const extensionsUtil = await import(pathToFileURL(path.join(vsCodeDevLocation, 'build', 'lib', 'extensions.ts')).toString());
-		const localExtensions = extensionsUtil.scanBuiltinExtensions(path.join(vsCodeDevLocation, 'extensions'));
-		const prebuiltExtensions = extensionsUtil.scanBuiltinExtensions(path.join(vsCodeDevLocation, prebuiltExtensionsLocation));
+		const localExtensions = extensionsUtil.scanWebExtensions(path.join(vsCodeDevLocation, 'extensions'));
 		for (const ext of localExtensions) {
 			let browserMain = ext.packageJSON.browser;
 			if (browserMain) {
@@ -67,7 +65,7 @@ function injectBuiltinExtensionsPlugin(): Plugin {
 				}
 			}
 		}
-		return localExtensions.concat(prebuiltExtensions);
+		return localExtensions;
 	}
 
 	function fileExists(path: string): boolean {

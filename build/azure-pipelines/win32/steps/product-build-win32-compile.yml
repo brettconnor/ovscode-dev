@@ -155,7 +155,6 @@ steps:
         VSCODE_OVERWRITE_TPN: $(VSCODE_OVERWRITE_TPN)
       displayName: Pull CG NOTICE (background)
 
-  - template: ../../common/install-builtin-extensions.yml@self
 
   - powershell: node build/npm/electronTypes.ts
     displayName: Prepare Electron types

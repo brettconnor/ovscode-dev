@@ -7,9 +7,8 @@ import es from 'event-stream';
 import fs from 'fs';
 import cp from 'child_process';
 import glob from 'glob';
-import { gulp, filter, rename, buffer, vinylZip, jsonEditor } from './gulp/facade.ts';
+import { gulp, filter, rename, buffer } from './gulp/facade.ts';
 import path from 'path';
-import crypto from 'crypto';
 import { Stream } from 'stream';
 import File from 'vinyl';
 import { createStatsStream } from './stats.ts';
@@ -18,8 +17,6 @@ import fancyLog from 'fancy-log';
 import ansiColors from 'ansi-colors';
 import * as jsoncParser from 'jsonc-parser';
 import { getProductionDependencies } from './dependencies.ts';
-import { type IExtensionDefinition, getExtensionStream } from './builtInExtensions.ts';
-import { fetchUrls, fetchGithub } from './fetch.ts';
 import { createTsgoStream, spawnTsgo } from './tsgo.ts';
 import watcher from './watch/index.ts';
 
@@ -221,91 +218,6 @@ function fromLocalEsbuild(extensionPath: string, esbuildConfigFileName: string):
 	return result.pipe(createStatsStream(path.basename(extensionPath)));
 }
 
-const userAgent = 'VSCode Build';
-const baseHeaders = {
-	'X-Market-Client-Id': 'VSCode Build',
-	'User-Agent': userAgent,
-	'X-Market-User-Id': '291C1CD0-051A-4123-9B4B-30D60EF52EE2',
-};
-
-export function fromMarketplace(serviceUrl: string, { name: extensionName, version, sha256, metadata }: IExtensionDefinition): Stream {
-	const [publisher, name] = extensionName.split('.');
-	const url = `${serviceUrl}/publishers/${publisher}/vsextensions/${name}/${version}/vspackage`;
-
-	fancyLog('Downloading extension:', ansiColors.yellow(`${extensionName}@${version}`), '...');
-
-	const packageJsonFilter = filter('package.json', { restore: true });
-
-	return fetchUrls('', {
-		base: url,
-		nodeFetchOptions: {
-			headers: baseHeaders
-		},
-		checksumSha256: sha256
-	})
-		.pipe(vinylZip.src())
-		.pipe(filter('extension/**'))
-		.pipe(rename(p => p.dirname = p.dirname!.replace(/^extension\/?/, '')))
-		.pipe(packageJsonFilter)
-		.pipe(buffer())
-		.pipe(jsonEditor({ __metadata: metadata }))
-		.pipe(packageJsonFilter.restore);
-}
-
-export function fromVsix(vsixPath: string, { name: extensionName, version, sha256, metadata }: IExtensionDefinition): Stream {
-	fancyLog('Using local VSIX for extension:', ansiColors.yellow(`${extensionName}@${version}`), '...');
-
-	const packageJsonFilter = filter('package.json', { restore: true });
-
-	return gulp.src(vsixPath)
-		.pipe(buffer())
-		.pipe(es.mapSync((f: File) => {
-			const hash = crypto.createHash('sha256');
-			hash.update(f.contents as Buffer);
-			const checksum = hash.digest('hex');
-			if (checksum !== sha256) {
-				throw new Error(`Checksum mismatch for ${vsixPath} (expected ${sha256}, actual ${checksum}))`);
-			}
-			return f;
-		}))
-		.pipe(vinylZip.src())
-		.pipe(filter('extension/**'))
-		.pipe(rename(p => p.dirname = p.dirname!.replace(/^extension\/?/, '')))
-		.pipe(packageJsonFilter)
-		.pipe(buffer())
-		.pipe(jsonEditor({ __metadata: metadata }))
-		.pipe(packageJsonFilter.restore);
-}
-
-
-export function fromGithub({ name, version, repo, sha256, metadata }: IExtensionDefinition, options?: { asset?: { assetName: string; sha256: string }; latest?: boolean }): Stream {
-	const asset = options?.asset;
-	const latest = options?.latest ?? false;
-	fancyLog('Downloading extension from GH:', ansiColors.yellow(`${name}@${latest ? 'latest' : version}`), asset ? ansiColors.gray(`(${asset.assetName})`) : '', '...');
-	if (latest) {
-		fancyLog(ansiColors.yellow(`Warning: skipping checksum validation for ${name} (downloading latest release, no pinned checksum available)`));
-	}
-
-	const packageJsonFilter = filter('package.json', { restore: true });
-
-	return fetchGithub(new URL(repo).pathname, {
-		version,
-		name: asset ? asset.assetName : name => name.endsWith('.vsix'),
-		// The checksum is tied to a specific version; when resolving the latest release the
-		// downloaded asset differs, so it cannot be validated against the pinned checksum.
-		checksumSha256: latest ? undefined : (asset ? asset.sha256 : sha256),
-		latest
-	})
-		.pipe(buffer())
-		.pipe(vinylZip.src())
-		.pipe(filter('extension/**'))
-		.pipe(rename(p => p.dirname = p.dirname!.replace(/^extension\/?/, '')))
-		.pipe(packageJsonFilter)
-		.pipe(buffer())
-		.pipe(jsonEditor({ __metadata: metadata }))
-		.pipe(packageJsonFilter.restore);
-}
-
 /**
  * All extensions that are known to have some native component and thus must be built on the
  * platform that is being built.
@@ -324,18 +236,6 @@ const excludedExtensions = [
 	'ms-vscode.node-debug',
 	'ms-vscode.node-debug2',
 ];
-
-const marketplaceWebExtensionsExclude = new Set([
-	'ms-vscode.node-debug',
-	'ms-vscode.node-debug2',
-	'ms-vscode.js-debug-companion',
-	'ms-vscode.js-debug',
-	'ms-vscode.vscode-js-profile-table'
-]);
-
-const productJson = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '../../product.json'), 'utf8'));
-const builtInExtensions: IExtensionDefinition[] = productJson.builtInExtensions || [];
-const webBuiltInExtensions: IExtensionDefinition[] = productJson.webBuiltInExtensions || [];
 
 type ExtensionKind = 'ui' | 'workspace' | 'web';
 interface IExtensionManifest {
@@ -422,7 +322,6 @@ function doPackageLocalExtensionsStream(forWeb: boolean, native: boolean): Strea
 			})
 			.filter(({ name }) => native ? nativeExtensionsSet.has(name) : !nativeExtensionsSet.has(name))
 			.filter(({ name }) => excludedExtensions.indexOf(name) === -1)
-			.filter(({ name }) => builtInExtensions.every(b => b.name !== name))
 			.filter(({ manifestPath }) => (forWeb ? isWebExtension(require(manifestPath)) : true))
 	);
 
@@ -460,33 +359,7 @@ function doPackageLocalExtensionsStream(forWeb: boolean, native: boolean): Strea
 	);
 }
 
-export function packageMarketplaceExtensionsStream(forWeb: boolean): Stream {
-	const marketplaceExtensionsDescriptions = [
-		...builtInExtensions.filter(({ name }) => (forWeb ? !marketplaceWebExtensionsExclude.has(name) : true)),
-		...(forWeb ? webBuiltInExtensions : [])
-	];
-	const marketplaceExtensionsStream = minifyExtensionResources(
-		es.merge(
-			...marketplaceExtensionsDescriptions
-				.map(extension => {
-					const src = getExtensionStream(extension).pipe(rename(p => p.dirname = `extensions/${p.dirname}`));
-					return updateExtensionPackageJSON(src, (data: any) => {
-						delete data.scripts;
-						delete data.dependencies;
-						delete data.devDependencies;
-						return data;
-					});
-				})
-		)
-	);
-
-	return (
-		marketplaceExtensionsStream
-			.pipe(util2.setExecutableBit(['**/*.sh']))
-	);
-}
-
-export interface IScannedBuiltinExtension {
+export interface IScannedWebExtension {
 	readonly extensionPath: string;
 	readonly packageJSON: unknown;
 	readonly packageNLS: unknown | undefined;
@@ -494,8 +367,8 @@ export interface IScannedBuiltinExtension {
 	readonly changelogPath: string | undefined;
 }
 
-export function scanBuiltinExtensions(extensionsRoot: string, exclude: string[] = []): IScannedBuiltinExtension[] {
-	const scannedExtensions: IScannedBuiltinExtension[] = [];
+export function scanWebExtensions(extensionsRoot: string, exclude: string[] = []): IScannedWebExtension[] {
+	const scannedExtensions: IScannedWebExtension[] = [];
 
 	try {
 		const extensionsFolders = fs.readdirSync(extensionsRoot);

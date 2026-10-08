@@ -150,11 +150,6 @@ jobs:
           GITHUB_TOKEN: "$(github-token-code-oss)"
         displayName: Compile & Hygiene
 
-      - script: npm run download-builtin-extensions-cg
-        displayName: Download component details of built-in extensions
-        continueOnError: true
-        condition: and(succeeded(), eq(lower(variables['VSCODE_CIBUILD']), 'false'))
-
       - task: ms.vss-governance-buildtask.governance-build-task-component-detection.ComponentGovernanceComponentDetection@0
         displayName: "Component Detection"
         inputs:
