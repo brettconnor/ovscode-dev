@@ -99,7 +99,6 @@ import { ChatQuestionCarouselPart } from './chatContentParts/chatQuestionCarouse
 import { ChatExtensionsContentPart } from './chatContentParts/chatExtensionsContentPart.js';
 import { ChatMarkdownContentPart, codeblockHasClosingBackticks } from './chatContentParts/chatMarkdownContentPart.js';
 import { ChatMcpServersInteractionContentPart } from './chatContentParts/chatMcpServersInteractionContentPart.js';
-import { ChatMcpServersStartingContentPart } from './chatContentParts/chatMcpServersStartingContentPart.js';
 import { ChatDisabledClaudeHooksContentPart } from './chatContentParts/chatDisabledClaudeHooksContentPart.js';
 import { ChatMultiDiffContentPart } from './chatContentParts/chatMultiDiffContentPart.js';
 import { ChatProgressContentPart, ChatWorkingProgressContentPart, pickWorkingLabel } from './chatContentParts/chatProgressContentPart.js';
@@ -1980,10 +1979,6 @@ export class ChatListItemRenderer extends Disposable implements ITreeRenderer<Ch
 			}
 		}
 
-		if (isWaitingForMcpServers(partsToRender)) {
-			return undefined;
-		}
-
 		const workingParts = getWorkingProgressRelevantParts(partsToRender);
 		const lastPart = findLastMeaningfulPart(workingParts);
 		const endsWithCompletedQuestion = endsWithCompletedQuestionInteraction(workingParts);
@@ -2041,7 +2036,6 @@ export class ChatListItemRenderer extends Disposable implements ITreeRenderer<Ch
 			(sectionFinished && !hasIncompleteTool) ||
 			lastPart.kind === 'mcpServersStarting' ||
 			lastPart.kind === 'mcpAuthenticationRequired' ||
-			lastPart.kind === 'mcpServersStartingSlow' ||
 			lastPart.kind === 'disabledClaudeHooks' ||
 			lastPart.kind === 'hook'
 		) {
@@ -4249,12 +4243,6 @@ export class ChatListItemRenderer extends Disposable implements ITreeRenderer<Ch
 				return this.renderTurnPills(content, context);
 			} else if (content.kind === 'mcpServersStarting') {
 				return this.renderMcpServersInteractionRequired(content, context, templateData);
-			} else if (content.kind === 'mcpServersStartingSlow') {
-				return this.instantiationService.createInstance(ChatMcpServersStartingContentPart, content, {
-					showSpinner: !context.suppressProgressShimmer,
-					onDidFinishStarting: () => this.showWorkingProgressAfterMcp(context, templateData),
-					onDidRemoveFocusedAction: () => this.chatWidgetService.getWidgetBySessionResource(context.element.sessionResource)?.focusInput(),
-				});
 			} else if (content.kind === 'disabledClaudeHooks') {
 				return this.renderDisabledClaudeHooks(content, context);
 			} else if (content.kind === 'thinking') {
@@ -4283,23 +4271,6 @@ export class ChatListItemRenderer extends Disposable implements ITreeRenderer<Ch
 				hasSameContent: (other => content.kind === other.kind),
 			};
 		}
-	}
-
-	private showWorkingProgressAfterMcp(context: IChatContentPartRenderContext, templateData: IChatListItemTemplate): void {
-		const originalElement = context.element;
-		const originalRenderedParts = templateData.renderedParts;
-		queueMicrotask(() => {
-			if (!isResponseVM(originalElement) || templateData.currentElement !== originalElement || originalElement.isComplete || originalElement.isCanceled) {
-				return;
-			}
-
-			if (!originalRenderedParts || templateData.renderedParts !== originalRenderedParts || originalRenderedParts.some(part => part instanceof ChatWorkingProgressContentPart)) {
-				return;
-			}
-
-			this.renderChatResponseBasic(originalElement, context.elementIndex, templateData);
-			this.fireItemHeightChange(templateData);
-		});
 	}
 
 	override dispose(): void {
@@ -5623,10 +5594,6 @@ export function getPersistentProgressState(parts: readonly IChatRendererContent[
 		return 'authentication';
 	}
 	return 'active';
-}
-
-export function isWaitingForMcpServers(parts: readonly IChatRendererContent[]): boolean {
-	return parts.some(part => part.kind === 'mcpServersStartingSlow' && part.servers.get().length > 0);
 }
 
 /**

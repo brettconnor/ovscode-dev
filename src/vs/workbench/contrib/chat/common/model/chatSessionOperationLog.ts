@@ -11,7 +11,7 @@ import { hasKey } from '../../../../../base/common/types.js';
 import { URI, UriComponents } from '../../../../../base/common/uri.js';
 import { IChatRequestVariableEntry } from '../attachments/chatVariableEntries.js';
 import { serializeChatRequestOrigin } from '../chatRequestOrigin.js';
-import { IChatMarkdownContent, IChatMcpAuthenticationRequired, IChatMcpServersStartingSlow, IChatVoiceProgressPart, ResponseModelState } from '../chatService/chatService.js';
+import { IChatMarkdownContent, IChatMcpAuthenticationRequired, IChatVoiceProgressPart, ResponseModelState } from '../chatService/chatService.js';
 import { ModifiedFileEntryState } from '../editing/chatEditingService.js';
 import { IParsedChatRequest } from '../requestParser/chatParserTypes.js';
 import { IChatAgentEditedFileEvent, IChatDataSerializerLog, IChatModel, IChatPendingRequest, IChatProgressResponseContent, IChatRequestModel, IChatRequestVariableData, ISerializableChatData, ISerializableChatModelInputState, ISerializableChatRequestData, ISerializablePendingRequestData, SerializedChatResponsePart, serializeSendOptions } from './chatModel.js';
@@ -39,7 +39,7 @@ const toJson = <T>(obj: T): T extends { toJSON?(): infer R } ? R : T => {
 	return (cast && typeof cast.toJSON === 'function' ? cast.toJSON() : obj) as any;
 };
 
-type PersistedResponsePart = Exclude<IChatProgressResponseContent, IChatMcpAuthenticationRequired | IChatMcpServersStartingSlow | IChatVoiceProgressPart>;
+type PersistedResponsePart = Exclude<IChatProgressResponseContent, IChatMcpAuthenticationRequired | IChatVoiceProgressPart>;
 
 const responsePartSchema = Adapt.v<PersistedResponsePart, SerializedChatResponsePart>(
 	(obj): SerializedChatResponsePart => obj.kind === 'markdownContent' ? obj.content : toJson(obj),
@@ -146,7 +146,7 @@ const requestSchema = Adapt.object<IChatRequestModel, ISerializableChatRequestDa
 	requestHiddenFromTranscript: Adapt.v(m => m.isRequestHiddenFromTranscript && !m.isHiddenFromTranscript ? true : undefined),
 	isCanceled: Adapt.v(() => undefined), // deprecated, modelState is used instead
 
-	response: Adapt.t(m => m.response?.entireResponse.value.filter((p): p is PersistedResponsePart => p.kind !== 'mcpAuthenticationRequired' && p.kind !== 'mcpServersStartingSlow' && p.kind !== 'voiceProgress'), Adapt.array(responsePartSchema)),
+	response: Adapt.t(m => m.response?.entireResponse.value.filter((p): p is PersistedResponsePart => p.kind !== 'mcpAuthenticationRequired' && p.kind !== 'voiceProgress'), Adapt.array(responsePartSchema)),
 	responseId: Adapt.v(m => m.response?.id),
 	responseTimestamp: Adapt.v(m => m.response?.timestamp),
 	result: Adapt.v(m => m.response?.result, objectsEqual),

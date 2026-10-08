@@ -34,7 +34,7 @@ import { IChatOutputRendererService, RenderedOutputPart } from '../../../browser
 import { ChatTreeItem, IChatAccessibilityService, IChatListItemRendererOptions, IChatWidget, IChatWidgetService } from '../../../browser/chat.js';
 import { IChatToolRiskAssessmentService } from '../../../browser/tools/chatToolRiskAssessmentService.js';
 import { AcceptToolConfirmationActionId, registerChatToolActions, SkipToolConfirmationActionId } from '../../../browser/actions/chatToolActions.js';
-import { buildPlanReviewProgressContent, ChatListItemRenderer, endsWithActiveSubagentContent, endsWithCompletedQuestionInteraction, formatCompletedResponseDisclosureLabel, formatResponseTokenStats, getCompletedResponseCollapseEndIndex, getFinalResponseStartIndex, getFinalResponseStartIndexAfterMovingResponseOutcomeTools, getPersistentProgressState, getPersistentWaitingLabel, getTrailingProgressLabel, getVisibleCompletedResponseItemCount, getWorkingProgressRelevantParts, IChatListItemTemplate, isAnchorTarget, isBlockingToolState, isFinalResponseRendered, isWaitingForMcpServers, moveResponseOutcomeToolsAfterFinalResponse, reconcileChatItemHeight, renderChatRequestTimestamp, renderChatResponseDetails, shouldCollapseCompletedResponsePart, shouldCreateGroupedThinkingPart, shouldHideChatUserIdentity, shouldPinToolInvocationToThinking, shouldRenderInitialProgressiveContentImmediately, shouldScheduleInitialHeightChange, shouldShowFileChangesSummaryForSettings, shouldStartNewCollapsedThinkingGroup } from '../../../browser/widget/chatListRenderer.js';
+import { buildPlanReviewProgressContent, ChatListItemRenderer, endsWithActiveSubagentContent, endsWithCompletedQuestionInteraction, formatCompletedResponseDisclosureLabel, formatResponseTokenStats, getCompletedResponseCollapseEndIndex, getFinalResponseStartIndex, getFinalResponseStartIndexAfterMovingResponseOutcomeTools, getPersistentProgressState, getPersistentWaitingLabel, getTrailingProgressLabel, getVisibleCompletedResponseItemCount, getWorkingProgressRelevantParts, IChatListItemTemplate, isAnchorTarget, isBlockingToolState, isFinalResponseRendered, moveResponseOutcomeToolsAfterFinalResponse, reconcileChatItemHeight, renderChatRequestTimestamp, renderChatResponseDetails, shouldCollapseCompletedResponsePart, shouldCreateGroupedThinkingPart, shouldHideChatUserIdentity, shouldPinToolInvocationToThinking, shouldRenderInitialProgressiveContentImmediately, shouldScheduleInitialHeightChange, shouldShowFileChangesSummaryForSettings, shouldStartNewCollapsedThinkingGroup } from '../../../browser/widget/chatListRenderer.js';
 import { ChatWidget } from '../../../browser/widget/chatWidget.js';
 import { ChatInputPart } from '../../../browser/widget/input/chatInputPart.js';
 import { ChatToolConfirmationCarouselPart } from '../../../browser/widget/chatContentParts/toolInvocationParts/chatToolConfirmationCarouselPart.js';
@@ -46,7 +46,7 @@ import { aggregateChatEditDiffs } from '../../../browser/widget/chatContentParts
 import { IChatOutputPartStateCache, IOutputPartState } from '../../../browser/widget/chatContentParts/chatOutputPartStateCache.js';
 import { ChatSystemNotificationContentPart } from '../../../browser/widget/chatContentParts/chatSystemNotificationContentPart.js';
 import { ChatCollapsibleContentPart } from '../../../browser/widget/chatContentParts/chatCollapsibleContentPart.js';
-import { ChatRequestQueueKind, ConfirmationOptionKind, ConfirmedReason, ElicitationState, IChatMcpServersStartingSlow, IChatQuestionCarousel, IChatService, IChatSubagentToolInvocationData, IChatTask, IChatTerminalToolInvocationData, IChatToolInputInvocationData, IChatToolInvocation, IChatToolInvocationSerialized, ToolConfirmKind } from '../../../common/chatService/chatService.js';
+import { ChatRequestQueueKind, ConfirmationOptionKind, ConfirmedReason, ElicitationState, IChatQuestionCarousel, IChatService, IChatSubagentToolInvocationData, IChatTask, IChatTerminalToolInvocationData, IChatToolInputInvocationData, IChatToolInvocation, IChatToolInvocationSerialized, ToolConfirmKind } from '../../../common/chatService/chatService.js';
 import { formatChatRequestTimestamp, formatChatResponseDetails, formatElapsedTime } from '../../../common/chatProgressFormatting.js';
 import { ChatAgentLocation, ChatConfiguration, ChatModeKind, ChatProgressAnimation, ChatProgressVerbosity, CollapsedToolsDisplayMode, ThinkingDisplayMode } from '../../../common/constants.js';
 import { ILanguageModelsService } from '../../../common/languageModels.js';
@@ -1424,21 +1424,6 @@ suite('ChatListRenderer', () => {
 		assert.strictEqual(endsWithActiveSubagentContent(parts), false);
 	});
 
-	test('working progress is hidden while MCP servers are starting', () => {
-		const servers = observableValue('servers', [{ id: 'a', name: 'alpha' }]);
-		const part: IChatMcpServersStartingSlow = {
-			kind: 'mcpServersStartingSlow',
-			sessionResource: URI.parse('chat-session://test/session1'),
-			servers,
-		};
-
-		const whileStarting = isWaitingForMcpServers([part]);
-		servers.set([], undefined);
-		const afterStarting = isWaitingForMcpServers([part]);
-
-		assert.deepStrictEqual({ whileStarting, afterStarting }, { whileStarting: true, afterStarting: false });
-	});
-
 	function createPersistentProgressRenderer(options: { thinkingStyle?: ThinkingDisplayMode; progressVerbosity?: ChatProgressVerbosity; chatMode?: ChatModeKind; collapsedTools?: CollapsedToolsDisplayMode; dockPlanReview?: boolean; rendererOptions?: IChatListItemRendererOptions; editingSession?: IChatEditingSession; chatWidgetService?: IChatWidgetService } = {}) {
 		const disposables = store.add(new DisposableStore());
 		const instantiationService = workbenchInstantiationService(undefined, disposables);
@@ -2786,18 +2771,15 @@ suite('ChatListRenderer', () => {
 		renderer.renderElement(node, 0, template);
 	});
 
-	for (const type of ['terminal', 'mcp'] as const) {
-		test(type === 'terminal' ? 'persistent progress preserves the terminal animation when toggled' : 'persistent progress replaces the MCP spinner and restores it when disabled', async () => {
+	test('persistent progress preserves the terminal animation when toggled', async () => {
 			const setup = createPersistentProgressRenderer();
 			configureTerminalProgressRenderer(setup);
-			const { configurationService, model, request, response, renderer, template, node } = setup;
-			const content: ChatToolInvocation | IChatMcpServersStartingSlow = type === 'terminal'
-				? new ChatToolInvocation(
+			const { configurationService, model, request, renderer, template, node } = setup;
+			const content = new ChatToolInvocation(
 					{ invocationMessage: 'Running a command', toolSpecificData: { kind: 'terminal', commandLine: { original: 'echo hello' }, language: 'plaintext' } },
 					{ id: 'run_in_terminal', displayName: 'Terminal', modelDescription: 'Terminal', source: ToolDataSource.Internal },
 					'terminal-1', undefined, {},
-				)
-				: { kind: 'mcpServersStartingSlow', sessionResource: response.sessionResource, servers: observableValue('servers', [{ id: 'a', name: 'alpha' }]) };
+				);
 			model.acceptResponseProgress(request, content);
 			const countTerminalAnimations = () => template.value.querySelector('.chat-terminal-content-part .monaco-pixel-spinner')?.getAnimations({ subtree: true }).filter(animation => {
 				// Reduced motion can leave a paused, zero-duration dot animation in Chromium.
@@ -2813,17 +2795,17 @@ suite('ChatListRenderer', () => {
 					pixelSpinners: template.value.querySelectorAll('.monaco-pixel-spinner').length,
 					terminalAnimations: countTerminalAnimations(),
 					workingLogos: template.value.querySelectorAll('.chat-working-logo').length,
-					contentParts: template.value.querySelectorAll(type === 'terminal' ? '.chat-terminal-content-part' : '.chat-mcp-servers-interaction').length,
-					details: template.value.querySelector(type === 'terminal' ? '.chat-terminal-command-block' : '.chat-mcp-servers-message')?.textContent?.replace(/\u00a0/g, ' ').trim(),
+					contentParts: template.value.querySelectorAll('.chat-terminal-content-part').length,
+					details: template.value.querySelector('.chat-terminal-command-block')?.textContent?.replace(/\u00a0/g, ' ').trim(),
 					failed: template.value.textContent?.includes('Failed to render content'),
 				});
 			}
 			assert.deepStrictEqual(snapshots, [false, true, false].map(enabled => ({
-				pixelSpinners: type === 'terminal' || !enabled ? 1 : 0,
-				terminalAnimations: type === 'terminal' && !mainWindow.matchMedia('(prefers-reduced-motion: reduce)').matches ? 6 : 0,
+				pixelSpinners: 1,
+				terminalAnimations: !mainWindow.matchMedia('(prefers-reduced-motion: reduce)').matches ? 6 : 0,
 				workingLogos: enabled ? 1 : 0,
 				contentParts: 1,
-				details: type === 'terminal' ? 'echo hello' : 'Starting MCP servers alpha...',
+				details: 'echo hello',
 				failed: false,
 			})));
 			if (content.kind === 'toolInvocation') {
@@ -2840,7 +2822,6 @@ suite('ChatListRenderer', () => {
 			request.response?.complete();
 			renderer.renderElement(node, 0, template);
 		});
-	}
 
 	for (const fontSize of [13, 18]) {
 		for (const grouped of [false, true]) {
@@ -5057,18 +5038,16 @@ suite('ChatListRenderer', () => {
 		renderer.renderElement(node, 0, template);
 	});
 
-	for (const kind of ['question', 'confirmation', 'mcp'] as const) {
+	for (const kind of ['question', 'confirmation'] as const) {
 		test(`persistent ${kind} widget uses the shared gap before working progress`, async () => {
-			const { container, model, request, response, renderer, template, node } = createPersistentProgressRenderer();
+			const { container, model, request, renderer, template, node } = createPersistentProgressRenderer();
 			container.style.setProperty('--vscode-spacing-size160', '16px');
 			const part = kind === 'question'
 				? new ChatQuestionCarouselData([{ id: 'scope', type: 'text', title: 'Search scope', defaultValue: 'Workspace' }], true)
-				: kind === 'confirmation'
-					? new ChatElicitationRequestPart('Continue searching?', 'Search all files?', '', 'Continue', 'Cancel', async () => ElicitationState.Accepted, async () => ElicitationState.Rejected)
-					: { kind: 'mcpServersStartingSlow' as const, sessionResource: response.sessionResource, servers: observableValue('servers', [{ id: 'docs', name: 'Documentation' }]) };
+				: new ChatElicitationRequestPart('Continue searching?', 'Search all files?', '', 'Continue', 'Cancel', async () => ElicitationState.Accepted, async () => ElicitationState.Rejected);
 			model.acceptResponseProgress(request, part);
 			renderer.renderElement(node, 0, template);
-			const expectedClass = kind === 'question' ? 'chat-question-carousel-container' : kind === 'confirmation' ? 'chat-confirmation-widget-container' : 'chat-mcp-servers-interaction';
+			const expectedClass = kind === 'question' ? 'chat-question-carousel-container' : 'chat-confirmation-widget-container';
 			const snapshot = () => {
 				const footer = template.value.querySelector('.chat-working-progress');
 				const widget = footer?.previousElementSibling;

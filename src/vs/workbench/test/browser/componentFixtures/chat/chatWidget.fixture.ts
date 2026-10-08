@@ -88,7 +88,7 @@ export interface IFixtureMessage {
 		| { kind: 'tool'; toolId: string; displayName: string; invocationMessage: string; pastTenseMessage?: string; streaming?: boolean; complete?: boolean; source?: ToolDataSource; approval?: 'pre' | 'post' | 'denied'; toolSpecificData?: IChatSimpleToolInvocationData | IChatSearchToolInvocationData; resultDetails?: IToolResultInputOutputDetails; resultError?: string | true }
 		| { kind: 'questionCarousel'; questions: IChatQuestion[]; message?: string; allowSkip?: boolean; data?: IChatQuestionAnswers; isUsed?: boolean; answerPresentation?: 'conversation' }
 		| { kind: 'planReview'; title: string; content: string }
-		| { kind: 'mcpStarting'; servers: readonly string[]; local?: boolean; blocking?: boolean; background?: boolean }
+		| { kind: 'mcpStarting'; servers: readonly string[]; local?: boolean }
 		| { kind: 'terminal'; command: string; output?: string; intention?: string; complete?: boolean }
 		| { kind: 'subagent'; id: string; description: string; complete?: boolean }
 		| { kind: 'terminalConfirmation'; command: string; title?: string; disclaimer?: string; requestUnsandboxedExecution?: boolean; requestUnsandboxedExecutionReason?: string; riskAssessment?: { risk: ToolRiskLevel; explanation: string }; riskLoading?: boolean; confirmation?: { commandLine: string; cwdLabel?: string; cdPrefix?: string } }
@@ -522,22 +522,12 @@ export async function renderChatWidget(context: ComponentFixtureContext, options
 				const servers = part.servers.map(name => ({
 					id: name,
 					name,
-					blocking: part.blocking,
-					background: part.background ? async () => { } : undefined,
 				}));
-				if (part.local) {
-					model.acceptResponseProgress(request, new ChatMcpServersStarting(observableValue<IAutostartResult>('mcpStartup', {
-						working: true,
-						starting: servers.map(server => ({ id: server.id, label: server.name })),
-						serversRequiringInteraction: [],
-					})));
-				} else {
-					model.acceptResponseProgress(request, {
-						kind: 'mcpServersStartingSlow',
-						sessionResource: model.sessionResource,
-						servers: observableValue('mcpStartup', servers),
-					});
-				}
+				model.acceptResponseProgress(request, new ChatMcpServersStarting(observableValue<IAutostartResult>('mcpStartup', {
+					working: true,
+					starting: servers.map(server => ({ id: server.id, label: server.name })),
+					serversRequiringInteraction: [],
+				})));
 			} else if (part.kind === 'elicitation') {
 				const elicitation = new ChatElicitationRequestPart(
 					part.title,
@@ -1095,12 +1085,6 @@ const PERSISTENT_PROGRESS_THINKING: IFixtureMessage[] = [{
 	responseComplete: false,
 }];
 
-const PERSISTENT_PROGRESS_MCP_STARTING: IFixtureMessage[] = [{
-	user: 'Use the workspace and documentation MCP servers',
-	assistant: [{ kind: 'mcpStarting', servers: ['workspace', 'documentation'], blocking: true, background: true }],
-	responseComplete: false,
-}];
-
 const PERSISTENT_PROGRESS_MCP_AUTOSTART: IFixtureMessage[] = [{
 	user: 'Start the configured MCP servers',
 	assistant: [{ kind: 'mcpStarting', servers: ['workspace', 'documentation'], local: true }],
@@ -1264,12 +1248,8 @@ async function renderPersistentProgressScenario(context: ComponentFixtureContext
 	}
 	if (mcpStartup) {
 		const mcpStartupPart = response.querySelector('.chat-mcp-servers-interaction');
-		const expectedMessage = mcpStartup.blocking ? 'Waiting for MCP servers' : 'Starting MCP servers';
-		if (!mcpStartupPart?.textContent?.includes(expectedMessage)) {
+		if (!mcpStartupPart?.textContent?.includes('Starting MCP servers')) {
 			throw new Error('MCP startup did not use the real startup progress renderer');
-		}
-		if (mcpStartup.background && mcpStartupPart.querySelector('a[data-href="#skip"]')?.textContent !== 'Skip') {
-			throw new Error('Blocking MCP startup did not offer a Skip link');
 		}
 	}
 
@@ -1496,7 +1476,6 @@ function defineThinkingStyleScenarios(thinkingStyle: ThinkingDisplayMode, defaul
 		...(defaults.progressAnimation === ChatProgressAnimation.Off && thinkingStyle === ThinkingDisplayMode.FixedScrolling ? {} : {
 			ExpandedSubagents: scenario(parallelSubagentMessages(), { expandThinking: true }, false),
 		}),
-		McpStarting: scenario(PERSISTENT_PROGRESS_MCP_STARTING, {}, false),
 		McpAutostart: scenario(PERSISTENT_PROGRESS_MCP_AUTOSTART, {}, false),
 	});
 }
@@ -1897,7 +1876,6 @@ function defineToolChainScenarios(progressAnimation = ChatProgressAnimation.Draw
 		PlanReview: scenario(PERSISTENT_PROGRESS_PLAN_REVIEW, { expectedText: 'Plan review required' }),
 		PlanApproved: scenario(PERSISTENT_PROGRESS_PLAN_REVIEW, { submitInteraction: 'planReview' }),
 		WorktreeCreation: scenario(PERSISTENT_PROGRESS_WORKTREE),
-		McpStarting: scenario(PERSISTENT_PROGRESS_MCP_STARTING),
 		ParallelSubagents: scenario(parallelSubagentMessages(), { expectedText: 'Waiting for 5 subagents' }),
 		// A single background agent is counted while the parent has nothing of its own in flight.
 		BackgroundAgent: scenario(tools([

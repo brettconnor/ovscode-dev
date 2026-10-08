@@ -1436,32 +1436,6 @@ export interface IChatMcpAuthenticationRequiredServer {
 	readonly reason?: string;
 }
 
-/**
- * Surfaced by agent-host sessions when one or more MCP servers are still in the
- * {@link McpServerStatus.Starting starting} state a noticeable time after a
- * turn began without any content arriving from the host. The part lists the
- * servers still starting and updates dynamically via {@link servers}: it hides
- * itself (by emptying the observable) once every server has started, content
- * starts being received, or the turn ends — whichever happens first.
- *
- * Unlike {@link IChatMcpServersStarting} (used by the in-process MCP autostart
- * flow), this is a lightweight progress hint. A server that is blocking
- * message processing may provide an action to continue its startup in the
- * background.
- */
-export interface IChatMcpServersStartingSlow {
-	readonly kind: 'mcpServersStartingSlow';
-	readonly sessionResource: UriComponents;
-	readonly servers: IObservable<readonly IChatMcpStartingServer[]>;
-}
-
-export interface IChatMcpStartingServer {
-	readonly id: string;
-	readonly name: string;
-	readonly blocking?: boolean;
-	readonly background?: () => Promise<void>;
-}
-
 export interface IChatDisabledClaudeHooksPart {
 	readonly kind: 'disabledClaudeHooks';
 }
@@ -1602,7 +1576,6 @@ export type IChatProgress =
 	| IChatMcpServersStarting
 	| IChatMcpServersStartingSerialized
 	| IChatMcpAuthenticationRequired
-	| IChatMcpServersStartingSlow
 	| IChatHookPart
 	| IChatExternalToolInvocationUpdate
 	| IChatDisabledClaudeHooksPart
