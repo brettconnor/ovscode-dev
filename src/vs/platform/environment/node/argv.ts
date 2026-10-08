@@ -129,7 +129,6 @@ export const OPTIONS: OptionDescriptions<Required<NativeParsedArgs>> = {
 	'install-extension': { type: 'string[]' },
 	'pre-release': { type: 'boolean' },
 	'uninstall-extension': { type: 'string[]' },
-	'update-extensions': { type: 'boolean' },
 	'enable-proposed-api': { type: 'string[]', allowEmptyValue: true, cat: 'e', args: 'ext-id', description: localize('experimentalApis', "Enables proposed API features for extensions. Can receive one or more extension IDs to enable individually.") },
 
 	'add-mcp': { type: 'string[]', cat: 'm', args: 'json', description: localize('addMcp', "Adds a Model Context Protocol server definition to the user profile. Accepts JSON input in the form '{\"name\":\"server-name\",\"command\":...}'") },

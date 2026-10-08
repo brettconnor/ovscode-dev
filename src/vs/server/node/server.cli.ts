@@ -69,7 +69,6 @@ const isSupportedForPipe = (optionId: keyof RemoteParsedArgs) => {
 		case 'status':
 		case 'install-extension':
 		case 'uninstall-extension':
-		case 'update-extensions':
 		case 'list-extensions':
 		case 'force':
 		case 'do-not-include-pack-dependencies':
@@ -235,7 +234,7 @@ export async function main(desc: ProductDescription, args: string[]): Promise<vo
 	}
 
 	if (cliCommand) {
-		if (parsedArgs['install-extension'] !== undefined || parsedArgs['uninstall-extension'] !== undefined || parsedArgs['list-extensions'] || parsedArgs['update-extensions']) {
+		if (parsedArgs['install-extension'] !== undefined || parsedArgs['uninstall-extension'] !== undefined || parsedArgs['list-extensions']) {
 			const cmdLine: string[] = [];
 			parsedArgs['install-extension']?.forEach(id => cmdLine.push('--install-extension', id));
 			parsedArgs['uninstall-extension']?.forEach(id => cmdLine.push('--uninstall-extension', id));
@@ -245,10 +244,6 @@ export async function main(desc: ProductDescription, args: string[]): Promise<vo
 					cmdLine.push(`--${opt}=${value}`);
 				}
 			});
-			if (parsedArgs['update-extensions']) {
-				cmdLine.push('--update-extensions');
-			}
-
 			const childProcess = cp.fork(FileAccess.asFileUri('server-main').fsPath, cmdLine, { stdio: 'inherit' });
 			childProcess.on('error', err => console.log(err));
 			return;
@@ -318,7 +313,7 @@ export async function main(desc: ProductDescription, args: string[]): Promise<vo
 			return;
 		}
 
-		if (parsedArgs['install-extension'] !== undefined || parsedArgs['uninstall-extension'] !== undefined || parsedArgs['list-extensions'] || parsedArgs['update-extensions']) {
+		if (parsedArgs['install-extension'] !== undefined || parsedArgs['uninstall-extension'] !== undefined || parsedArgs['list-extensions']) {
 			await sendToPipe({
 				type: 'extensionManagement',
 				list: parsedArgs['list-extensions'] ? { showVersions: parsedArgs['show-versions'], category: parsedArgs['category'] } : undefined,

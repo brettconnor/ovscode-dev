@@ -164,11 +164,6 @@ class CliMain extends Disposable {
 			return extensionManagementCLI.uninstallExtensions(this.asExtensionIdOrVSIX(this.args['uninstall-extension']), !!this.args['force']);
 		}
 
-		// Update the installed extensions
-		else if (this.args['update-extensions']) {
-			return extensionManagementCLI.updateExtensions();
-		}
-
 		// Locate Extension
 		else if (this.args['locate-extension']) {
 			return extensionManagementCLI.locateExtension(this.args['locate-extension']);

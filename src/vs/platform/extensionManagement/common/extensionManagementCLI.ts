@@ -7,10 +7,9 @@ import { CancellationToken } from '../../../base/common/cancellation.js';
 import { getErrorMessage, isCancellationError } from '../../../base/common/errors.js';
 import { Schemas } from '../../../base/common/network.js';
 import { basename } from '../../../base/common/resources.js';
-import { gt } from '../../../base/common/semver/semver.js';
 import { URI } from '../../../base/common/uri.js';
 import { localize } from '../../../nls.js';
-import { EXTENSION_IDENTIFIER_REGEX, IExtensionGalleryService, IExtensionInfo, IExtensionManagementService, IGalleryExtension, ILocalExtension, InstallOptions, InstallExtensionInfo, InstallOperation } from './extensionManagement.js';
+import { EXTENSION_IDENTIFIER_REGEX, IExtensionGalleryService, IExtensionInfo, IExtensionManagementService, IGalleryExtension, ILocalExtension, InstallOptions, InstallExtensionInfo } from './extensionManagement.js';
 import { areSameExtensions, getExtensionId, getGalleryExtensionId, getIdAndVersion } from './extensionManagementUtil.js';
 import { ExtensionType, EXTENSION_CATEGORIES, IExtensionManifest } from '../../extensions/common/extensions.js';
 import { ILogger } from '../../log/common/log.js';
@@ -132,48 +131,6 @@ export class ExtensionManagementCLI {
 
 		if (failed.length) {
 			throw new Error(localize('installation failed', "Failed Installing Extensions: {0}", failed.join(', ')));
-		}
-	}
-
-	public async updateExtensions(profileLocation?: URI): Promise<void> {
-		const installedExtensions = await this.extensionManagementService.getInstalled(ExtensionType.User, profileLocation);
-
-		const installedExtensionsQuery: IExtensionInfo[] = [];
-		for (const extension of installedExtensions) {
-			if (!!extension.identifier.uuid) { // No need to check new version for an unpublished extension
-				installedExtensionsQuery.push({ ...extension.identifier, preRelease: extension.preRelease });
-			}
-		}
-
-		this.logger.trace(localize({ key: 'updateExtensionsQuery', comment: ['Placeholder is for the count of extensions'] }, "Fetching latest versions for {0} extensions", installedExtensionsQuery.length));
-		const availableVersions = await this.extensionGalleryService.getExtensions(installedExtensionsQuery, { compatible: true }, CancellationToken.None);
-
-		const extensionsToUpdate: InstallExtensionInfo[] = [];
-		for (const newVersion of availableVersions) {
-			for (const oldVersion of installedExtensions) {
-				if (areSameExtensions(oldVersion.identifier, newVersion.identifier) && gt(newVersion.version, oldVersion.manifest.version)) {
-					extensionsToUpdate.push({
-						extension: newVersion,
-						options: { operation: InstallOperation.Update, installPreReleaseVersion: oldVersion.preRelease, profileLocation, isApplicationScoped: oldVersion.isApplicationScoped }
-					});
-				}
-			}
-		}
-
-		if (!extensionsToUpdate.length) {
-			this.logger.info(localize('updateExtensionsNoExtensions', "No extension to update"));
-			return;
-		}
-
-		this.logger.info(localize('updateExtensionsNewVersionsAvailable', "Updating extensions: {0}", extensionsToUpdate.map(ext => ext.extension.identifier.id).join(', ')));
-		const installationResult = await this.extensionManagementService.installGalleryExtensions(extensionsToUpdate);
-
-		for (const extensionResult of installationResult) {
-			if (extensionResult.error) {
-				this.logger.error(localize('errorUpdatingExtension', "Error while updating extension {0}: {1}", extensionResult.identifier.id, getErrorMessage(extensionResult.error)));
-			} else {
-				this.logger.info(localize('successUpdate', "Extension '{0}' v{1} was successfully updated.", extensionResult.identifier.id, extensionResult.local?.manifest.version));
-			}
 		}
 	}
 

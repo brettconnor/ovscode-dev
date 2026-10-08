@@ -41,7 +41,6 @@ function hasUnsupportedExtensionManagementCommand(argv: NativeParsedArgs): boole
 		|| !!argv['install-extension']
 		|| !!argv['install-builtin-extension']
 		|| !!argv['uninstall-extension']
-		|| !!argv['update-extensions']
 		|| !!argv['locate-extension'];
 }
 

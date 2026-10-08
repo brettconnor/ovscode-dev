@@ -100,7 +100,6 @@ export interface NativeParsedArgs {
 	'pre-release'?: boolean;
 	'install-builtin-extension'?: string[]; // undefined or array of 1 or more
 	'uninstall-extension'?: string[]; // undefined or array of 1 or more
-	'update-extensions'?: boolean;
 	'do-not-include-pack-dependencies'?: boolean;
 	'locate-extension'?: string[]; // undefined or array of 1 or more
 	'enable-proposed-api'?: string[]; // undefined or array of 1 or more
