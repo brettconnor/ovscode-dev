@@ -214,8 +214,6 @@ CommandsRegistry.registerCommand('_chat.notifyQuestionCarouselAnswer', (accessor
 });
 
 
-const agentMergeSettingIds = ['chat.agentMerge.enabled', 'chat.agentMerge.addressReviews', 'chat.agentMerge.fixCI', 'chat.agentMerge.resolveConflicts', 'chat.agentMerge.mergePullRequest', 'chat.agentMerge.mergeMethod', 'chat.agentMerge.replyAttribution'];
-
 const toolReferenceNameEnumValues: string[] = [];
 const toolReferenceNameEnumDescriptions: string[] = [];
 
@@ -2082,11 +2080,6 @@ Registry.as<IEditorPaneRegistry>(EditorExtensions.EditorPane).registerEditorPane
 		new SyncDescriptor(AgentPluginEditorInput)
 	]
 );
-/** Maps the retired boolean form of the Agent Merge merge setting onto its enum. */
-function migrateAgentMergeMergePullRequest(value: unknown): unknown {
-	return typeof value === 'boolean' ? (value ? 'always' : 'never') : value;
-}
-
 Registry.as<IConfigurationMigrationRegistry>(Extensions.ConfigurationMigration).registerConfigurationMigrations([
 	{
 		key: 'chat.experimental.autoApprovals.enabled',
@@ -2158,35 +2151,6 @@ Registry.as<IConfigurationMigrationRegistry>(Extensions.ConfigurationMigration).
 			['chat.plugins.paths', { value: undefined }],
 			[ChatConfiguration.PluginLocations, { value }]
 		])
-	},
-	// Agent Merge settings dropped the `agentHost` segment from their ids. Without
-	// this an explicit opt-out (for example `fixCI: false`) would silently revert to
-	// the permissive default for sessions that already have Agent Merge enabled.
-	...agentMergeSettingIds.map(settingId => {
-		const legacyKey = settingId.replace(/^chat\./, 'chat.agentHost.');
-		return {
-			key: legacyKey,
-			migrateFn: (value: unknown, accessor: (key: string) => unknown): ConfigurationKeyValuePairs => {
-				const pairs: ConfigurationKeyValuePairs = [[legacyKey, { value: undefined }]];
-				// Never clobber an explicitly configured new key (e.g. after settings
-				// sync brought both keys across versions).
-				if (accessor(settingId) === undefined) {
-					pairs.push([settingId, { value: settingId === 'chat.agentMerge.mergePullRequest' ? migrateAgentMergeMergePullRequest(value) : value }]);
-				}
-				return pairs;
-			}
-		};
-	}),
-	{
-		// `chat.agentMerge.mergePullRequest` became a three-way enum. An explicit
-		// `true` must keep merging rather than fall back to the `never` default.
-		key: 'chat.agentMerge.mergePullRequest',
-		migrateFn: (value: unknown): ConfigurationKeyValuePairs => {
-			if (typeof value !== 'boolean') {
-				return [];
-			}
-			return [['chat.agentMerge.mergePullRequest', { value: migrateAgentMergeMergePullRequest(value) }]];
-		}
 	},
 	{
 		// The on-device dictation runtime moved to Foundry Local; the old
