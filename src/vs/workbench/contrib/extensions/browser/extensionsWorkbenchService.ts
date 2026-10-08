@@ -519,7 +519,6 @@ class Extensions extends Disposable {
 		private readonly stateProvider: IExtensionStateProvider<ExtensionState>,
 		private readonly runtimeStateProvider: IExtensionStateProvider<ExtensionRuntimeState | undefined>,
 		private readonly isWorkspaceServer: boolean,
-		@IExtensionGalleryService private readonly galleryService: IExtensionGalleryService,
 		@IWorkbenchExtensionEnablementService private readonly extensionEnablementService: IWorkbenchExtensionEnablementService,
 		@IWorkbenchExtensionManagementService private readonly workbenchExtensionManagementService: IWorkbenchExtensionManagementService,
 		@IInstantiationService private readonly instantiationService: IInstantiationService
