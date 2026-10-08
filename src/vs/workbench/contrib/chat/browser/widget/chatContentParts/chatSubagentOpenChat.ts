@@ -107,7 +107,6 @@ export class SubagentProgressPillActionViewItem extends BaseActionViewItem {
 	private readonly _pillHover = this._register(new MutableDisposable());
 	private _labelElement: HTMLElement | undefined;
 	private _agentTypeElement: HTMLElement | undefined;
-	private _pillContentElement: HTMLElement | undefined;
 	private _modelElement: HTMLElement | undefined;
 	private _creditsElement: HTMLElement | undefined;
 	private _durationElement: HTMLElement | undefined;
@@ -169,7 +168,6 @@ export class SubagentProgressPillActionViewItem extends BaseActionViewItem {
 		this._modelElement = $('span.chat-subagent-pill-model.hidden');
 		this._confirmationCountElement = $('span.chat-subagent-pill-confirmation-count');
 		const pillContent = $('span.chat-subagent-pill-content');
-		this._pillContentElement = pillContent;
 		const pillHeader = $('span.chat-subagent-pill-header');
 		this._durationElement = $('span.chat-subagent-pill-duration.hidden');
 		this._creditsElement = $('span.chat-subagent-pill-credits.hidden');

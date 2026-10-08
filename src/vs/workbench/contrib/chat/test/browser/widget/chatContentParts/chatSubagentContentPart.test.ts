@@ -11,7 +11,7 @@ import { timeout } from '../../../../../../../base/common/async.js';
 import { Codicon } from '../../../../../../../base/common/codicons.js';
 import { Emitter, Event } from '../../../../../../../base/common/event.js';
 import { DisposableStore } from '../../../../../../../base/common/lifecycle.js';
-import { autorun, observableValue } from '../../../../../../../base/common/observable.js';
+import { observableValue } from '../../../../../../../base/common/observable.js';
 // eslint-disable-next-line local/code-no-deep-import-of-internal
 import { BaseObservable } from '../../../../../../../base/common/observableInternal/observables/baseObservable.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../../../base/test/common/utils.js';
@@ -857,7 +857,6 @@ suite('ChatSubagentContentPart', () => {
 		});
 
 		test('should preserve inline rendering when rich subagent rendering is disabled', () => {
-			const configService = instantiationService.get(IConfigurationService) as TestConfigurationService;
 			const part = createPart(createMockToolInvocation({
 				toolSpecificData: {
 					kind: 'subagent',
@@ -888,7 +887,6 @@ suite('ChatSubagentContentPart', () => {
 		});
 
 		test('should update displayed and accessible credit usage when the setting changes', () => {
-			const configService = instantiationService.get(IConfigurationService) as TestConfigurationService;
 			const setShowCreditUsage = (value: boolean) => {
 				configService.setUserConfiguration(ChatConfiguration.SubagentsShowCreditUsage, value);
 				configService.onDidChangeConfigurationEmitter.fire({
@@ -2561,7 +2559,6 @@ suite('ChatSubagentContentPart', () => {
 
 		test('finalizeTitle should update button icon to check', () => {
 			// Enable the showCheckmarks setting so the check icon is visible
-			const configService = instantiationService.get(IConfigurationService) as TestConfigurationService;
 			configService.setUserConfiguration(AccessibilityWorkbenchSettingId.ShowChatCheckmarks, true);
 
 			const toolInvocation = createMockToolInvocation();

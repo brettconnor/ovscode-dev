@@ -16,7 +16,7 @@ import { generateUuid } from '../../../../../base/common/uuid.js';
 import { OffsetRange } from '../../../../../editor/common/core/ranges/offsetRange.js';
 import { Range } from '../../../../../editor/common/core/range.js';
 import { EditorMarkdownCodeBlockRenderer } from '../../../../../editor/browser/widget/markdownRenderer/browser/editorMarkdownCodeBlockRenderer.js';
-import { IMenuItem, IMenuService, MenuId, MenuItemAction } from '../../../../../platform/actions/common/actions.js';
+import { IMenuItem, IMenuService, MenuId } from '../../../../../platform/actions/common/actions.js';
 import { ChatRequestTextPart } from '../../../../contrib/chat/common/requestParser/chatParserTypes.js';
 import { ChatModel, ChatRequestSource } from '../../../../contrib/chat/common/model/chatModel.js';
 import { ChatViewModel } from '../../../../contrib/chat/common/model/chatViewModel.js';

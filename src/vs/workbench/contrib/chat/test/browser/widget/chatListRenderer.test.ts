@@ -1831,7 +1831,7 @@ suite('ChatListRenderer', () => {
 
 	for (const thinkingStyle of [ThinkingDisplayMode.Collapsed, ThinkingDisplayMode.CollapsedPreview, ThinkingDisplayMode.FixedScrolling]) {
 		test(`persistent footer survives parallel subagents and completion notices (${thinkingStyle})`, async () => {
-			const { configurationService, model, request, renderer, template, node, container } = createPersistentProgressRenderer({ thinkingStyle, chatMode: ChatModeKind.Agent, collapsedTools: CollapsedToolsDisplayMode.Always });
+			const { model, request, renderer, template, node, container } = createPersistentProgressRenderer({ thinkingStyle, chatMode: ChatModeKind.Agent, collapsedTools: CollapsedToolsDisplayMode.Always });
 			model.acceptResponseProgress(request, { kind: 'thinking', id: 'preparing', value: '**Preparing subagents**\nStarting independent calculations.' });
 			renderer.renderElement(node, 0, template);
 			const footer = template.value.querySelector<HTMLElement>('.chat-working-progress');
@@ -3935,7 +3935,7 @@ suite('ChatListRenderer', () => {
 			chatMode: ChatModeKind.Agent, collapsedTools: CollapsedToolsDisplayMode.Always,
 			editingSession: new MockChatEditingSession([diff], { synchronousDiffs: true }),
 		});
-		const { disposables, configurationService, model, request, renderer, template, node } = setup;
+		const { disposables, model, request, renderer, template, node } = setup;
 		try {
 			const subagent = new ChatToolInvocation(
 				{ invocationMessage: 'Delegating work', pastTenseMessage: 'Delegated work', toolSpecificData: { kind: 'subagent', description: 'Write tests', isActive: true } },
@@ -3978,7 +3978,7 @@ suite('ChatListRenderer', () => {
 
 	for (const expandBeforeCompletion of [false, true]) {
 		test(`a background subagent that outlives a persistent response shows its own working row (expanded ${expandBeforeCompletion ? 'before' : 'after'} completion)`, async () => {
-			const { configurationService, container, model, request, renderer, template, node } = createPersistentProgressRenderer({ chatMode: ChatModeKind.Agent });
+			const { container, model, request, renderer, template, node } = createPersistentProgressRenderer({ chatMode: ChatModeKind.Agent });
 			const child = new ChatToolInvocation(
 				{ invocationMessage: 'Compute in the background', toolSpecificData: { kind: 'subagent', hasStarted: true, isActive: true, description: 'Compute in the background' } },
 				{ id: 'task', displayName: 'Task', modelDescription: 'Task', source: ToolDataSource.Internal },
