@@ -866,52 +866,6 @@ export class UninstallAction extends ExtensionAction {
 	}
 }
 
-export class MigrateDeprecatedExtensionAction extends ExtensionAction {
-
-	private static readonly EnabledClass = `${ExtensionAction.LABEL_ACTION_CLASS} migrate`;
-	private static readonly DisabledClass = `${this.EnabledClass} disabled`;
-
-	constructor(
-		private readonly small: boolean,
-		@IExtensionsWorkbenchService private extensionsWorkbenchService: IExtensionsWorkbenchService
-	) {
-		super('extensionsAction.migrateDeprecatedExtension', localize('migrateExtension', "Migrate"), MigrateDeprecatedExtensionAction.DisabledClass, false);
-		this.update();
-	}
-
-	update(): void {
-		this.enabled = false;
-		this.class = MigrateDeprecatedExtensionAction.DisabledClass;
-		if (!this.extension?.local) {
-			return;
-		}
-		if (this.extension.state !== ExtensionState.Installed) {
-			return;
-		}
-		if (!this.extension.deprecationInfo?.extension) {
-			return;
-		}
-		const id = this.extension.deprecationInfo.extension.id;
-		if (this.extensionsWorkbenchService.local.some(e => areSameExtensions(e.identifier, { id }))) {
-			return;
-		}
-		this.enabled = true;
-		this.class = MigrateDeprecatedExtensionAction.EnabledClass;
-		this.tooltip = localize('migrate to', "Migrate to {0}", this.extension.deprecationInfo.extension.displayName);
-		this.label = this.small ? localize('migrate', "Migrate") : this.tooltip;
-	}
-
-	override async run(): Promise<any> {
-		if (!this.extension?.deprecationInfo?.extension) {
-			return;
-		}
-		const local = this.extension.local;
-		await this.extensionsWorkbenchService.uninstall(this.extension);
-		const [extension] = await this.extensionsWorkbenchService.getExtensions([{ id: this.extension.deprecationInfo.extension.id, preRelease: this.extension.deprecationInfo?.extension?.preRelease }], CancellationToken.None);
-		await this.extensionsWorkbenchService.install(extension, { isMachineScoped: local?.isMachineScoped });
-	}
-}
-
 export abstract class DropDownExtensionAction extends ExtensionAction {
 
 	constructor(
