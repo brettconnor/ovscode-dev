@@ -49,7 +49,6 @@ import { IExtensionManifestPropertiesService } from '../../../services/extension
 import { IWorkspaceTrustEnablementService, IWorkspaceTrustManagementService } from '../../../../platform/workspace/common/workspaceTrust.js';
 import { isVirtualWorkspace } from '../../../../platform/workspace/common/virtualWorkspace.js';
 import { createCommandUri, escapeMarkdownSyntaxTokens, IMarkdownString, MarkdownString } from '../../../../base/common/htmlContent.js';
-import { fromNow } from '../../../../base/common/date.js';
 import { IPreferencesService } from '../../../services/preferences/common/preferences.js';
 import { isString } from '../../../../base/common/types.js';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
@@ -1116,7 +1115,6 @@ export class ManageExtensionAction extends DropDownExtensionAction {
 		}
 		groups.push([
 			...(installActions.length ? installActions : []),
-			this.instantiationService.createInstance(InstallAnotherVersionAction, this.extension, false),
 			this.instantiationService.createInstance(UninstallAction),
 		]);
 
@@ -1209,80 +1207,6 @@ export class MenuItemExtensionAction extends ExtensionAction {
 			await this.action.run(id, extensionArg);
 		}
 	}
-}
-
-export class InstallAnotherVersionAction extends ExtensionAction {
-
-	static readonly ID = 'workbench.extensions.action.install.anotherVersion';
-	static readonly LABEL = localize('install another version', "Install Specific Version...");
-
-	constructor(
-		extension: IExtension | null,
-		private readonly whenInstalled: boolean,
-		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
-		@IWorkbenchExtensionManagementService private readonly extensionManagementService: IWorkbenchExtensionManagementService,
-		@IExtensionGalleryService private readonly extensionGalleryService: IExtensionGalleryService,
-		@IQuickInputService private readonly quickInputService: IQuickInputService,
-		@IInstantiationService private readonly instantiationService: IInstantiationService,
-		@IDialogService private readonly dialogService: IDialogService,
-		@IAllowedExtensionsService private readonly allowedExtensionsService: IAllowedExtensionsService,
-	) {
-		super(InstallAnotherVersionAction.ID, InstallAnotherVersionAction.LABEL, ExtensionAction.LABEL_ACTION_CLASS);
-		this._register(allowedExtensionsService.onDidChangeAllowedExtensionsConfigValue(() => this.update()));
-		this.extension = extension;
-		this.update();
-	}
-
-	update(): void {
-		this.enabled = !!this.extension && !this.extension.isBuiltin && !!this.extension.identifier.uuid && !this.extension.deprecationInfo
-			&& this.allowedExtensionsService.isAllowed({ id: this.extension.identifier.id, publisherDisplayName: this.extension.publisherDisplayName }) === true;
-		if (this.enabled && this.whenInstalled) {
-			this.enabled = !!this.extension?.local && !!this.extension.server && this.extension.state === ExtensionState.Installed;
-		}
-	}
-
-	override async run(): Promise<any> {
-		if (!this.enabled) {
-			return;
-		}
-		if (!this.extension) {
-			return;
-		}
-		const targetPlatform = this.extension.server ? await this.extension.server.extensionManagementService.getTargetPlatform() : await this.extensionManagementService.getTargetPlatform();
-		const allVersions = await this.extensionGalleryService.getAllCompatibleVersions(this.extension.identifier, this.extension.local?.preRelease ?? this.extension.gallery?.properties.isPreReleaseVersion ?? false, targetPlatform);
-		if (!allVersions.length) {
-			await this.dialogService.info(localize('no versions', "This extension has no other versions."));
-			return;
-		}
-
-		const picks = allVersions.map((v, i) => {
-			return {
-				id: v.version,
-				label: v.version,
-				description: `${fromNow(new Date(Date.parse(v.date)), true)}${v.isPreReleaseVersion ? ` (${localize('pre-release', "pre-release")})` : ''}${v.version === this.extension?.local?.manifest.version ? ` (${localize('current', "current")})` : ''}`,
-				ariaLabel: `${v.isPreReleaseVersion ? 'Pre-Release version' : 'Release version'} ${v.version}`,
-				isPreReleaseVersion: v.isPreReleaseVersion
-			};
-		});
-		const pick = await this.quickInputService.pick(picks,
-			{
-				placeHolder: localize('selectVersion', "Select Version to Install"),
-				matchOnDetail: true
-			});
-		if (pick) {
-			if (this.extension.local?.manifest.version === pick.id) {
-				return;
-			}
-			const options = { installPreReleaseVersion: pick.isPreReleaseVersion, version: pick.id };
-			try {
-				await this.extensionsWorkbenchService.install(this.extension, options);
-			} catch (error) {
-				this.instantiationService.createInstance(PromptExtensionInstallFailureAction, this.extension, options, InstallOperation.Install, error).run();
-			}
-		}
-		return null;
-	}
-
 }
 
 export class EnableForWorkspaceAction extends ExtensionAction {
@@ -2396,66 +2320,6 @@ export class ExtensionStatusAction extends ExtensionAction {
 		if (this._status[0]?.icon === trustIcon) {
 			return this.commandService.executeCommand('workbench.trust.manage');
 		}
-	}
-}
-
-export class InstallSpecificVersionOfExtensionAction extends Action {
-
-	static readonly ID = 'workbench.extensions.action.install.specificVersion';
-	static readonly LABEL = localize('install previous version', "Install Specific Version of Extension...");
-
-	constructor(
-		id: string = InstallSpecificVersionOfExtensionAction.ID, label: string = InstallSpecificVersionOfExtensionAction.LABEL,
-		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
-		@IQuickInputService private readonly quickInputService: IQuickInputService,
-		@IInstantiationService private readonly instantiationService: IInstantiationService,
-		@IWorkbenchExtensionEnablementService private readonly extensionEnablementService: IWorkbenchExtensionEnablementService,
-	) {
-		super(id, label);
-	}
-
-	override get enabled(): boolean {
-		return this.extensionsWorkbenchService.local.some(l => this.isEnabled(l));
-	}
-
-	override async run(): Promise<any> {
-		const extensionPick = await this.quickInputService.pick(this.getExtensionEntries(), { placeHolder: localize('selectExtension', "Select Extension"), matchOnDetail: true });
-		if (extensionPick && extensionPick.extension) {
-			const action = this.instantiationService.createInstance(InstallAnotherVersionAction, extensionPick.extension, true);
-			// TODO: replace with `using` once available
-			try {
-				await action.run();
-			} finally {
-				action.dispose();
-			}
-			await this.extensionsWorkbenchService.openSearch(extensionPick.extension.identifier.id);
-		}
-	}
-
-	private isEnabled(extension: IExtension): boolean {
-		const action = this.instantiationService.createInstance(InstallAnotherVersionAction, extension, true);
-		// TODO: replace with `using` once available
-		try {
-			return action.enabled && !!extension.local && this.extensionEnablementService.isEnabled(extension.local);
-		} finally {
-			action.dispose();
-		}
-	}
-
-	private async getExtensionEntries(): Promise<IExtensionPickItem[]> {
-		const installed = await this.extensionsWorkbenchService.queryLocal();
-		const entries: IExtensionPickItem[] = [];
-		for (const extension of installed) {
-			if (this.isEnabled(extension)) {
-				entries.push({
-					id: extension.identifier.id,
-					label: extension.displayName || extension.identifier.id,
-					description: extension.identifier.id,
-					extension,
-				});
-			}
-		}
-		return entries.sort((e1, e2) => e1.extension.displayName.localeCompare(e2.extension.displayName));
 	}
 }
 

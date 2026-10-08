@@ -53,7 +53,7 @@ import { ExtensionsInput } from '../common/extensionsInput.js';
 import { KeymapExtensions } from '../common/extensionsUtils.js';
 import { ExtensionEditor } from './extensionEditor.js';
 import { ExtensionEnablementWorkspaceTrustTransitionParticipant } from './extensionEnablementWorkspaceTrustTransitionParticipant.js';
-import { InstallAction, InstallAnotherVersionAction, InstallSpecificVersionOfExtensionAction, SetColorThemeAction, SetFileIconThemeAction, SetProductIconThemeAction } from './extensionsActions.js';
+import { SetColorThemeAction, SetFileIconThemeAction, SetProductIconThemeAction } from './extensionsActions.js';
 import { ExtensionActivationProgress } from './extensionsActivationProgress.js';
 import { ExtensionEnablementContextKeysContribution } from './extensionEnablementContext.js';
 import { ExtensionDependencyChecker } from './extensionsDependencyChecker.js';
@@ -735,16 +735,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 			}
 		});
 
-		this.registerExtensionAction({
-			id: InstallSpecificVersionOfExtensionAction.ID,
-			title: { value: InstallSpecificVersionOfExtensionAction.LABEL, original: 'Install Specific Version of Extension...' },
-			category: ExtensionsLocalizedLabel,
-			menu: {
-				id: MenuId.CommandPalette,
-				when: ContextKeyExpr.and(CONTEXT_HAS_GALLERY, ContextKeyExpr.or(CONTEXT_HAS_LOCAL_SERVER, CONTEXT_HAS_REMOTE_SERVER, CONTEXT_HAS_WEB_SERVER))
-			},
-			run: () => runAction(this.instantiationService.createInstance(InstallSpecificVersionOfExtensionAction, InstallSpecificVersionOfExtensionAction.ID, InstallSpecificVersionOfExtensionAction.LABEL))
-		});
 	}
 
 	// Extension Context Menu
@@ -813,46 +803,6 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 			}
 		});
 
-		this.registerExtensionAction({
-			id: 'workbench.extensions.action.installUnsigned',
-			title: localize('install', "Install"),
-			menu: {
-				id: MenuId.ExtensionContext,
-				group: '0_install',
-				when: ContextKeyExpr.and(ContextKeyExpr.equals('extensionStatus', 'uninstalled'), ContextKeyExpr.has('isGalleryExtension'), ContextKeyExpr.not('extensionDisallowInstall'), ContextKeyExpr.has('extensionIsUnsigned'),
-					ContextKeyExpr.or(ContextKeyExpr.and(CONTEXT_GALLERY_ALL_PUBLIC_REPOSITORY_SIGNED, ContextKeyExpr.not('extensionIsPrivate')), ContextKeyExpr.and(CONTEXT_GALLERY_ALL_PRIVATE_REPOSITORY_SIGNED, ContextKeyExpr.has('extensionIsPrivate')))),
-				order: 1
-			},
-			run: async (accessor: ServicesAccessor, extensionId: string) => {
-				const instantiationService = accessor.get(IInstantiationService);
-				const extension = this.extensionsWorkbenchService.local.filter(e => areSameExtensions(e.identifier, { id: extensionId }))[0]
-					|| (await this.extensionsWorkbenchService.getExtensions([{ id: extensionId }], CancellationToken.None))[0];
-				if (extension) {
-					const action = instantiationService.createInstance(InstallAction, { installPreReleaseVersion: this.extensionManagementService.preferPreReleases });
-					action.extension = extension;
-					return runAction(action);
-				}
-			}
-		});
-
-		this.registerExtensionAction({
-			id: InstallAnotherVersionAction.ID,
-			title: InstallAnotherVersionAction.LABEL,
-			menu: {
-				id: MenuId.ExtensionContext,
-				group: '0_install',
-				when: ContextKeyExpr.and(ContextKeyExpr.equals('extensionStatus', 'uninstalled'), ContextKeyExpr.has('isGalleryExtension'), ContextKeyExpr.has('isExtensionAllowed'), ContextKeyExpr.not('extensionDisallowInstall')),
-				order: 3
-			},
-			run: async (accessor: ServicesAccessor, extensionId: string) => {
-				const instantiationService = accessor.get(IInstantiationService);
-				const extension = this.extensionsWorkbenchService.local.filter(e => areSameExtensions(e.identifier, { id: extensionId }))[0]
-					|| (await this.extensionsWorkbenchService.getExtensions([{ id: extensionId }], CancellationToken.None))[0];
-				if (extension) {
-					return runAction(instantiationService.createInstance(InstallAnotherVersionAction, extension, false));
-				}
-			}
-		});
 
 		this.registerExtensionAction({
 			id: 'workbench.extensions.action.copyExtension',
