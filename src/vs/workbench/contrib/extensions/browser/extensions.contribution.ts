@@ -810,8 +810,7 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 			},
 			run: async (accessor: ServicesAccessor, extensionId: string) => {
 				const clipboardService = accessor.get(IClipboardService);
-				const extension = this.extensionsWorkbenchService.local.filter(e => areSameExtensions(e.identifier, { id: extensionId }))[0]
-					|| (await this.extensionsWorkbenchService.getExtensions([{ id: extensionId }], CancellationToken.None))[0];
+				const extension = this.extensionsWorkbenchService.local.find(e => areSameExtensions(e.identifier, { id: extensionId }));
 				if (extension) {
 					const name = localize('extensionInfoName', 'Name: {0}', extension.displayName);
 					const id = localize('extensionInfoId', 'Id: {0}', extensionId);
