@@ -5,7 +5,6 @@
 
 import { runWhenWindowIdle } from '../../../../base/browser/dom.js';
 import { mainWindow } from '../../../../base/browser/window.js';
-import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { Schemas } from '../../../../base/common/network.js';
 import * as performance from '../../../../base/common/performance.js';
 import { isCI } from '../../../../base/common/platform.js';
@@ -17,7 +16,6 @@ import { ICommandService } from '../../../../platform/commands/common/commands.j
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
 import { ExtensionKind } from '../../../../platform/environment/common/environment.js';
-import { IExtensionGalleryService } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { ExtensionIdentifier, IExtensionDescription } from '../../../../platform/extensions/common/extensions.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
 import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
@@ -84,7 +82,6 @@ export class NativeExtensionService extends AbstractExtensionService implements 
 		@INativeHostService private readonly _nativeHostService: INativeHostService,
 		@IHostService private readonly _hostService: IHostService,
 		@IRemoteExplorerService private readonly _remoteExplorerService: IRemoteExplorerService,
-		@IExtensionGalleryService private readonly _extensionGalleryService: IExtensionGalleryService,
 		@IWorkspaceTrustManagementService private readonly _workspaceTrustManagementService: IWorkspaceTrustManagementService,
 		@IDialogService dialogService: IDialogService,
 	) {
@@ -515,31 +512,8 @@ export class NativeExtensionService extends AbstractExtensionService implements 
 					}
 				);
 			}
-		} else {
-			// Install the Extension and reload the window to handle.
-			const message = nls.localize('installResolver', "Extension '{0}' is required to open the remote window.\nDo you want to install the extension?", recommendation.friendlyName);
-			this._notificationService.prompt(Severity.Info, message,
-				[{
-					label: nls.localize('install', 'Install and Reload'),
-					run: async () => {
-						const [galleryExtension] = await this._extensionGalleryService.getExtensions([{ id: resolverExtensionId }], CancellationToken.None);
-						if (galleryExtension) {
-							await this._extensionManagementService.installFromGallery(galleryExtension);
-							await this._hostService.reload();
-						} else {
-							this._notificationService.error(nls.localize('resolverExtensionNotFound', "`{0}` not found on marketplace"));
-						}
-
-					}
-				}],
-				{
-					sticky: true,
-					priority: NotificationPriority.URGENT,
-				}
-			);
-
 		}
-		return true;
+		return !!extension;
 	}
 }
 
