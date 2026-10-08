@@ -330,7 +330,7 @@ suite('ChatToolProgressSubPart', () => {
 				createRenderContext(),
 				mockMarkdownRenderer,
 			));
-			const button = part.domNode.querySelector<HTMLElement>('.chat-open-session-button');
+			const button = part.domNode.querySelector<HTMLElement>('.chat-automation-configured-button');
 			return {
 				text: button?.textContent,
 				ariaLabel: button?.getAttribute('aria-label'),

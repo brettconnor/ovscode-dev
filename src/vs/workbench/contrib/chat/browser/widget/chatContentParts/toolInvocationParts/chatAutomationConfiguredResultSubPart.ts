@@ -14,7 +14,7 @@ import { IChatAutomationConfiguredData, IChatToolInvocation, IChatToolInvocation
 import { IChatCodeBlockInfo } from '../../../chat.js';
 import { IChatContentPartRenderContext } from '../chatContentParts.js';
 import { BaseChatToolInvocationSubPart } from './chatToolInvocationSubPart.js';
-import '../media/chatSessionCreatedResult.css';
+import '../media/chatAutomationConfiguredResult.css';
 
 /**
  * Renders a deterministic automation create/update result as a secondary
@@ -34,7 +34,7 @@ export class ChatAutomationConfiguredResultSubPart extends BaseChatToolInvocatio
 	) {
 		super(toolInvocation);
 
-		this.domNode = dom.$('.chat-open-session-result');
+		this.domNode = dom.$('.chat-automation-configured-result');
 		const label = data.operation === 'created'
 			? localize('automationConfigured.created', "Created an automation: {0}", data.automationName)
 			: localize('automationConfigured.updated', "Edited an automation: {0}", data.automationName);
@@ -44,7 +44,7 @@ export class ChatAutomationConfiguredResultSubPart extends BaseChatToolInvocatio
 			secondary: true,
 			title: localize('automationConfigured.open', "Open automation {0}", data.automationName),
 		}));
-		button.element.classList.add('chat-open-session-button');
+		button.element.classList.add('chat-automation-configured-button');
 		button.label = label;
 		button.icon = Codicon.calendar;
 		this._register(button.onDidClick(() => this.commandService.executeCommand(
