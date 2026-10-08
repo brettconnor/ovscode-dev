@@ -109,7 +109,7 @@ class InstalledThemesPicker {
 						if (extensionId) {
 							this.extensionsWorkbenchService.openSearch(`@id:${extensionId}`);
 						} else {
-							this.extensionsWorkbenchService.openSearch();
+							this.extensionsWorkbenchService.openSearch('');
 						}
 					}
 				}));
