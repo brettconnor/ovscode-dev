@@ -18,7 +18,6 @@ import { CommandsRegistry, ICommandService } from '../../../../platform/commands
 import { Extensions as ConfigurationExtensions, ConfigurationScope, IConfigurationRegistry } from '../../../../platform/configuration/common/configurationRegistry.js';
 import { ContextKeyExpr, IContextKeyService, RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
 import { ExtensionGalleryManifestStatus, ExtensionGalleryResourceType, ExtensionGalleryAuthProviderConfigKey, ExtensionGalleryServiceUrlConfigKey, getExtensionGalleryManifestResourceUri, IExtensionGalleryManifest, IExtensionGalleryManifestService } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
-import { IExtensionGalleryAccountService } from '../../../services/extensionManagement/common/extensionGalleryAccount.js';
 import { ExtensionRequestsTimeoutConfigKey, ExtensionsLocalizedLabel, IExtensionManagementService, VerifyExtensionSignatureConfigKey } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { areSameExtensions } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { ExtensionStorageService } from '../../../../platform/extensionManagement/common/extensionStorage.js';
@@ -47,7 +46,7 @@ import { IPreferencesService } from '../../../services/preferences/common/prefer
 import { IViewsService } from '../../../services/views/common/viewsService.js';
 import { WORKSPACE_TRUST_EXTENSION_SUPPORT } from '../../../services/workspaces/common/workspaceTrust.js';
 import { IWebview } from '../../webview/browser/webview.js';
-import { AutoRestartConfigurationKey, CONTEXT_EXTENSIONS_GALLERY_STATUS, CONTEXT_HAS_GALLERY, DefaultViewsContext, ExtensionEditorTab, EXTENSIONS_CATEGORY, extensionsFilterSubMenu, extensionsSearchActionsMenu, IExtensionArg, IExtensionsViewPaneContainer, IExtensionsWorkbenchService, LIST_WORKSPACE_UNSUPPORTED_EXTENSIONS_COMMAND_ID, THEME_ACTIONS_GROUP, VIEWLET_ID } from '../common/extensions.js';
+import { AutoRestartConfigurationKey, CONTEXT_HAS_GALLERY, DefaultViewsContext, ExtensionEditorTab, EXTENSIONS_CATEGORY, extensionsFilterSubMenu, extensionsSearchActionsMenu, IExtensionArg, IExtensionsViewPaneContainer, IExtensionsWorkbenchService, LIST_WORKSPACE_UNSUPPORTED_EXTENSIONS_COMMAND_ID, THEME_ACTIONS_GROUP, VIEWLET_ID } from '../common/extensions.js';
 import { ExtensionsInput } from '../common/extensionsInput.js';
 import { KeymapExtensions } from '../common/extensionsUtils.js';
 import { ExtensionEditor } from './extensionEditor.js';
@@ -427,8 +426,8 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 			hasWebServerContext.set(true);
 		}
 
-		this.updateExtensionGalleryStatusContexts();
-		this._register(extensionGalleryManifestService.onDidChangeExtensionGalleryManifestStatus(() => this.updateExtensionGalleryStatusContexts()));
+		this.updateHasGalleryContext();
+		this._register(extensionGalleryManifestService.onDidChangeExtensionGalleryManifestStatus(() => this.updateHasGalleryContext()));
 		extensionGalleryManifestService.getExtensionGalleryManifest()
 			.then(extensionGalleryManifest => {
 				this.updateGalleryCapabilitiesContexts(extensionGalleryManifest);
@@ -438,9 +437,8 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 		this.registerContextMenuActions();
 	}
 
-	private async updateExtensionGalleryStatusContexts(): Promise<void> {
+	private updateHasGalleryContext(): void {
 		CONTEXT_HAS_GALLERY.bindTo(this.contextKeyService).set(this.extensionGalleryManifestService.extensionGalleryManifestStatus === ExtensionGalleryManifestStatus.Available);
-		CONTEXT_EXTENSIONS_GALLERY_STATUS.bindTo(this.contextKeyService).set(this.extensionGalleryManifestService.extensionGalleryManifestStatus);
 	}
 
 	private async updateGalleryCapabilitiesContexts(extensionGalleryManifest: IExtensionGalleryManifest | null): Promise<void> {
@@ -1031,22 +1029,3 @@ workbenchRegistry.registerWorkbenchContribution(TrustedPublishersInitializer, Li
 if (isWeb) {
 	workbenchRegistry.registerWorkbenchContribution(ExtensionStorageCleaner, LifecyclePhase.Eventually);
 }
-
-registerAction2(class ExtensionsGallerySignInAction extends Action2 {
-	constructor() {
-		super({
-			id: 'workbench.extensions.actions.gallery.signIn',
-			title: localize2('signInToMarketplace', 'Sign in to access Extensions Marketplace'),
-			menu: {
-				id: MenuId.AccountsContext,
-				when: ContextKeyExpr.or(
-					CONTEXT_EXTENSIONS_GALLERY_STATUS.isEqualTo(ExtensionGalleryManifestStatus.RequiresSignIn),
-					CONTEXT_EXTENSIONS_GALLERY_STATUS.isEqualTo(ExtensionGalleryManifestStatus.AccessDenied),
-				)
-			},
-		});
-	}
-	async run(accessor: ServicesAccessor): Promise<void> {
-		await accessor.get(IExtensionGalleryAccountService).signIn();
-	}
-});
