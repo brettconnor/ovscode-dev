@@ -6,7 +6,7 @@
 import { ServicesAccessor } from '../../../../../platform/instantiation/common/instantiation.js';
 import { IEditorService } from '../../../../services/editor/common/editorService.js';
 import { getDefaultNewChatSessionTypeAndReason, IResolvedNewChatSessionType } from '../../common/constants.js';
-import { getChatSessionType, getNewChatSessionResource } from '../../common/model/chatUri.js';
+import { getNewChatSessionResource } from '../../common/model/chatUri.js';
 import { IChatEditorOptions } from '../widgetHosts/editor/chatEditor.js';
 import { ChatEditorInput } from '../widgetHosts/editor/chatEditorInput.js';
 
@@ -19,11 +19,7 @@ export async function clearChatEditor(accessor: ServicesAccessor, chatEditorInpu
 	}
 
 	if (chatEditorInput instanceof ChatEditorInput) {
-		const currentResource = chatEditorInput.sessionResource;
-		const currentSessionType = currentResource ? getChatSessionType(currentResource) : undefined;
-		const resolved = resolvedSessionType ?? getDefaultNewChatSessionTypeAndReason(accessor, {
-			currentSessionType,
-		});
+		const resolved = resolvedSessionType ?? getDefaultNewChatSessionTypeAndReason(accessor);
 		const resource = getNewChatSessionResource(resolved.sessionType);
 		const options: IChatEditorOptions = { pinned: true, sessionTypeSelectionReason: resolved.selectionReason };
 

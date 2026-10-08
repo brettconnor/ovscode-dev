@@ -66,7 +66,7 @@ import { ChatViewId, IChatWidget, IChatWidgetService } from '../chat.js';
 import { IChatEditorOptions } from '../widgetHosts/editor/chatEditor.js';
 import { ChatEditorInput, showClearEditingSessionConfirmation } from '../widgetHosts/editor/chatEditorInput.js';
 import { convertBufferToScreenshotVariable } from '../attachments/chatScreenshotContext.js';
-import { getChatSessionType, getNewChatSessionResource } from '../../common/model/chatUri.js';
+import { getNewChatSessionResource } from '../../common/model/chatUri.js';
 
 export const CHAT_CATEGORY = localize2('chat.category', 'Chat');
 
@@ -1743,9 +1743,7 @@ export interface IClearEditingSessionConfirmationOptions {
  * new-session harness resolver.
  */
 export async function clearChatSessionPreservingType(accessor: ServicesAccessor, widget: IChatWidget, sessionType: string | undefined): Promise<void> {
-	const currentResource = widget.viewModel?.model.sessionResource;
-	const currentSessionType = currentResource ? getChatSessionType(currentResource) : undefined;
-	const resolvedSessionType = getDefaultNewChatSessionTypeAndReason(accessor, { explicitOverride: sessionType, currentSessionType });
+	const resolvedSessionType = getDefaultNewChatSessionTypeAndReason(accessor, { explicitOverride: sessionType });
 	await widget.clear(resolvedSessionType);
 }
 

@@ -17,7 +17,6 @@ import { ConfirmResult, IDialogService } from '../../../../../../platform/dialog
 import { IConfigurationService } from '../../../../../../platform/configuration/common/configuration.js';
 import { IInstantiationService } from '../../../../../../platform/instantiation/common/instantiation.js';
 import { ILogService } from '../../../../../../platform/log/common/log.js';
-import { IStorageService } from '../../../../../../platform/storage/common/storage.js';
 import { registerIcon } from '../../../../../../platform/theme/common/iconRegistry.js';
 import { IWorkspaceContextService } from '../../../../../../platform/workspace/common/workspace.js';
 import { EditorInputCapabilities, IEditorIdentifier, IEditorSerializer, IUntypedEditorInput, Verbosity } from '../../../../../common/editor.js';
@@ -25,7 +24,7 @@ import { EditorInput, IEditorCloseHandler } from '../../../../../common/editor/e
 import { IEditorGroup } from '../../../../../services/editor/common/editorGroupsService.js';
 import { IChatModelReference, IChatService } from '../../../common/chatService/chatService.js';
 import { localChatSessionType } from '../../../common/chatSessionsService.js';
-import { ChatAgentLocation, ChatEditorTitleMaxLength, getDefaultNewChatSessionType, getDefaultNewChatSessionTypeAndReasonFromServices, getLocalFallbackSessionTypeSelectionReason, isNewChatSessionTypeUsable } from '../../../common/constants.js';
+import { ChatAgentLocation, ChatEditorTitleMaxLength, getDefaultNewChatSessionTypeAndReasonFromServices, getLocalFallbackSessionTypeSelectionReason, isEditorLocalAgentEnabled } from '../../../common/constants.js';
 import { IChatEditingSession, ModifiedFileEntryState } from '../../../common/editing/chatEditingService.js';
 import { IChatModel } from '../../../common/model/chatModel.js';
 import { LocalChatSessionUri, getChatSessionType, getNewChatSessionResource, isUntitledChatSession } from '../../../common/model/chatUri.js';
@@ -69,7 +68,6 @@ export class ChatEditorInput extends EditorInput implements IEditorCloseHandler 
 		@IDialogService private readonly dialogService: IDialogService,
 		@IConfigurationService private readonly configurationService: IConfigurationService,
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
-		@IStorageService private readonly storageService: IStorageService,
 		@ILogService private readonly logService: ILogService,
 		@IWorkspaceContextService private readonly workspaceContextService: IWorkspaceContextService,
 	) {
@@ -142,9 +140,8 @@ export class ChatEditorInput extends EditorInput implements IEditorCloseHandler 
 	 */
 	private getNewResourceForCopy(): URI {
 		const sourceType = this._sessionResource ? getChatSessionType(this._sessionResource) : undefined;
-		if (sourceType !== undefined
-			&& sourceType === localChatSessionType
-			&& isNewChatSessionTypeUsable(sourceType, this.configurationService, undefined, this.workspaceContextService.getWorkspace(), false)) {
+		if (sourceType === localChatSessionType
+			&& isEditorLocalAgentEnabled(this.configurationService, this.workspaceContextService.getWorkspace())) {
 			return getNewChatSessionResource(sourceType);
 		}
 		return ChatEditorInput.getNewEditorUri();
@@ -238,25 +235,6 @@ export class ChatEditorInput extends EditorInput implements IEditorCloseHandler 
 				this.modelRef.value = this.chatService.startNewLocalSession(ChatAgentLocation.Chat, { canUseTools: !inputType, debugOwner: 'ChatEditorInput#resolveUntitledFallback', sessionTypeSelectionReason: getLocalFallbackSessionTypeSelectionReason(getChatSessionType(this._sessionResource), false) });
 			}
 
-			if (this.shouldReplaceEmptyLocalSession(this._sessionResource)) {
-				const defaultTypeAndReason = getDefaultNewChatSessionTypeAndReasonFromServices(this.configurationService, undefined, this.storageService, this.workspaceContextService.getWorkspace(), false, undefined);
-				const defaultResource = getNewChatSessionResource(defaultTypeAndReason.sessionType);
-				if (getChatSessionType(defaultResource) !== localChatSessionType) {
-					let modelRef: IChatModelReference | undefined;
-					try {
-						modelRef = await this.chatService.acquireOrLoadSession(defaultResource, ChatAgentLocation.Chat, CancellationToken.None, 'ChatEditorInput#resolveDefaultSession', defaultTypeAndReason.selectionReason);
-					} catch (error) {
-						this.logService.warn(`[ChatEditorInput] Failed to acquire default session ${defaultResource.toString()}`, error);
-					}
-					if (modelRef) {
-						this._sessionResource = defaultResource;
-						this.modelRef.value = modelRef;
-					} else {
-						this.logService.warn(`[ChatEditorInput] Keeping local chat session because default session ${defaultResource.toString()} could not be acquired`);
-					}
-				}
-			}
-
 			// For local session only, if we find no existing session, create a new one
 			if (!this.model && LocalChatSessionUri.parseLocalSessionId(this._sessionResource)) {
 				this.modelRef.value = this.chatService.startNewLocalSession(ChatAgentLocation.Chat, { canUseTools: true, debugOwner: 'ChatEditorInput#resolveNewLocalSession', sessionTypeSelectionReason: this.options.sessionTypeSelectionReason });
@@ -265,23 +243,8 @@ export class ChatEditorInput extends EditorInput implements IEditorCloseHandler 
 			if (this.options.explicitSessionType === localChatSessionType) {
 				this.modelRef.value = this.chatService.startNewLocalSession(ChatAgentLocation.Chat, { canUseTools: !inputType, debugOwner: 'ChatEditorInput#resolveExplicitLocal', sessionTypeSelectionReason: this.options.sessionTypeSelectionReason ?? 'explicitOverride' });
 			} else {
-				const defaultTypeAndReason = getDefaultNewChatSessionTypeAndReasonFromServices(this.configurationService, undefined, this.storageService, this.workspaceContextService.getWorkspace(), false, undefined);
-				const defaultResource = getNewChatSessionResource(defaultTypeAndReason.sessionType);
-				if (getChatSessionType(defaultResource) === localChatSessionType) {
-					this.modelRef.value = this.chatService.startNewLocalSession(ChatAgentLocation.Chat, { canUseTools: !inputType, debugOwner: 'ChatEditorInput#resolveUntitled', sessionTypeSelectionReason: defaultTypeAndReason.selectionReason });
-				} else {
-					try {
-						this.modelRef.value = await this.chatService.acquireOrLoadSession(defaultResource, ChatAgentLocation.Chat, CancellationToken.None, 'ChatEditorInput#resolveDefaultUntitled', defaultTypeAndReason.selectionReason);
-					} catch (error) {
-						this.logService.warn(`[ChatEditorInput] Failed to acquire default session ${defaultResource.toString()}`, error);
-					}
-					if (this.model) {
-						this._sessionResource = defaultResource;
-					} else {
-						this.logService.warn(`[ChatEditorInput] Falling back to a local chat session because ${defaultResource.toString()} could not be acquired`);
-						this.modelRef.value = this.chatService.startNewLocalSession(ChatAgentLocation.Chat, { canUseTools: !inputType, debugOwner: 'ChatEditorInput#resolveUntitledFallback', sessionTypeSelectionReason: getLocalFallbackSessionTypeSelectionReason(getChatSessionType(defaultResource), false) });
-					}
-				}
+				const defaultTypeAndReason = getDefaultNewChatSessionTypeAndReasonFromServices(this.configurationService, this.workspaceContextService.getWorkspace());
+				this.modelRef.value = this.chatService.startNewLocalSession(ChatAgentLocation.Chat, { canUseTools: !inputType, debugOwner: 'ChatEditorInput#resolveUntitled', sessionTypeSelectionReason: defaultTypeAndReason.selectionReason });
 			}
 		} else if (this.options.target.data) {
 			this.modelRef.value = this.chatService.loadSessionFromData(this.options.target.data, 'ChatEditorInput#resolveImportedData');
@@ -304,14 +267,6 @@ export class ChatEditorInput extends EditorInput implements IEditorCloseHandler 
 		this._onDidChangeLabel.fire();
 
 		return this._register(new ChatEditorModel(this.model));
-	}
-
-	private shouldReplaceEmptyLocalSession(sessionResource: URI): boolean {
-		return LocalChatSessionUri.isLocalSession(sessionResource)
-			&& this.options.explicitSessionType !== localChatSessionType
-			&& !!this.model
-			&& !this.model.hasRequests
-			&& getDefaultNewChatSessionType(this.configurationService, undefined, this.storageService, this.workspaceContextService.getWorkspace(), false, undefined) !== localChatSessionType;
 	}
 
 	/**

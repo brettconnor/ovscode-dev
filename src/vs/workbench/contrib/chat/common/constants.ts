@@ -6,13 +6,11 @@
 import { Schemas } from '../../../../base/common/network.js';
 import { localChatSessionType } from './chatSessionsService.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
-import { IStorageService } from '../../../../platform/storage/common/storage.js';
 import { IWorkspace, IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { isVirtualWorkspace } from '../../../../platform/workspace/common/virtualWorkspace.js';
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
 import { URI } from '../../../../base/common/uri.js';
-import { getNewChatSessionResource } from './model/chatUri.js';
 
 
 export { ChatAIDisabledSettingId } from '../../../../platform/chat/common/chatSettings.js';
@@ -272,37 +270,6 @@ export function isSupportedChatFileScheme(_accessor: ServicesAccessor, scheme: s
 	return true;
 }
 
-/** New chats use the built-in local conversation until native OpenCircuit is integrated. */
-export function getComputedDefaultSessionType(
-	_configurationService: IConfigurationService,
-	_chatSessionsService: unknown,
-	_workspace: IWorkspace,
-	_agentHostEnabled: boolean,
-	_managedSandboxEnforced = false
-): string {
-	return localChatSessionType;
-}
-
-export function getComputedDefaultSessionResource(
-	configurationService: IConfigurationService,
-	chatSessionsService: unknown,
-	workspace: IWorkspace,
-	agentHostEnabled: boolean
-): URI {
-	return getNewChatSessionResource(getComputedDefaultSessionType(configurationService, chatSessionsService, workspace, agentHostEnabled));
-}
-
-export function isNewChatSessionTypeUsable(
-	sessionType: string,
-	configurationService: IConfigurationService,
-	_chatSessionsService: unknown,
-	workspace: IWorkspace,
-	_agentHostEnabled = false,
-	_managedSandboxEnforced = false,
-): boolean {
-	return sessionType === localChatSessionType && isEditorLocalAgentEnabled(configurationService, workspace);
-}
-
 /** Why a new chat session type was selected. */
 export type SessionTypeSelectionReason = 'explicitOverride' | 'virtualWorkspace' | 'rememberedSelection' | 'currentSession' | 'computedDefault';
 
@@ -312,7 +279,6 @@ export function getLocalFallbackSessionTypeSelectionReason(_sessionType: string,
 
 export interface IDefaultNewChatSessionTypeOptions {
 	readonly explicitOverride?: string;
-	readonly currentSessionType?: string;
 }
 
 export interface IResolvedNewChatSessionType {
@@ -320,26 +286,10 @@ export interface IResolvedNewChatSessionType {
 	readonly selectionReason: SessionTypeSelectionReason;
 }
 
-export function getDefaultNewChatSessionType(
-	configurationService: IConfigurationService,
-	chatSessionsService: unknown,
-	storageService: IStorageService,
-	workspace: IWorkspace,
-	agentHostEnabled: boolean,
-	options?: IDefaultNewChatSessionTypeOptions,
-	_managedSandboxEnforced = false
-): string {
-	return getDefaultNewChatSessionTypeAndReasonFromServices(configurationService, chatSessionsService, storageService, workspace, agentHostEnabled, options).sessionType;
-}
-
 export function getDefaultNewChatSessionTypeAndReasonFromServices(
 	configurationService: IConfigurationService,
-	_chatSessionsService: unknown,
-	_storageService: IStorageService,
 	workspace: IWorkspace,
-	_agentHostEnabled: boolean,
-	options?: IDefaultNewChatSessionTypeOptions,
-	_managedSandboxEnforced = false
+	options?: IDefaultNewChatSessionTypeOptions
 ): IResolvedNewChatSessionType {
 	if (options?.explicitOverride === localChatSessionType) {
 		return { sessionType: localChatSessionType, selectionReason: 'explicitOverride' };
@@ -355,47 +305,12 @@ export function getDefaultNewChatSessionTypeAndReason(
 	options?: IDefaultNewChatSessionTypeOptions
 ): IResolvedNewChatSessionType {
 	const configurationService = accessor.get(IConfigurationService);
-	const storageService = accessor.get(IStorageService);
 	const workspace = accessor.get(IWorkspaceContextService).getWorkspace();
-	return getDefaultNewChatSessionTypeAndReasonFromServices(configurationService, undefined, storageService, workspace, false, options);
+	return getDefaultNewChatSessionTypeAndReasonFromServices(configurationService, workspace, options);
 }
 
-export function getDefaultNewChatSessionResource(
-	configurationService: IConfigurationService,
-	chatSessionsService: unknown,
-	storageService: IStorageService,
-	workspace: IWorkspace,
-	agentHostEnabled: boolean,
-	options?: IDefaultNewChatSessionTypeOptions,
-	_managedSandboxEnforced = false
-): URI {
-	return getNewChatSessionResource(getDefaultNewChatSessionType(configurationService, chatSessionsService, storageService, workspace, agentHostEnabled, options));
-}
-
-export function recordUserSelectedSessionType(
-	_storageService: IStorageService,
-	_configurationService: IConfigurationService,
-	_chatSessionsService: unknown,
-	_workspace: IWorkspace,
-	_sessionType: string,
-	_agentHostEnabled: boolean
-): void {
-	// Session-type providers are removed. Existing stored preferences are left intact for compatibility.
-}
-
-export function isEditorLocalAgentEnabled(configurationService: IConfigurationService, workspace: IWorkspace, _managedSandboxEnforced = false): boolean {
+export function isEditorLocalAgentEnabled(configurationService: IConfigurationService, workspace: IWorkspace): boolean {
 	return isVirtualWorkspace(workspace) || (configurationService.getValue<boolean>(ChatConfiguration.EditorLocalAgentEnabled) ?? true);
-}
-
-export function isVisibleEditorChatSessionType(
-	sessionType: string,
-	configurationService: IConfigurationService,
-	_chatSessionsService: unknown,
-	workspace: IWorkspace,
-	_managedSandboxEnforced = false,
-	_agentHostEnabled = false
-): boolean {
-	return sessionType === localChatSessionType && isEditorLocalAgentEnabled(configurationService, workspace);
 }
 
 export const MANAGE_CHAT_COMMAND_ID = 'workbench.action.chat.manage';
