@@ -1825,36 +1825,6 @@ export class SetProductIconThemeAction extends ExtensionAction {
 	}
 }
 
-export class InstallRecommendedExtensionAction extends Action {
-
-	static readonly ID = 'workbench.extensions.action.installRecommendedExtension';
-	static readonly LABEL = localize('installRecommendedExtension', "Install Recommended Extension");
-
-	private extensionId: string;
-
-	constructor(
-		extensionId: string,
-		@IInstantiationService private readonly instantiationService: IInstantiationService,
-		@IExtensionsWorkbenchService private readonly extensionWorkbenchService: IExtensionsWorkbenchService,
-	) {
-		super(InstallRecommendedExtensionAction.ID, InstallRecommendedExtensionAction.LABEL, undefined, false);
-		this.extensionId = extensionId;
-	}
-
-	override async run(): Promise<any> {
-		await this.extensionWorkbenchService.openSearch(`@id:${this.extensionId}`);
-		const [extension] = await this.extensionWorkbenchService.getExtensions([{ id: this.extensionId }], { source: 'install-recommendation' }, CancellationToken.None);
-		if (extension) {
-			await this.extensionWorkbenchService.open(extension);
-			try {
-				await this.extensionWorkbenchService.install(extension);
-			} catch (err) {
-				this.instantiationService.createInstance(PromptExtensionInstallFailureAction, extension, undefined, InstallOperation.Install, err).run();
-			}
-		}
-	}
-}
-
 export class ExtensionStatusLabelAction extends Action implements IExtensionContainer {
 
 	private static readonly ENABLED_CLASS = `${ExtensionAction.TEXT_ACTION_CLASS} extension-status-label`;

@@ -41,7 +41,6 @@ import { GroupsOrder, IEditorGroup, IEditorGroupsService } from '../../../servic
 import { IEditorService } from '../../../services/editor/common/editorService.js';
 import { IWorkbenchEnvironmentService } from '../../../services/environment/common/environmentService.js';
 import { IEditorProgressService } from '../../../../platform/progress/common/progress.js';
-import { InstallRecommendedExtensionAction } from '../../extensions/browser/extensionsActions.js';
 import { INotebookService } from '../common/notebookService.js';
 import { IExtensionsWorkbenchService } from '../../extensions/common/extensions.js';
 import { EnablementState } from '../../../services/extensionManagement/common/extensionManagement.js';
@@ -322,35 +321,28 @@ export class NotebookEditor extends EditorPane implements INotebookEditorPane, I
 				await this._extensionsWorkbenchService.whenInitialized;
 				const extensionInfo = this._extensionsWorkbenchService.local.find(e => e.identifier.id === knownProvider);
 
-				throw createEditorOpenError(new Error(localize('fail.noEditor.extensionMissing', "Cannot open resource with notebook editor type '{0}', please check if you have the right extension installed and enabled.", input.viewType)), [
-					toAction({
-						id: 'workbench.notebook.action.installOrEnableMissing', label:
-							extensionInfo
-								? localize('notebookOpenEnableMissingViewType', "Enable extension for '{0}'", input.viewType)
-								: localize('notebookOpenInstallMissingViewType', "Install extension for '{0}'", input.viewType)
-						, run: async () => {
+				const recoveryActions = [];
+				if (extensionInfo) {
+					recoveryActions.push(toAction({
+						id: 'workbench.notebook.action.enableMissing',
+						label: localize('notebookOpenEnableMissingViewType', "Enable extension for '{0}'", input.viewType),
+						run: async () => {
 							const d = this._notebookService.onAddViewType(viewType => {
 								if (viewType === input.viewType) {
-									// serializer is registered, try to open again
 									this._editorService.openEditor({ resource: input.resource });
 									d.dispose();
 								}
 							});
-							const extensionInfo = this._extensionsWorkbenchService.local.find(e => e.identifier.id === knownProvider);
-
 							try {
-								if (extensionInfo) {
-									await this._extensionsWorkbenchService.setEnablement(extensionInfo, extensionInfo.enablementState === EnablementState.DisabledWorkspace ? EnablementState.EnabledWorkspace : EnablementState.EnabledGlobally);
-								} else {
-									await this._instantiationService.createInstance(InstallRecommendedExtensionAction, knownProvider).run();
-								}
+								await this._extensionsWorkbenchService.setEnablement(extensionInfo, extensionInfo.enablementState === EnablementState.DisabledWorkspace ? EnablementState.EnabledWorkspace : EnablementState.EnabledGlobally);
 							} catch (ex) {
-								this.logService.error(`Failed to install or enable extension ${knownProvider}`, ex);
+								this.logService.error(`Failed to enable extension ${knownProvider}`, ex);
 								d.dispose();
 							}
 						}
-					}),
-					toAction({
+					}));
+				}
+				recoveryActions.push(toAction({
 						id: 'workbench.notebook.action.openAsText', label: localize('notebookOpenAsText', "Open As Text"), run: async () => {
 							const backup = await this._workingCopyBackupService.resolve({ resource: input.resource, typeId: NotebookWorkingCopyTypeIdentifier.create(input.viewType) });
 							if (backup) {
@@ -363,8 +355,9 @@ export class NotebookEditor extends EditorPane implements INotebookEditorPane, I
 								this._editorService.openEditor({ resource: input.resource, options: { override: DEFAULT_EDITOR_ASSOCIATION.id, pinned: true } });
 							}
 						}
-					})
-				], { allowDialog: true });
+					}));
+
+				throw createEditorOpenError(new Error(localize('fail.noEditor.extensionMissing', "Cannot open resource with notebook editor type '{0}', please check if you have the right extension installed and enabled.", input.viewType)), recoveryActions, { allowDialog: true });
 
 			}
 
