@@ -2052,11 +2052,6 @@ export class ExtensionStatusAction extends ExtensionAction {
 			return;
 		}
 
-		if (this.extension.missingFromGallery) {
-			this.updateStatus({ icon: warningIcon, message: new MarkdownString(localize('missing from gallery tooltip', "This extension is no longer available on the Extension Marketplace.")) }, true);
-			return;
-		}
-
 		if (this.extension.gallery && this.extension.state === ExtensionState.Uninstalled) {
 			const result = await this.extensionsWorkbenchService.canInstall(this.extension);
 			if (result !== true) {

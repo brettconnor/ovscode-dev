@@ -80,8 +80,6 @@ export class Extension implements IExtension {
 	public enablementState: EnablementState = EnablementState.EnabledGlobally;
 
 
-	private _missingFromGallery: boolean | undefined;
-
 	constructor(
 		private stateProvider: IExtensionStateProvider<ExtensionState>,
 		private runtimeStateProvider: IExtensionStateProvider<ExtensionRuntimeState | undefined>,
@@ -117,14 +115,6 @@ export class Extension implements IExtension {
 
 	set gallery(gallery: IGalleryExtension | undefined) {
 		this._gallery = gallery;
-	}
-
-	get missingFromGallery(): boolean {
-		return !!this._missingFromGallery;
-	}
-
-	set missingFromGallery(missing: boolean) {
-		this._missingFromGallery = missing;
 	}
 
 	get type(): ExtensionType {
@@ -599,7 +589,7 @@ class Extensions extends Disposable {
 		return this.local;
 	}
 
-	async syncInstalledExtensionsWithGallery(galleryExtensions: IGalleryExtension[], productVersion: IProductVersion, flagExtensionsMissingFromGallery?: IExtensionInfo[]): Promise<void> {
+	async syncInstalledExtensionsWithGallery(galleryExtensions: IGalleryExtension[], productVersion: IProductVersion): Promise<void> {
 		const extensions = await this.mapInstalledExtensionWithCompatibleGalleryExtension(galleryExtensions, productVersion);
 		for (const [extension, gallery] of extensions) {
 			// update metadata of the extension if it does not exist
@@ -609,59 +599,6 @@ class Extensions extends Disposable {
 			if (!extension.gallery || extension.gallery.version !== gallery.version || extension.gallery.properties.targetPlatform !== gallery.properties.targetPlatform) {
 				extension.gallery = gallery;
 				this._onChange.fire({ extension });
-			}
-		}
-		// Detect extensions that do not have a corresponding gallery entry.
-		if (flagExtensionsMissingFromGallery) {
-			const extensionsToQuery = [];
-			for (const extension of this.local) {
-				// Extension is already paired with a gallery object
-				if (extension.gallery) {
-					continue;
-				}
-				// Already flagged as missing from gallery
-				if (extension.missingFromGallery) {
-					continue;
-				}
-				// A UUID indicates extension originated from gallery
-				if (!extension.identifier.uuid) {
-					continue;
-				}
-				// Extension is not present in the set we are concerned about
-				if (!flagExtensionsMissingFromGallery.some(f => areSameExtensions(f, extension.identifier))) {
-					continue;
-				}
-				extensionsToQuery.push(extension);
-			}
-			if (extensionsToQuery.length) {
-				const queryResult = await this.galleryService.getExtensions(extensionsToQuery.map(e => ({ ...e.identifier, version: e.version })), CancellationToken.None);
-				const queriedIds: string[] = [];
-				const missingIds: string[] = [];
-				for (const extension of extensionsToQuery) {
-					queriedIds.push(extension.identifier.id);
-					const gallery = queryResult.find(g => areSameExtensions(g.identifier, extension.identifier));
-					if (gallery) {
-						extension.gallery = gallery;
-					} else {
-						extension.missingFromGallery = true;
-						missingIds.push(extension.identifier.id);
-					}
-					this._onChange.fire({ extension });
-				}
-				type MissingFromGalleryClassification = {
-					owner: 'joshspicer';
-					comment: 'Report when installed extensions are no longer available in the gallery';
-					queriedIds: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'Extensions queried as potentially missing from gallery' };
-					missingIds: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'Extensions determined missing from gallery' };
-				};
-				type MissingFromGalleryEvent = {
-					readonly queriedIds: TelemetryTrustedValue<string>;
-					readonly missingIds: TelemetryTrustedValue<string>;
-				};
-				this.telemetryService.publicLog2<MissingFromGalleryEvent, MissingFromGalleryClassification>('extensions:missingFromGallery', {
-					queriedIds: new TelemetryTrustedValue(queriedIds.join(';')),
-					missingIds: new TelemetryTrustedValue(missingIds.join(';'))
-				});
 			}
 		}
 	}
@@ -1715,7 +1652,7 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		return ExtensionState.Uninstalled;
 	}
 
-	private async syncInstalledExtensionsWithGallery(gallery: IGalleryExtension[], flagExtensionsMissingFromGallery?: IExtensionInfo[]): Promise<void> {
+	private async syncInstalledExtensionsWithGallery(gallery: IGalleryExtension[]): Promise<void> {
 		const extensions: Extensions[] = [];
 		if (this.localExtensions) {
 			extensions.push(this.localExtensions);
@@ -1729,7 +1666,7 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		if (!extensions.length) {
 			return;
 		}
-		await Promise.allSettled(extensions.map(extensions => extensions.syncInstalledExtensionsWithGallery(gallery, this.getProductVersion(), flagExtensionsMissingFromGallery)));
+		await Promise.allSettled(extensions.map(extensions => extensions.syncInstalledExtensionsWithGallery(gallery, this.getProductVersion())));
 	}
 
 	private getProductVersion(): IProductVersion {
