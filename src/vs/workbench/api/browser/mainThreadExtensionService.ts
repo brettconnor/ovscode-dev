@@ -5,7 +5,6 @@
 
 import { toAction } from '../../../base/common/actions.js';
 import { VSBuffer } from '../../../base/common/buffer.js';
-import { CancellationToken } from '../../../base/common/cancellation.js';
 import { SerializedError, transformErrorFromSerialization } from '../../../base/common/errors.js';
 import { FileAccess } from '../../../base/common/network.js';
 import Severity from '../../../base/common/severity.js';
@@ -18,7 +17,7 @@ import { ExtensionIdentifier, IExtensionDescription } from '../../../platform/ex
 import { INotificationService } from '../../../platform/notification/common/notification.js';
 import { IRemoteConnectionData, ManagedRemoteConnection, RemoteConnection, RemoteConnectionType, ResolvedAuthority, WebSocketRemoteConnection } from '../../../platform/remote/common/remoteAuthorityResolver.js';
 import { ExtHostContext, ExtHostExtensionServiceShape, MainContext, MainThreadExtensionServiceShape } from '../common/extHost.protocol.js';
-import { IExtension, IExtensionsWorkbenchService } from '../../contrib/extensions/common/extensions.js';
+import { IExtensionsWorkbenchService } from '../../contrib/extensions/common/extensions.js';
 import { IWorkbenchEnvironmentService } from '../../services/environment/common/environmentService.js';
 import { EnablementState, IWorkbenchExtensionEnablementService } from '../../services/extensionManagement/common/extensionManagement.js';
 import { ExtensionHostKind } from '../../services/extensions/common/extensionHostKind.js';
@@ -156,27 +155,7 @@ export class MainThreadExtensionService implements MainThreadExtensionServiceSha
 
 	private async _handleMissingNotInstalledDependency(extension: IExtensionDescription, missingDependency: string): Promise<void> {
 		const extName = extension.displayName || extension.name;
-		let dependencyExtension: IExtension | null = null;
-		try {
-			dependencyExtension = (await this._extensionsWorkbenchService.getExtensions([{ id: missingDependency }], CancellationToken.None))[0];
-		} catch (err) {
-		}
-		if (dependencyExtension) {
-			this._notificationService.notify({
-				severity: Severity.Error,
-				message: localize('uninstalledDep', "Cannot activate the '{0}' extension because it depends on the '{1}' extension from '{2}', which is not installed. Would you like to install the extension and reload the window?", extName, dependencyExtension.displayName, dependencyExtension.publisherDisplayName),
-				actions: {
-					primary: [toAction({
-						id: 'install',
-						label: localize('install missing dep', "Install and Reload"),
-						run: () => this._extensionsWorkbenchService.install(dependencyExtension)
-							.then(() => this._hostService.reload(), e => this._notificationService.error(e))
-					})]
-				}
-			});
-		} else {
-			this._notificationService.error(localize('unknownDep', "Cannot activate the '{0}' extension because it depends on an unknown '{1}' extension.", extName, missingDependency));
-		}
+		this._notificationService.error(localize('uninstalledDepNoGallery', "Cannot activate the '{0}' extension because it depends on the '{1}' extension, which is not installed. Install it from a local VSIX file and reload the window.", extName, missingDependency));
 	}
 
 	async $setPerformanceMarks(marks: PerformanceMark[]): Promise<void> {
