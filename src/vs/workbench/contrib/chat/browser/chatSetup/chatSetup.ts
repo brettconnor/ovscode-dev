@@ -89,8 +89,6 @@ export enum ChatSetupSource {
 	Url = 'url',
 	Chat = 'chat',
 	InlineRename = 'inlineRename',
-	SessionsSetup = 'sessionsSetup',
-	AgentHost = 'agentHost',
 	Scm = 'scm',
 	CodeReview = 'codeReview',
 }

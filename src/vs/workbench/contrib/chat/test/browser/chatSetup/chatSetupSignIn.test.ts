@@ -126,7 +126,7 @@ suite('Chat setup dialog external sign-in', () => {
 			cancel: () => cancellation.cancel(),
 			run: (overrides?: IChatSetupRunOptions) => setup.run({
 				...options,
-				telemetrySource: ChatSetupSource.SessionsSetup,
+				telemetrySource: ChatSetupSource.Unknown,
 				cancellationToken: cancellation.token,
 				...overrides,
 			}),

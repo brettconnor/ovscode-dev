@@ -367,15 +367,15 @@ suite('Chat setup dialog telemetry', () => {
 		assert.strictEqual(impressions.length, 2);
 	});
 
-	test('records forced sign-in with an available account from Agents setup', async () => {
+	test('records forced sign-in with an available account and unknown source', async () => {
 		const { setup, impressions, dialogShown, dialogResult } = createSetup(ChatEntitlement.Pro, true);
-		const result = setup.run({ telemetrySource: ChatSetupSource.SessionsSetup, forceSignInDialog: true });
+		const result = setup.run({ telemetrySource: ChatSetupSource.Unknown, forceSignInDialog: true });
 		await dialogShown.p;
 		await dialogResult.complete(ChatSetupStrategy.Canceled);
 		await result;
 
 		assert.deepStrictEqual(impressions, [{
-			source: 'sessionsSetup', kind: 'signIn',
+			source: 'unknown', kind: 'signIn',
 			accountAvailable: true, entitlement: 'Pro', forceSignInDialog: true,
 		}]);
 	});
