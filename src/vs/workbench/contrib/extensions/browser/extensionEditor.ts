@@ -56,7 +56,7 @@ import {
 	UninstallAction,
 } from './extensionsActions.js';
 import { Delegate } from './extensionsList.js';
-import { ExtensionData, ExtensionsGridView, ExtensionsTree, getExtensions } from './extensionsViewer.js';
+import { ExtensionData, ExtensionsGridView, ExtensionsTree, getInstalledExtensions } from './extensionsViewer.js';
 import { ExtensionStatusWidget, ExtensionWidget, RemoteBadgeWidget, onClick, ExtensionIconWidget } from './extensionsWidgets.js';
 import { ExtensionContainers, ExtensionEditorTab, ExtensionState, IExtension, IExtensionContainer, IExtensionsWorkbenchService } from '../common/extensions.js';
 import { ExtensionsInput, IExtensionEditorOptions } from '../common/extensionsInput.js';
@@ -852,7 +852,7 @@ export class ExtensionEditor extends EditorPane {
 		append(parent, scrollableContent.getDomNode());
 
 		const extensionsGridView = this.instantiationService.createInstance(ExtensionsGridView, content, new Delegate());
-		const extensions: IExtension[] = await getExtensions(manifest.extensionPack!, this.extensionsWorkbenchService);
+		const extensions = getInstalledExtensions(manifest.extensionPack!, this.extensionsWorkbenchService);
 		extensionsGridView.setExtensions(extensions);
 		scrollableContent.scanDomNode();
 

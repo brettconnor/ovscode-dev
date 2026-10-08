@@ -16,7 +16,7 @@ import { IContextKeyService } from '../../../../platform/contextkey/common/conte
 import { registerThemingParticipant, IColorTheme, ICssStyleCollector } from '../../../../platform/theme/common/themeService.js';
 import { IAsyncDataSource, ITreeNode } from '../../../../base/browser/ui/tree/tree.js';
 import { IListVirtualDelegate, IListRenderer, IListContextMenuEvent } from '../../../../base/browser/ui/list/list.js';
-import { CancellationToken, CancellationTokenSource } from '../../../../base/common/cancellation.js';
+import { CancellationTokenSource } from '../../../../base/common/cancellation.js';
 import { IModalEditorPartOptions } from '../../../../platform/editor/common/editor.js';
 import { isNonEmptyArray } from '../../../../base/common/arrays.js';
 import { Delegate, Renderer } from './extensionsList.js';
@@ -442,31 +442,18 @@ export class ExtensionData implements IExtensionData {
 
 	async getChildren(): Promise<IExtensionData[] | null> {
 		if (this.hasChildren) {
-			const result: IExtension[] = await getExtensions(this.childrenExtensionIds, this.extensionsWorkbenchService);
+			const result = getInstalledExtensions(this.childrenExtensionIds, this.extensionsWorkbenchService);
 			return result.map(extension => new ExtensionData(extension, this, this.getChildrenExtensionIds, this.extensionsWorkbenchService));
 		}
 		return null;
 	}
 }
 
-export async function getExtensions(extensions: string[], extensionsWorkbenchService: IExtensionsWorkbenchService): Promise<IExtension[]> {
+export function getInstalledExtensions(extensions: string[], extensionsWorkbenchService: IExtensionsWorkbenchService): IExtension[] {
 	const localById = extensionsWorkbenchService.local.reduce((result, e) => { result.set(e.identifier.id.toLowerCase(), e); return result; }, new Map<string, IExtension>());
-	const result: IExtension[] = [];
-	const toQuery: string[] = [];
-	for (const extensionId of extensions) {
-		const id = extensionId.toLowerCase();
-		const local = localById.get(id);
-		if (local) {
-			result.push(local);
-		} else {
-			toQuery.push(id);
-		}
-	}
-	if (toQuery.length) {
-		const galleryResult = await extensionsWorkbenchService.getExtensions(toQuery.map(id => ({ id })), CancellationToken.None);
-		result.push(...galleryResult);
-	}
-	return result;
+	return extensions
+		.map(id => localById.get(id.toLowerCase()))
+		.filter((extension): extension is IExtension => !!extension);
 }
 
 /**
