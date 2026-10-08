@@ -31,8 +31,6 @@ import { IPathService } from '../../../../../services/path/common/pathService.js
 export const MARKERS_OWNER_ID = 'prompts-diagnostics-provider';
 
 export const enum PromptValidatorMarkerCode {
-	MissingGithubMcpServer = 'promptValidator.missingGithubMcpServer',
-	MissingPlaywrightMcpServer = 'promptValidator.missingPlaywrightMcpServer',
 	UnknownExtensionReference = 'promptValidator.unknownExtensionReference',
 	UnknownMcpServerReference = 'promptValidator.unknownMcpServerReference',
 	UnknownExtensionOrMcpServerReference = 'promptValidator.unknownExtensionOrMcpServerReference'
@@ -214,17 +212,7 @@ export class PromptValidator {
 							}
 						}
 					} else {
-						const missingGithubServerMarker = this.getMissingGithubMcpServerMarker(variable.name, variable.range);
-						if (missingGithubServerMarker) {
-							report(missingGithubServerMarker);
-						} else {
-							const missingPlaywrightServerMarker = this.getMissingPlaywrightMcpServerMarker(variable.name, variable.range);
-							if (missingPlaywrightServerMarker) {
-								report(missingPlaywrightServerMarker);
-							} else {
-								report(this.getUnknownToolMarker(variable.name, variable.range, true));
-							}
-						}
+						report(this.getUnknownToolMarker(variable.name, variable.range, true));
 					}
 				} else if (headerToolsMap) {
 					const tool = this.languageModelToolsService.getToolByFullReferenceName(variable.name);
@@ -551,17 +539,7 @@ export class PromptValidator {
 								report(toMarker(localize('promptValidator.toolDeprecatedMultipleNames', "Tool or toolset '{0}' has been renamed, use the following tools instead: {1}", item.value, newNames), item.range, MarkerSeverity.Info, [MarkerTag.Deprecated]));
 							}
 						} else {
-							const missingGithubServerMarker = this.getMissingGithubMcpServerMarker(item.value, item.range);
-							if (missingGithubServerMarker) {
-								report(missingGithubServerMarker);
-							} else {
-								const missingPlaywrightServerMarker = this.getMissingPlaywrightMcpServerMarker(item.value, item.range);
-								if (missingPlaywrightServerMarker) {
-									report(missingPlaywrightServerMarker);
-								} else {
-									report(this.getUnknownToolMarker(item.value, item.range, false));
-								}
-							}
+							report(this.getUnknownToolMarker(item.value, item.range, false));
 						}
 					}
 				}
@@ -624,40 +602,6 @@ export class PromptValidator {
 				PromptValidatorMarkerCode.UnknownExtensionOrMcpServerReference
 			);
 		}
-	}
-
-	private getMissingGithubMcpServerMarker(toolReferenceName: string, range: Range): IMarkerData | undefined {
-		if (toolReferenceName !== 'github/*') {
-			return undefined;
-		}
-		return toMarker(
-			localize(
-				'promptValidator.missingGithubMcpServer',
-				"Tool alias '{0}' requires the GitHub MCP server. Enable the built-in server with setting 'github.copilot.chat.githubMcpServer.enabled' or install extension 'io.github.github/github-mcp-server' from Extensions (`@mcp github`).",
-				toolReferenceName
-			),
-			range,
-			MarkerSeverity.Hint,
-			[MarkerTag.Unnecessary],
-			PromptValidatorMarkerCode.MissingGithubMcpServer
-		);
-	}
-
-	private getMissingPlaywrightMcpServerMarker(toolReferenceName: string, range: Range): IMarkerData | undefined {
-		if (toolReferenceName !== 'playwright/*') {
-			return undefined;
-		}
-		return toMarker(
-			localize(
-				'promptValidator.missingPlaywrightMcpServer',
-				"Tool alias '{0}' requires the Playwright MCP server. Install it from Extensions (`@mcp playwright`).",
-				toolReferenceName
-			),
-			range,
-			MarkerSeverity.Hint,
-			[MarkerTag.Unnecessary],
-			PromptValidatorMarkerCode.MissingPlaywrightMcpServer
-		);
 	}
 
 	private validateApplyTo(attributes: IHeaderAttribute[], report: (markers: IMarkerData) => void): undefined {

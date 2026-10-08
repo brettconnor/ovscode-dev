@@ -14,7 +14,7 @@ import { ITextModel } from '../../../../../../../editor/common/model.js';
 import { TestConfigurationService } from '../../../../../../../platform/configuration/test/common/testConfigurationService.js';
 import { ContextKeyService } from '../../../../../../../platform/contextkey/browser/contextKeyService.js';
 import { TestInstantiationService } from '../../../../../../../platform/instantiation/test/common/instantiationServiceMock.js';
-import { IMarker, IMarkerService, MarkerSeverity } from '../../../../../../../platform/markers/common/markers.js';
+import { IMarker, IMarkerService } from '../../../../../../../platform/markers/common/markers.js';
 import { workbenchInstantiationService } from '../../../../../../test/browser/workbenchTestServices.js';
 import { ChatConfiguration } from '../../../../common/constants.js';
 import { ILanguageModelToolsService, IToolData, ToolDataSource } from '../../../../common/tools/languageModelToolsService.js';
@@ -24,7 +24,6 @@ import { getLanguageIdForPromptsType, PromptsType } from '../../../../common/pro
 import { getPromptFileExtension } from '../../../../common/promptSyntax/config/promptFileLocations.js';
 import { PromptFileParser } from '../../../../common/promptSyntax/promptFileParser.js';
 import { PromptCodeActionProvider } from '../../../../common/promptSyntax/languageProviders/promptCodeActions.js';
-import { PromptValidatorMarkerCode } from '../../../../common/promptSyntax/languageProviders/promptValidator.js';
 import { IFileService } from '../../../../../../../platform/files/common/files.js';
 import { CodeActionKind } from '../../../../../../../editor/contrib/codeAction/common/types.js';
 
@@ -226,109 +225,6 @@ suite('PromptCodeActionProvider', () => {
 			assert.strictEqual(actions.length, 0);
 		});
 
-		test('offers quick fix to enable built-in github mcp server', async () => {
-			markerData = [{
-				code: { value: PromptValidatorMarkerCode.MissingGithubMcpServer, target: URI.parse('https://marketplace.visualstudio.com/items?itemName=io.github.github/github-mcp-server') },
-				owner: 'prompts-diagnostics-provider',
-				resource: URI.parse('test:///test' + getPromptFileExtension(PromptsType.agent)),
-				severity: MarkerSeverity.Warning,
-				message: 'Missing github mcp server',
-				startLineNumber: 4,
-				startColumn: 9,
-				endLineNumber: 4,
-				endColumn: 19
-			}];
-			const content = [
-				'---',
-				'description: "Test"',
-				'target: vscode',
-				`tools: ['github/*']`,
-				'---',
-			].join('\n');
-			const actions = await getCodeActions(content, 4, 11, PromptsType.agent);
-			assert.deepStrictEqual(actions.map(action => action.title), [
-				'Enable Built-in GitHub MCP Server',
-				'Install GitHub MCP Server from Marketplace'
-			]);
-		});
-
-		test('offers quick fix to install playwright mcp server from marketplace', async () => {
-			markerData = [{
-				code: { value: PromptValidatorMarkerCode.MissingPlaywrightMcpServer, target: URI.parse('https://marketplace.visualstudio.com/items?itemName=microsoft.playwright-mcp') },
-				owner: 'prompts-diagnostics-provider',
-				resource: URI.parse('test:///test' + getPromptFileExtension(PromptsType.agent)),
-				severity: MarkerSeverity.Warning,
-				message: 'Missing playwright mcp server',
-				startLineNumber: 4,
-				startColumn: 9,
-				endLineNumber: 4,
-				endColumn: 21
-			}];
-			const content = [
-				'---',
-				'description: "Test"',
-				'target: vscode',
-				`tools: ['playwrite/*']`,
-				'---',
-			].join('\n');
-			const actions = await getCodeActions(content, 4, 11, PromptsType.agent);
-			assert.deepStrictEqual(actions.map(action => action.title), [
-				'Install Playwright MCP Server from Marketplace'
-			]);
-		});
-
-		test('offers quick fix to search marketplace for an extension-style tool reference', async () => {
-			markerData = [{
-				code: PromptValidatorMarkerCode.UnknownExtensionReference,
-				owner: 'prompts-diagnostics-provider',
-				resource: URI.parse('test:///test' + getPromptFileExtension(PromptsType.agent)),
-				severity: MarkerSeverity.Hint,
-				message: 'Unknown extension tool',
-				startLineNumber: 4,
-				startColumn: 9,
-				endLineNumber: 4,
-				endColumn: 28
-			}];
-			const content = [
-				'---',
-				'description: "Test"',
-				'target: vscode',
-				`tools: ['my.extension/tool']`,
-				'---',
-			].join('\n');
-			const actions = await getCodeActions(content, 4, 11, PromptsType.agent);
-			assert.deepStrictEqual(actions.map(action => action.title), [
-				`Search Marketplace for Extension 'my.extension'`
-			]);
-		});
-
-		test('offers quick fix to search marketplace for an mcp-style tool reference', async () => {
-			markerData = [{
-				code: PromptValidatorMarkerCode.UnknownMcpServerReference,
-				owner: 'prompts-diagnostics-provider',
-				resource: URI.parse('test:///test' + getPromptFileExtension(PromptsType.agent)),
-				severity: MarkerSeverity.Hint,
-				message: 'Unknown MCP server',
-				startLineNumber: 4,
-				startColumn: 9,
-				endLineNumber: 4,
-				endColumn: 59
-			}];
-			const content = [
-				'---',
-				'description: "Test"',
-				'target: vscode',
-				`tools: ['io.github.github/github-mcp-server/create_branch']`,
-				'---',
-			].join('\n');
-			const actions = await getCodeActions(content, 4, 11, PromptsType.agent);
-			assert.deepStrictEqual(actions.map(action => action.title), [
-				`Search Marketplace for MCP Server 'io.github.github/github-mcp-server/create_branch'`
-			]);
-		});
-	});
-
-	suite('prompt code actions', () => {
 		test('rename mode to agent', async () => {
 			const content = [
 				'---',
