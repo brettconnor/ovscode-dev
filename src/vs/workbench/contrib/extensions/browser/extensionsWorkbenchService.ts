@@ -43,7 +43,7 @@ import { IFileService } from '../../../../platform/files/common/files.js';
 import { IExtensionManifest, ExtensionType, IExtension as IPlatformExtension, TargetPlatform, ExtensionIdentifier, IExtensionIdentifier, IExtensionDescription, isApplicationScopedExtension } from '../../../../platform/extensions/common/extensions.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { FileAccess } from '../../../../base/common/network.js';
-import { isString, isUndefined } from '../../../../base/common/types.js';
+import { isString } from '../../../../base/common/types.js';
 import { IExtensionManifestPropertiesService } from '../../../services/extensions/common/extensionManifestPropertiesService.js';
 import { IExtensionService, IExtensionsStatus as IExtensionRuntimeStatus, toExtension, toExtensionDescription } from '../../../services/extensions/common/extensions.js';
 import { TelemetryTrustedValue } from '../../../../platform/telemetry/common/telemetryUtils.js';

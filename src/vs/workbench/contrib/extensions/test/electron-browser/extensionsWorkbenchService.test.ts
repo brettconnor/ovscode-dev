@@ -183,7 +183,7 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions(expected));
 
 		return testObject.getExtensions([{ id: 'test' }], CancellationToken.None).then(pagedResponse => {
-			assert.strictEqual(1, pagedResponse.firstPage.length);
+			assert.strictEqual(1, pagedResponse.length);
 			const actual = pagedResponse[0];
 
 			assert.strictEqual(ExtensionType.User, actual.type);
