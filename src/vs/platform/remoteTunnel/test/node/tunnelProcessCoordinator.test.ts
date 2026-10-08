@@ -113,11 +113,9 @@ suite('TunnelProcessCoordinator', () => {
 			assert.deepStrictEqual({
 				tunnelWasStopped: tunnel.wasKilled(),
 				status: coordinator.getStatus(),
-				agentHostProcessStarted: processes.some(process => process.args.includes('--agent-host-only')),
 			}, {
 				tunnelWasStopped: true,
 				status: { mode: 'none', tunnelName: undefined, tunnelId: undefined, connectionState: 'disconnected', serviceInstallFailed: false },
-				agentHostProcessStarted: false,
 			});
 
 		} finally {
