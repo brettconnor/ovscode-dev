@@ -65,7 +65,7 @@ suite('ChatErrorConfirmationContentPart', () => {
 			setVote() { },
 			sessionResource,
 			requestId: request.id,
-			agent: upcastPartial<IChatAgentData>({ id: 'agent-host-copilot' }),
+			agent: upcastPartial<IChatAgentData>({ id: 'test-agent' }),
 		});
 		const errorDetails = upcastPartial<IChatErrorDetailsPart>({
 			kind: 'errorDetails',
@@ -79,12 +79,12 @@ suite('ChatErrorConfirmationContentPart', () => {
 			errorDetails,
 			[{
 				label: 'Try Again',
-				data: { agentHostResumeTurn: true },
+				data: { resumeTurn: true },
 				resend: true,
 				preserveRequestId: true,
 			}, {
 				label: 'Try Another Way',
-				data: { agentHostResumeTurn: true },
+				data: { resumeTurn: true },
 				resend: true,
 				preserveRequestId: true,
 			}],
@@ -115,8 +115,8 @@ suite('ChatErrorConfirmationContentPart', () => {
 			resendCall: {
 				requestId: request.id,
 				options: {
-					acceptedConfirmationData: [{ agentHostResumeTurn: true }],
-					agentId: 'agent-host-copilot',
+					acceptedConfirmationData: [{ resumeTurn: true }],
+					agentId: 'test-agent',
 					slashCommand: undefined,
 				},
 				preserveRequestId: true,
