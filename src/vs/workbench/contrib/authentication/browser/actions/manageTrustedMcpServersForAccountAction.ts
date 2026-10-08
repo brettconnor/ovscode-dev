@@ -117,20 +117,13 @@ class ManageTrustedMcpServersForAccountActionImpl {
 			return { ...server, lastUsed: usage.length > 0 ? Math.max(...usage.map(u => u.lastUsed)) : server.lastUsed };
 		};
 
-		// Agent-host MCP servers run inside the agent-host process and are not registered with the
-		// workbench `IMcpService`, so they are kept regardless of the registry and surfaced in their
-		// own per-host section(s) rather than being filtered out.
-		const agentHostServers = allowedMcpServers
-			.filter((server): server is AllowedMcpServer & { agentHost: NonNullable<AllowedMcpServer['agentHost']> } => !!server.agentHost)
-			.map(withLastUsed);
-
 		// Workbench MCP servers: filter out any not in the current list of servers, and use the
 		// server name from the MCP service.
 		const workbenchServers = allowedMcpServers
-			.filter(server => !server.agentHost && serverIdToLabel.has(server.id))
+			.filter(server => serverIdToLabel.has(server.id))
 			.map(server => withLastUsed({ ...server, name: serverIdToLabel.get(server.id)! }));
 
-		if (!agentHostServers.length && !workbenchServers.length) {
+		if (!workbenchServers.length) {
 			this._dialogService.info(localize('noTrustedMcpServers', "This account has not been used by any MCP servers."));
 			return [];
 		}
@@ -142,20 +135,6 @@ class ManageTrustedMcpServersForAccountActionImpl {
 		const items: Array<TrustedMcpServersQuickPickItem | IQuickPickSeparator> = [
 			...otherServers.sort(sortByLastUsed).map(this._toQuickPickItem)
 		];
-
-		// One section per distinct agent host, keyed by the stable authority
-		// (labels can collide across hosts) but displayed using the label.
-		const byAuthority = new Map<string, { label: string; servers: AllowedMcpServer[] }>();
-		for (const server of agentHostServers) {
-			const group = byAuthority.get(server.agentHost.authority) ?? { label: server.agentHost.label, servers: [] };
-			group.servers.push(server);
-			byAuthority.set(server.agentHost.authority, group);
-		}
-		const sortedGroups = [...byAuthority.values()].sort((a, b) => a.label.localeCompare(b.label));
-		for (const { label, servers } of sortedGroups) {
-			items.push({ type: 'separator', label: localize({ key: 'agentHostMcpServers', comment: ['The placeholder {0} is the name of an agent host, e.g. a remote machine or the local machine'] }, "MCP Servers in {0}", label) } satisfies IQuickPickSeparator);
-			items.push(...servers.sort(sortByLastUsed).map(this._toQuickPickItem));
-		}
 
 		items.push({ type: 'separator', label: localize('trustedMcpServers', "Trusted by Microsoft") } satisfies IQuickPickSeparator);
 		items.push(...trustedServers.sort(sortByLastUsed).map(this._toQuickPickItem));
