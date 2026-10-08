@@ -22,7 +22,6 @@ suite('aiCustomizationWelcomePagePromptLaunchers', () => {
 		let reviewedMigrations = false;
 		const callbacks: IWelcomePageCallbacks = {
 			selectSection() { },
-			selectSectionWithMarketplace() { },
 			closeEditor() { },
 			reviewMigrations: () => reviewedMigrations = true,
 			prefillChat() { },
@@ -76,7 +75,6 @@ suite('aiCustomizationWelcomePagePromptLaunchers', () => {
 			{ showGettingStartedBanner: false },
 			{
 				selectSection: section => selectedSections.push(section),
-				selectSectionWithMarketplace() { },
 				closeEditor() { },
 				reviewMigrations() { },
 				prefillChat() { },

@@ -6,16 +6,11 @@
 import * as DOM from '../../../../../base/browser/dom.js';
 import { Disposable, IDisposable, MutableDisposable } from '../../../../../base/common/lifecycle.js';
 import { ICommandService } from '../../../../../platform/commands/common/commands.js';
-import { IConfigurationChangeEvent, IConfigurationService } from '../../../../../platform/configuration/common/configuration.js';
-import { ICustomizationMarketplaceService } from '../../../../../platform/customizationMarketplace/common/customizationMarketplaceService.js';
-import { CustomizationMarketplaceConfiguration, getVisibleCustomizationMarketplaceSources } from '../../../../../platform/customizationMarketplace/common/customizationMarketplaceSources.js';
 import { IHoverService } from '../../../../../platform/hover/browser/hover.js';
-import { IInstantiationService } from '../../../../../platform/instantiation/common/instantiation.js';
 import { AICustomizationManagementSection } from './aiCustomizationManagement.js';
 import { CustomizationMigrationCategoryId } from './customizationMigrationCategories.js';
 import { IAICustomizationWorkspaceService, IWelcomePageFeatures } from '../../common/aiCustomizationWorkspaceService.js';
 import { URI } from '../../../../../base/common/uri.js';
-import { AICustomizationDiscoveryPage } from './aiCustomizationDiscoveryPage.js';
 import { PromptLaunchersAICustomizationWelcomePage } from './aiCustomizationWelcomePagePromptLaunchers.js';
 
 const $ = DOM.$;
@@ -34,7 +29,6 @@ export interface ICustomizationMigrationCategorySummary {
 
 export interface IWelcomePageCallbacks {
 	selectSection(section: AICustomizationManagementSection): void;
-	selectSectionWithMarketplace(section: AICustomizationManagementSection): void;
 	openInstalled?(section: AICustomizationManagementSection, uri: URI | undefined): void;
 	closeEditor(): void;
 	reviewMigrations(): void;
@@ -71,7 +65,6 @@ export class AICustomizationWelcomePage extends Disposable {
 	private migrationCategories: readonly ICustomizationMigrationCategorySummary[] = [];
 	private dimension: DOM.Dimension | undefined;
 	private visible = false;
-	private discoverEnabled: boolean;
 
 	readonly container: HTMLElement;
 
@@ -80,9 +73,6 @@ export class AICustomizationWelcomePage extends Disposable {
 		private readonly welcomePageFeatures: IWelcomePageFeatures | undefined,
 		private readonly callbacks: IWelcomePageCallbacks,
 		private harnessLabel: string,
-		@IInstantiationService private readonly instantiationService: IInstantiationService,
-		@IConfigurationService private readonly configurationService: IConfigurationService,
-		@ICustomizationMarketplaceService private readonly marketplaceService: ICustomizationMarketplaceService,
 		@ICommandService private readonly commandService: ICommandService,
 		@IAICustomizationWorkspaceService private readonly workspaceService: IAICustomizationWorkspaceService,
 		@IHoverService private readonly hoverService: IHoverService,
@@ -92,39 +82,11 @@ export class AICustomizationWelcomePage extends Disposable {
 		this.container = DOM.append(parent, $('.welcome-page-host'));
 		this.container.style.height = '100%';
 		this.container.style.overflow = 'hidden';
-		this.discoverEnabled = this.isAnySourceEnabled();
 		this.createImplementation();
-		this._register(this.configurationService.onDidChangeConfiguration(event => {
-			if (this.isMarketplaceConfigurationChange(event) && this.discoverEnabled !== this.isAnySourceEnabled()) {
-				const hadFocus = this.container.contains(DOM.getActiveElement());
-				this.implementation.clear();
-				DOM.clearNode(this.container);
-				this.discoverEnabled = this.isAnySourceEnabled();
-				this.createImplementation();
-				if (hadFocus) {
-					this.focus();
-				}
-			}
-		}));
-	}
-
-	get isDiscover(): boolean {
-		return this.isAnySourceEnabled();
-	}
-
-	isMarketplaceConfigurationChange(event: IConfigurationChangeEvent): boolean {
-		return event.affectsConfiguration(CustomizationMarketplaceConfiguration.MarketplaceEnabled)
-			|| this.marketplaceService.sources.some(source => event.affectsConfiguration(source.enablementSetting));
-	}
-
-	private isAnySourceEnabled(): boolean {
-		return getVisibleCustomizationMarketplaceSources(this.configurationService, this.marketplaceService.sources).length > 0;
 	}
 
 	private createImplementation(): void {
-		this.implementation.value = this.discoverEnabled
-			? this.instantiationService.createInstance(AICustomizationDiscoveryPage, this.container, this.welcomePageFeatures, this.callbacks, this.harnessLabel)
-			: new PromptLaunchersAICustomizationWelcomePage(this.container, this.welcomePageFeatures, this.callbacks, this.commandService, this.workspaceService, this.hoverService, this.harnessLabel);
+		this.implementation.value = new PromptLaunchersAICustomizationWelcomePage(this.container, this.welcomePageFeatures, this.callbacks, this.commandService, this.workspaceService, this.hoverService, this.harnessLabel);
 		this.implementation.value.rebuildCards(this.visibleSectionIds);
 		this.implementation.value.setMigrationCategories?.(this.migrationCategories);
 		this.implementation.value.setVisible?.(this.visible);

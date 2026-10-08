@@ -36,7 +36,6 @@ export const BUILTIN_STORAGE = AICustomizationSources.builtin;
  * Possible section IDs for the AI Customization Management Editor sidebar.
  */
 export const AICustomizationManagementSection = {
-	Marketplace: 'marketplace',
 	Agents: 'agents',
 	Skills: 'skills',
 	Instructions: 'instructions',
@@ -55,7 +54,6 @@ export type AICustomizationManagementSection = typeof AICustomizationManagementS
 /** Command IDs for the AI Customizations Management Editor. */
 export const AICustomizationManagementCommands = {
 	OpenEditor: 'aiCustomization.openManagementEditor',
-	OpenMarketplace: 'aiCustomization.openMarketplace',
 	CreateNewAgent: 'aiCustomization.createNewAgent',
 	CreateNewSkill: 'aiCustomization.createNewSkill',
 	CreateNewInstructions: 'aiCustomization.createNewInstructions',

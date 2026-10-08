@@ -8,9 +8,7 @@ import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/tes
 import { Registry } from '../../../../../platform/registry/common/platform.js';
 import { ConfigurationMigration, Extensions as WorkbenchConfigurationExtensions, IConfigurationMigrationRegistry } from '../../../../common/configuration.js';
 import { ChatConfiguration } from '../../common/constants.js';
-import { CustomizationMarketplaceConfiguration } from '../../../../../platform/customizationMarketplace/common/customizationMarketplaceSources.js';
 import { chatProgressConfigurationProperties } from '../../browser/chatProgressConfiguration.js';
-import { customizationMarketplaceConfigurationProperties } from '../../browser/aiCustomization/customizationMarketplaceConfiguration.js';
 
 const migrations = Registry.as<IConfigurationMigrationRegistry & { readonly migrations: readonly ConfigurationMigration[] }>(WorkbenchConfigurationExtensions.ConfigurationMigration).migrations;
 const legacyProgressVerbosityMigration = migrations.find(migration => migration.key === ChatConfiguration.PersistentProgressVerbosity);
@@ -19,16 +17,6 @@ const persistentProgressSetting = chatProgressConfigurationProperties[ChatConfig
 suite('Chat configuration', () => {
 
 	ensureNoDisposablesAreLeakedInTestSuite();
-
-	test('Marketplace visibility is default-off while the GitHub Feed is default-on', () => {
-		assert.deepStrictEqual({
-			marketplace: customizationMarketplaceConfigurationProperties[CustomizationMarketplaceConfiguration.MarketplaceEnabled].default,
-			publicFeed: customizationMarketplaceConfigurationProperties[CustomizationMarketplaceConfiguration.AgentFinderPublicFeedEnabled].default,
-		}, {
-			marketplace: false,
-			publicFeed: true,
-		});
-	});
 
 	test('defaults persistent progress to Draw as an experimental setting', () => {
 		assert.deepStrictEqual({
