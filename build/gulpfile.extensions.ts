@@ -281,7 +281,6 @@ task.task(compileNativeExtensionsBuildTask);
  */
 export const compileAllExtensionsBuildTask = task.define('compile-extensions-build', task.series(
 	cleanExtensionsBuildTask,
-	bundleMarketplaceExtensionsBuildTask,
 	task.define('bundle-extensions-build', () => ext.packageAllLocalExtensionsStream(false).pipe(gulp.dest('.build'))),
 ));
 task.task(compileAllExtensionsBuildTask);
