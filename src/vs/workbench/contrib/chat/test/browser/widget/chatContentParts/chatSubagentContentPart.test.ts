@@ -887,6 +887,7 @@ suite('ChatSubagentContentPart', () => {
 		});
 
 		test('should update displayed and accessible credit usage when the setting changes', () => {
+			const configService = instantiationService.get(IConfigurationService) as TestConfigurationService;
 			const setShowCreditUsage = (value: boolean) => {
 				configService.setUserConfiguration(ChatConfiguration.SubagentsShowCreditUsage, value);
 				configService.onDidChangeConfigurationEmitter.fire({
@@ -2558,6 +2559,7 @@ suite('ChatSubagentContentPart', () => {
 		});
 
 		test('finalizeTitle should update button icon to check', () => {
+			const configService = instantiationService.get(IConfigurationService) as TestConfigurationService;
 			// Enable the showCheckmarks setting so the check icon is visible
 			configService.setUserConfiguration(AccessibilityWorkbenchSettingId.ShowChatCheckmarks, true);
 
