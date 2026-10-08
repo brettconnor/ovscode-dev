@@ -37,13 +37,12 @@ import { DidUninstallWorkbenchMcpServerEvent, IWorkbenchLocalMcpServer, IWorkben
 import { IRemoteAgentService } from '../../../services/remote/common/remoteAgentService.js';
 import { mcpConfigurationSection } from '../common/mcpConfiguration.js';
 import { McpServerInstallData, McpServerInstallClassification } from '../common/mcpServer.js';
-import { HasInstalledMcpServersContext, IMcpConfigPath, IMcpService, IMcpWorkbenchService, IWorkbenchMcpServer, McpCollectionProvenance, McpCollectionSortOrder, McpServerEnablementState, McpServerInstallState, McpServerEnablementStatus, McpServersGalleryStatusContext } from '../common/mcpTypes.js';
+import { HasInstalledMcpServersContext, IMcpConfigPath, IMcpService, IMcpWorkbenchService, IWorkbenchMcpServer, McpCollectionProvenance, McpCollectionSortOrder, McpServerEnablementState, McpServerInstallState, McpServerEnablementStatus } from '../common/mcpTypes.js';
 import { McpResourceFormat, WORKSPACE_ROOT_MCP_COLLECTION_ID_PREFIX, WORKSPACE_ROOT_MCP_CONFIG_FILE } from '../../../../platform/mcp/common/mcpWorkspaceConfiguration.js';
 import { ContributionEnablementState } from '../../chat/common/enablement.js';
 import { McpServerEditorInput } from './mcpServerEditorInput.js';
 import { IMcpGalleryManifestService } from '../../../../platform/mcp/common/mcpGalleryManifest.js';
 import { IIterativePager, IIterativePage } from '../../../../base/common/paging.js';
-import { IExtensionsWorkbenchService } from '../../extensions/common/extensions.js';
 import { autorun } from '../../../../base/common/observable.js';
 import Severity from '../../../../base/common/severity.js';
 import { ThrottledDelayer } from '../../../../base/common/async.js';
@@ -327,6 +326,29 @@ export class McpWorkbenchService extends Disposable implements IMcpWorkbenchServ
 	private readonly _onReset = this._register(new Emitter<void>());
 	readonly onReset = this._onReset.event;
 
+	async queryGallery(options?: IQueryOptions, token?: CancellationToken): Promise<IIterativePager<IWorkbenchMcpServer>> {
+		if (!this.mcpGalleryService.isEnabled()) {
+			return {
+				firstPage: { items: [], hasMore: false },
+				getNextPage: async () => ({ items: [], hasMore: false })
+			};
+		}
+		const registryGeneration = this.registryGeneration;
+		const pager = await this.mcpGalleryService.query(options, token);
+		const mapPage = (page: IIterativePage<IGalleryMcpServer>): IIterativePage<IWorkbenchMcpServer> => ({
+			items: page.items.map(gallery => this.fromGallery(gallery, registryGeneration) ?? this.instantiationService.createInstance(McpWorkbenchServer, e => this.getInstallState(e), e => this.getRuntimeStatus(e), undefined, gallery, undefined)),
+			hasMore: page.hasMore
+		});
+
+		return {
+			firstPage: mapPage(pager.firstPage),
+			getNextPage: async (ct) => {
+				const nextPage = await pager.getNextPage(ct);
+				return mapPage(nextPage);
+			}
+		};
+	}
+
 	constructor(
 		@IMcpGalleryManifestService mcpGalleryManifestService: IMcpGalleryManifestService,
 		@IMcpGalleryService private readonly mcpGalleryService: IMcpGalleryService,
@@ -343,7 +365,6 @@ export class McpWorkbenchService extends Disposable implements IMcpWorkbenchServ
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
 		@ITelemetryService private readonly telemetryService: ITelemetryService,
 		@ILogService private readonly logService: ILogService,
-		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
 		@IAllowedMcpServersService private readonly allowedMcpServersService: IAllowedMcpServersService,
 		@IMcpService private readonly mcpService: IMcpService,
 		@IURLService urlService: IURLService,
@@ -548,29 +569,6 @@ export class McpWorkbenchService extends Disposable implements IMcpWorkbenchServ
 				this._onChange.fire(mcpServer);
 			}
 		}
-	}
-
-	async queryGallery(options?: IQueryOptions, token?: CancellationToken): Promise<IIterativePager<IWorkbenchMcpServer>> {
-		if (!this.mcpGalleryService.isEnabled()) {
-			return {
-				firstPage: { items: [], hasMore: false },
-				getNextPage: async () => ({ items: [], hasMore: false })
-			};
-		}
-		const registryGeneration = this.registryGeneration;
-		const pager = await this.mcpGalleryService.query(options, token);
-		const mapPage = (page: IIterativePage<IGalleryMcpServer>): IIterativePage<IWorkbenchMcpServer> => ({
-			items: page.items.map(gallery => this.fromGallery(gallery, registryGeneration) ?? this.instantiationService.createInstance(McpWorkbenchServer, e => this.getInstallState(e), e => this.getRuntimeStatus(e), undefined, gallery, undefined)),
-			hasMore: page.hasMore
-		});
-
-		return {
-			firstPage: mapPage(pager.firstPage),
-			getNextPage: async (ct) => {
-				const nextPage = await pager.getNextPage(ct);
-				return mapPage(nextPage);
-			}
-		};
 	}
 
 	async queryLocal(): Promise<IWorkbenchMcpServer[]> {
@@ -1006,10 +1004,6 @@ export class McpWorkbenchService extends Disposable implements IMcpWorkbenchServ
 		return true;
 	}
 
-	async openSearch(searchValue: string, preserveFocus?: boolean): Promise<void> {
-		await this.extensionsWorkbenchService.openSearch(`@mcp ${searchValue}`, preserveFocus);
-	}
-
 	async open(extension: IWorkbenchMcpServer, options?: IEditorOptions): Promise<void> {
 		const useModal = this.configurationService.getValue<boolean>('extensions.allowOpenInModalEditor');
 		await this.editorService.openEditor(this.instantiationService.createInstance(McpServerEditorInput, extension), options, useModal ? MODAL_GROUP : ACTIVE_GROUP);
@@ -1115,14 +1109,9 @@ export class MCPContextsInitialisation extends Disposable implements IWorkbenchC
 
 	constructor(
 		@IMcpWorkbenchService mcpWorkbenchService: IMcpWorkbenchService,
-		@IMcpGalleryManifestService mcpGalleryManifestService: IMcpGalleryManifestService,
 		@IContextKeyService contextKeyService: IContextKeyService,
 	) {
 		super();
-
-		const mcpServersGalleryStatus = McpServersGalleryStatusContext.bindTo(contextKeyService);
-		mcpServersGalleryStatus.set(mcpGalleryManifestService.mcpGalleryManifestStatus);
-		this._register(mcpGalleryManifestService.onDidChangeMcpGalleryManifestStatus(status => mcpServersGalleryStatus.set(status)));
 
 		const hasInstalledMcpServersContextKey = HasInstalledMcpServersContext.bindTo(contextKeyService);
 		mcpWorkbenchService.queryLocal().finally(() => {

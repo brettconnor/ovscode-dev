@@ -57,7 +57,6 @@ import { ChatAgentLocation, ChatModeKind } from '../../chat/common/constants.js'
 import { ContributionEnablementState, isContributionDisabled } from '../../chat/common/enablement.js';
 import { ILanguageModelsService } from '../../chat/common/languageModels.js';
 import { ILanguageModelToolsService } from '../../chat/common/tools/languageModelToolsService.js';
-import { extensionsFilterSubMenu, IExtensionsWorkbenchService, VIEWLET_ID } from '../../extensions/common/extensions.js';
 import { TEXT_FILE_EDITOR_ID } from '../../files/common/files.js';
 import { McpCommandIds } from '../common/mcpCommandIds.js';
 import { mcpWorkspaceRootConfig } from '../common/mcpConfiguration.js';
@@ -1015,42 +1014,6 @@ export class StopServer extends Action2 {
 		await s?.stop();
 	}
 }
-
-export class McpBrowseCommand extends Action2 {
-	constructor() {
-		super({
-			id: McpCommandIds.Browse,
-			title: localize2('mcp.command.browse', "MCP Servers"),
-			tooltip: localize2('mcp.command.browse.tooltip', "Browse MCP Servers"),
-			category,
-			icon: Codicon.search,
-			precondition: ContextKeyExpr.and(ChatContextKeys.Setup.hidden.negate(), ChatContextKeys.Setup.disabledInWorkspace.negate()),
-			menu: [{
-				id: extensionsFilterSubMenu,
-				group: '1_predefined',
-				order: 1,
-				when: ContextKeyExpr.and(ChatContextKeys.Setup.hidden.negate(), ChatContextKeys.Setup.disabledInWorkspace.negate()),
-			}, {
-				id: MenuId.ViewTitle,
-				when: ContextKeyExpr.and(ContextKeyExpr.equals('view', InstalledMcpServersViewId), ChatContextKeys.Setup.hidden.negate(), ChatContextKeys.Setup.disabledInWorkspace.negate()),
-				group: 'navigation',
-			}],
-		});
-	}
-
-	async run(accessor: ServicesAccessor) {
-		accessor.get(IExtensionsWorkbenchService).openSearch('@mcp ');
-	}
-}
-
-MenuRegistry.appendMenuItem(MenuId.CommandPalette, {
-	command: {
-		id: McpCommandIds.Browse,
-		title: localize2('mcp.command.browse.mcp', "Browse MCP Servers"),
-		category,
-		precondition: ContextKeyExpr.and(ChatContextKeys.Setup.hidden.negate(), ChatContextKeys.Setup.disabledInWorkspace.negate()),
-	},
-});
 
 export class ShowInstalledMcpServersCommand extends Action2 {
 	constructor() {

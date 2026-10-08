@@ -168,8 +168,8 @@ suite('ExtensionsViews Tests', () => {
 		assert.strictEqual(ExtensionsListView.isLocalExtensionsQuery('@updates'), false);
 		assert.strictEqual(ExtensionsListView.isLocalExtensionsQuery('@agentPlugins @installed'), false);
 		assert.strictEqual(ExtensionsListView.isLocalExtensionsQuery('@agentPlugins @installed searchText'), false);
-		assert.strictEqual(ExtensionsListView.isLocalExtensionsQuery('@mcp @installed'), false);
-		assert.strictEqual(ExtensionsListView.isLocalExtensionsQuery('@mcp @installed searchText'), false);
+		assert.strictEqual(ExtensionsListView.isLocalExtensionsQuery('@mcp @installed'), true);
+		assert.strictEqual(ExtensionsListView.isLocalExtensionsQuery('@mcp @installed searchText'), true);
 	});
 
 	test('Test installed query results', async () => {

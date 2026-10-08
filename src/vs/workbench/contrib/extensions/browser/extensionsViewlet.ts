@@ -19,7 +19,7 @@ import { IOpenerService } from '../../../../platform/opener/common/opener.js';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
 import { IInstantiationService, ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { IExtensionService } from '../../../services/extensions/common/extensions.js';
-import { IExtensionsWorkbenchService, IExtensionsViewPaneContainer, VIEWLET_ID, CloseExtensionDetailsOnViewChangeKey, extensionsSearchActionsMenu, AutoRestartConfigurationKey, ExtensionRuntimeActionType, SearchMcpServersContext, SearchAgentPluginsContext, DefaultViewsContext } from '../common/extensions.js';
+import { IExtensionsWorkbenchService, IExtensionsViewPaneContainer, VIEWLET_ID, CloseExtensionDetailsOnViewChangeKey, extensionsSearchActionsMenu, AutoRestartConfigurationKey, ExtensionRuntimeActionType, SearchAgentPluginsContext, DefaultViewsContext } from '../common/extensions.js';
 import { InstallLocalExtensionsInRemoteAction, InstallRemoteExtensionsInLocalAction } from './extensionsActions.js';
 import { IExtensionManagementService, ILocalExtension } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IExtensionManagementServerService, IExtensionManagementServer } from '../../../services/extensionManagement/common/extensionManagement.js';
@@ -397,7 +397,6 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 	private readonly extensionsSearchValueContextKey: IContextKey<string>;
 	private readonly defaultViewsContextKey: IContextKey<boolean>;
 	private readonly sortByContextKey: IContextKey<string>;
-	private readonly searchMcpServersContextKey: IContextKey<boolean>;
 	private readonly searchAgentPluginsContextKey: IContextKey<boolean>;
 	private readonly searchHasTextContextKey: IContextKey<boolean>;
 	private readonly sortByUpdateDateContextKey: IContextKey<boolean>;
@@ -447,7 +446,6 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 		this.extensionsSearchValueContextKey = ExtensionsSearchValueContext.bindTo(contextKeyService);
 		this.defaultViewsContextKey = DefaultViewsContext.bindTo(contextKeyService);
 		this.sortByContextKey = ExtensionsSortByContext.bindTo(contextKeyService);
-		this.searchMcpServersContextKey = SearchMcpServersContext.bindTo(contextKeyService);
 		this.searchAgentPluginsContextKey = SearchAgentPluginsContext.bindTo(contextKeyService);
 		this.searchHasTextContextKey = SearchHasTextContext.bindTo(contextKeyService);
 		this.sortByUpdateDateContextKey = SortByUpdateDateContext.bindTo(contextKeyService);
@@ -708,7 +706,6 @@ export class ExtensionsViewPaneContainer extends ViewPaneContainer<IExtensionsVi
 			this.searchDeprecatedExtensionsContextKey.set(ExtensionsListView.isSearchDeprecatedExtensionsQuery(value));
 			this.searchRestartRequiredExtensionsContextKey.set(ExtensionsListView.isRestartRequiredQuery(value));
 			this.builtInExtensionsContextKey.set(ExtensionsListView.isBuiltInExtensionsQuery(value));
-			this.searchMcpServersContextKey.set(!!value && /@mcp\s?.*/i.test(value));
 			this.searchAgentPluginsContextKey.set(!!value && /@agentPlugins\s?.*/i.test(value));
 			this.sortByUpdateDateContextKey.set(ExtensionsListView.isSortUpdateDateQuery(value));
 			this.defaultViewsContextKey.set(!value || ExtensionsListView.isSortInstalledExtensionsQuery(value));

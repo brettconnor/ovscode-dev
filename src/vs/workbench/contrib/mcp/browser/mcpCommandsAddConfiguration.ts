@@ -31,7 +31,6 @@ import { IEditorService } from '../../../services/editor/common/editorService.js
 import { IWorkbenchEnvironmentService } from '../../../services/environment/common/environmentService.js';
 import { IWorkbenchLocalMcpServer, IWorkbenchMcpManagementService } from '../../../services/mcp/common/mcpWorkbenchManagementService.js';
 import { IMcpWorkspaceInstallTargetService } from '../../../services/mcp/common/mcpWorkspaceInstallTargetService.js';
-import { McpCommandIds } from '../common/mcpCommandIds.js';
 import { allDiscoverySources, ExternalDiscoverySource, mcpDiscoverySection, mcpStdioServerSchema, mcpWorkspaceRootConfig } from '../common/mcpConfiguration.js';
 import { IMcpRegistry } from '../common/mcpRegistryTypes.js';
 import { IMcpService, McpConnectionState } from '../common/mcpTypes.js';
@@ -154,7 +153,7 @@ export class McpAddConfigurationCommand {
 	) { }
 
 	private async getServerType(): Promise<AddConfigurationType | undefined> {
-		type TItem = { kind: AddConfigurationType | 'browse' | 'discovery' } & IQuickPickItem;
+		type TItem = { kind: AddConfigurationType | 'discovery' } & IQuickPickItem;
 		const items: QuickPickInput<TItem>[] = [
 			{ kind: AddConfigurationType.Stdio, label: localize('mcp.serverType.command', "Command (stdio)"), description: localize('mcp.serverType.command.description', "Run a local command that implements the MCP protocol") },
 			{ kind: AddConfigurationType.HTTP, label: localize('mcp.serverType.http', "HTTP (HTTP or Server-Sent Events)"), description: localize('mcp.serverType.http.description', "Connect to a remote HTTP server that implements the MCP protocol") }
@@ -200,19 +199,9 @@ export class McpAddConfigurationCommand {
 			});
 		}
 
-		items.push({
-			kind: 'browse',
-			label: localize('mcp.servers.browse', "Browse MCP Servers..."),
-		});
-
 		const result = await this._quickInputService.pick<TItem>(items, {
 			placeHolder: localize('mcp.serverType.placeholder', "Choose the type of MCP server to add"),
 		});
-
-		if (result?.kind === 'browse') {
-			this._commandService.executeCommand(McpCommandIds.Browse);
-			return undefined;
-		}
 
 		if (result?.kind === 'discovery') {
 			this._commandService.executeCommand('workbench.action.openSettings', mcpDiscoverySection);
