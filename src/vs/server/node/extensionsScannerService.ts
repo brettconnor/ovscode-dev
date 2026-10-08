@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { joinPath } from '../../base/common/resources.js';
 import { URI } from '../../base/common/uri.js';
 import { INativeEnvironmentService } from '../../platform/environment/common/environment.js';
 import { IExtensionsProfileScannerService } from '../../platform/extensionManagement/common/extensionsProfileScannerService.js';
@@ -31,7 +30,6 @@ export class ExtensionsScannerService extends AbstractExtensionsScannerService i
 		super(
 			URI.file(nativeEnvironmentService.builtinExtensionsPath),
 			URI.file(nativeEnvironmentService.extensionsPath),
-			joinPath(nativeEnvironmentService.userHome, '.vscode-oss-dev', 'extensions', 'control.json'),
 			userDataProfilesService.defaultProfile,
 			userDataProfilesService, extensionsProfileScannerService, fileService, logService, nativeEnvironmentService, productService, uriIdentityService, instantiationService);
 	}

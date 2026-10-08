@@ -1029,7 +1029,6 @@ export class NativeExtensionsScannerService extends AbstractExtensionsScannerSer
 	constructor(
 		systemExtensionsLocation: URI,
 		userExtensionsLocation: URI,
-		userHome: URI,
 		currentProfile: IUserDataProfile,
 		userDataProfilesService: IUserDataProfilesService,
 		extensionsProfileScannerService: IExtensionsProfileScannerService,
@@ -1043,7 +1042,6 @@ export class NativeExtensionsScannerService extends AbstractExtensionsScannerSer
 		super(
 			systemExtensionsLocation,
 			userExtensionsLocation,
-			joinPath(userHome, '.vscode-oss-dev', 'extensions', 'control.json'),
 			currentProfile,
 			userDataProfilesService, extensionsProfileScannerService, fileService, logService, environmentService, productService, uriIdentityService, instantiationService);
 		this.translationsPromise = (async () => {

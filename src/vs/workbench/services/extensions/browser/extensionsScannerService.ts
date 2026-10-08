@@ -31,7 +31,6 @@ export class ExtensionsScannerService extends AbstractExtensionsScannerService i
 		super(
 			uriIdentityService.extUri.joinPath(environmentService.userRoamingDataHome, 'systemExtensions'),
 			uriIdentityService.extUri.joinPath(environmentService.userRoamingDataHome, 'userExtensions'),
-			uriIdentityService.extUri.joinPath(environmentService.userRoamingDataHome, 'userExtensions', 'control.json'),
 			userDataProfileService.currentProfile,
 			userDataProfilesService, extensionsProfileScannerService, fileService, logService, environmentService, productService, uriIdentityService, instantiationService);
 	}
