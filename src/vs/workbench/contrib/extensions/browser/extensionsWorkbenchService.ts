@@ -8,7 +8,7 @@ import * as semver from '../../../../base/common/semver/semver.js';
 import { Event, Emitter } from '../../../../base/common/event.js';
 import { index } from '../../../../base/common/arrays.js';
 import { CancelablePromise, createCancelablePromise } from '../../../../base/common/async.js';
-import { CancellationError, isCancellationError } from '../../../../base/common/errors.js';
+import { CancellationError } from '../../../../base/common/errors.js';
 import { Disposable, MutableDisposable } from '../../../../base/common/lifecycle.js';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
 import {
@@ -48,7 +48,6 @@ import { IExtensionService, IExtensionsStatus as IExtensionRuntimeStatus, toExte
 import { TelemetryTrustedValue } from '../../../../platform/telemetry/common/telemetryUtils.js';
 import { ILifecycleService, LifecyclePhase } from '../../../services/lifecycle/common/lifecycle.js';
 import { IUserDataProfileService } from '../../../services/userDataProfile/common/userDataProfile.js';
-import { mainWindow } from '../../../../base/browser/window.js';
 import { IDialogService, IPromptButton } from '../../../../platform/dialogs/common/dialogs.js';
 import { IUpdateService, StateType } from '../../../../platform/update/common/update.js';
 import { isEngineValid } from '../../../../platform/extensions/common/extensionValidator.js';
@@ -2387,20 +2386,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 				}
 			}
 		});
-	}
-
-	private onError(err: any): void {
-		if (isCancellationError(err)) {
-			return;
-		}
-
-		const message = err && err.message || '';
-
-		if (/getaddrinfo ENOTFOUND|getaddrinfo ENOENT|connect EACCES|connect ECONNREFUSED/.test(message)) {
-			return;
-		}
-
-		this.notificationService.error(err);
 	}
 
 	private getDismissedNotifications(): string[] {
