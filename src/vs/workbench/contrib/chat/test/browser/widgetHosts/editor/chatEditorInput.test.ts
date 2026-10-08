@@ -55,7 +55,6 @@ suite('ChatEditorInput', () => {
 			upcastPartial<IDialogService>({ prompt }),
 			upcastPartial<IConfigurationService>({}),
 			upcastPartial<IInstantiationService>({}),
-			upcastPartial<IStorageService>({}),
 			new NullLogService(),
 			new TestContextService(),
 		));
@@ -141,7 +140,6 @@ suite('ChatEditorInput', () => {
 			{} as IDialogService,
 			{} as IConfigurationService,
 			{} as IInstantiationService,
-			{} as IStorageService,
 			new NullLogService(),
 			new TestContextService(),
 		);
@@ -197,7 +195,6 @@ suite('ChatEditorInput', () => {
 			{} as IDialogService,
 			{} as IConfigurationService,
 			{} as IInstantiationService,
-			{} as IStorageService,
 			new NullLogService(),
 			new TestContextService(),
 		);
@@ -251,7 +248,6 @@ suite('ChatEditorInput', () => {
 			{} as IDialogService,
 			{} as IConfigurationService,
 			{} as IInstantiationService,
-			{} as IStorageService,
 			new NullLogService(),
 			new TestContextService(),
 		);
