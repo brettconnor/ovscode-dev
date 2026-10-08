@@ -135,9 +135,7 @@ function getElevatedWarningCopy(level: ChatPermissionLevel, defaultSettingKey: s
  * windows so a dismissal in one applies to the other.
  *
  * `options.defaultSettingKey` controls which "make this the default" setting
- * the dialog links to — local chat uses `chat.permissions.default` (the
- * default), while agent-host sessions pass
- * `chat.defaultConfiguration`.
+ * the dialog links to. By default it uses `chat.permissions.default`.
  */
 export async function maybeConfirmElevatedPermissionLevel(
 	level: ChatPermissionLevel,

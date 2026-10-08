@@ -36,15 +36,12 @@ export interface IPermissionPickerDelegate {
 	readonly setPermissionLevel: (level: ChatPermissionLevel) => void;
 	/**
 	 * The ordered set of permission levels the picker should offer. When
-	 * omitted, the built-in Default/Bypass/Autopilot set is used. Agent-host
-	 * sessions override this to Default/Assisted/Bypass (Autopilot lives on the
-	 * orthogonal mode axis there).
+	 * omitted, the built-in Default/Bypass/Autopilot set is used.
 	 */
 	readonly availableLevels?: readonly ChatPermissionLevel[];
 	/**
 	 * The setting id the elevated-level warning dialog links to as "make this
-	 * the default". Defaults to `chat.permissions.default`; agent-host sessions
-	 * pass `chat.defaultConfiguration`.
+	 * the default". Defaults to `chat.permissions.default`.
 	 */
 	readonly defaultSettingKey?: string;
 	readonly getPermissionLevelHover?: (level: ChatPermissionLevel, meta: IPermissionLevelMeta) => string | undefined;

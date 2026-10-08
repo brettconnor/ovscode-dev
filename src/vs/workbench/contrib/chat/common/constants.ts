@@ -100,8 +100,6 @@ export enum ChatConfiguration {
 	AutopilotAdvancedEnabled = 'chat.autopilot.advanced.enabled',
 	DefaultPermissionLevel = 'chat.permissions.default',
 	PermissionsSandboxToggleEnabled = 'chat.experimental.permissionsSandboxToggle.enabled',
-	ExperimentalModePermissionsPicker = 'chat.experimentalModePermissionsPicker',
-	DefaultConfiguration = 'chat.defaultConfiguration',
 	DefaultModel = 'chat.defaultModel',
 	ImageCarouselEnabled = 'imageCarousel.chat.enabled',
 	ArtifactsEnabled = 'chat.artifacts.enabled',
@@ -112,7 +110,6 @@ export enum ChatConfiguration {
 	ToolRiskAssessmentEnabled = 'chat.tools.riskAssessment.enabled',
 	ToolRiskAssessmentModel = 'chat.tools.riskAssessment.model',
 	DefaultNewSessionMode = 'chat.newSession.defaultMode',
-	AgentHostDebugLogsDefaultExportLocation = 'chat.agentHost.debugLogs.defaultExportLocation',
 	EditorPreferCopilotHarness = 'chat.editor.preferCopilotHarness',
 	DefaultToCopilotHarness = 'chat.defaultToCopilotHarness',
 	EditorLocalAgentEnabled = 'chat.editor.localAgent.enabled',
@@ -125,7 +122,6 @@ export enum ChatConfiguration {
 	RichLinks = 'chat.experimental.richLinks.enabled',
 
 	CollectInstructionsInExtension = 'chat.experimental.collectInstructionsInExtension',
-	ImplicitContextActiveEditor = 'chat.implicitContext.includeActiveEditor',
 }
 
 export const enum ChatClosedPromoNotification {
@@ -162,44 +158,6 @@ const chatPermissionLevels = new Set<string>(Object.values(ChatPermissionLevel))
 
 export function isChatPermissionLevel(level: unknown | undefined): level is ChatPermissionLevel {
 	return chatPermissionLevels.has(level as string);
-}
-
-/**
- * Shape of the {@link ChatConfiguration.DefaultConfiguration}
- * object setting. Controls the starting `mode` and `approvals` for new agent-host
- * sessions (such as Copilot CLI). All properties are optional — a missing property
- * falls back to the per-axis default.
- */
-export type AgentSessionMode = 'interactive' | 'plan' | 'autopilot';
-
-/** Approval values exposed by the `chat.defaultConfiguration` setting. */
-export enum ChatDefaultPermissionLevel {
-	Manual = 'manual',
-	Assisted = 'assisted',
-	AllowAll = 'allowAll',
-}
-
-export interface IChatDefaultConfiguration {
-	/** Starting agent mode: `interactive` / `plan` / `autopilot`. */
-	readonly mode?: AgentSessionMode;
-	/** Starting approval level: `manual` / `assisted` / `allowAll`. */
-	readonly approvals?: ChatDefaultPermissionLevel;
-}
-
-/** Maps a default-configuration value to the internal Agent Host permission level. */
-export function getChatPermissionLevelFromDefaultConfiguration(value: unknown): ChatPermissionLevel | undefined {
-	switch (value) {
-		case ChatDefaultPermissionLevel.Manual:
-		case ChatPermissionLevel.Default:
-			return ChatPermissionLevel.Default;
-		case ChatDefaultPermissionLevel.Assisted:
-			return ChatPermissionLevel.Assisted;
-		case ChatDefaultPermissionLevel.AllowAll:
-		case ChatPermissionLevel.AutoApprove:
-			return ChatPermissionLevel.AutoApprove;
-		default:
-			return undefined;
-	}
 }
 
 /**

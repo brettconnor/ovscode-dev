@@ -51,7 +51,7 @@ import { IChatService } from '../common/chatService/chatService.js';
 import { ChatRequestOriginService, IChatRequestOriginService } from '../common/chatRequestOrigin.js';
 import { ChatService } from '../common/chatService/chatServiceImpl.js';
 import { ChatSideChatService, IChatSideChatService } from '../common/chatSideChatService.js';
-import { BYOKUtilityModelDefault, ChatAIDisabledSettingId, ChatAgentLocation, ChatConfiguration, ChatClosedPromoNotification, ChatDefaultPermissionLevel, ChatNotificationMode, ChatPermissionLevel } from '../common/constants.js';
+import { BYOKUtilityModelDefault, ChatAIDisabledSettingId, ChatAgentLocation, ChatConfiguration, ChatClosedPromoNotification, ChatNotificationMode, ChatPermissionLevel } from '../common/constants.js';
 import { chatProgressConfigurationProperties } from './chatProgressConfiguration.js';
 import { CodeMapperService, ICodeMapperService } from '../common/editing/chatCodeMapperService.js';
 import { IChatEditingService } from '../common/editing/chatEditingService.js';
@@ -233,25 +233,12 @@ configurationRegistry.registerConfiguration({
 	title: nls.localize('interactiveSessionConfigurationTitle', "Chat"),
 	type: 'object',
 	properties: {
-		'chat.experimentalSessionsWindowOverride': {
-			type: 'boolean',
-			description: nls.localize('chat.experimentalSessionsWindowOverride', "When true, enables sessions-window-specific behavior for extensions."),
-			default: false,
-			tags: ['experimental'],
-			agentsWindow: { default: true },
-		},
 		'chat.experimentalModelPicker': {
 			type: 'boolean',
 			description: nls.localize('chat.experimentalModelPicker', "When enabled, the model picker uses provider tabs and a model details page for information and configuration. Open details from a model's information button or the thinking effort and context readout in the chat input."),
 			default: false,
 			tags: ['experimental'],
 			experiment: { mode: 'auto' },
-		},
-		[ChatConfiguration.ExperimentalModePermissionsPicker]: {
-			type: 'boolean',
-			description: nls.localize('chat.experimentalModePermissionsPicker', "Shows mode and permissions in a combined picker with expandable permission choices for Copilot Agent Host sessions."),
-			default: product.quality !== 'stable',
-			tags: ['experimental'],
 		},
 		'chat.fontSize': {
 			type: 'number',
@@ -418,13 +405,6 @@ configurationRegistry.registerConfiguration({
 			type: 'boolean',
 			markdownDescription: nls.localize('chat.implicitContext.suggestedContext', "Controls whether the new implicit context flow is shown. In Ask and Edit modes, the context will automatically be included. When using an agent, context will be suggested as an attachment. Selections are always included as context."),
 			default: true,
-			agentsWindow: { default: false },
-		},
-		'chat.implicitContext.includeActiveEditor': {
-			type: 'boolean',
-			markdownDescription: nls.localize('chat.implicitContext.includeActiveEditor', "When enabled, the active editor is automatically forwarded as context, even when it would otherwise only be suggested. Selections and explicitly attached files are always included regardless of this setting.\n\nNote: this setting currently only applies to Agent Host sessions (such as Copilot)."),
-			default: true,
-			tags: ['experimental'],
 			agentsWindow: { default: false },
 		},
 		'chat.editing.autoAcceptDelay': {
@@ -631,36 +611,6 @@ configurationRegistry.registerConfiguration({
 			}
 		},
 
-		[ChatConfiguration.DefaultConfiguration]: {
-			type: 'object',
-			additionalProperties: false,
-			properties: {
-				mode: {
-					type: 'string',
-					enum: ['interactive', 'plan', 'autopilot'],
-					enumDescriptions: [
-						nls.localize('chat.defaultConfiguration.mode.interactive', "Interactive — step-by-step collaboration."),
-						nls.localize('chat.defaultConfiguration.mode.plan', "Plan — plan first, execute when ready."),
-						nls.localize('chat.defaultConfiguration.mode.autopilot', "Autopilot — autonomously iterate from start to finish."),
-					],
-					default: 'interactive',
-					description: nls.localize('chat.defaultConfiguration.mode.description', "The starting mode for new agent sessions."),
-				},
-				approvals: {
-					type: 'string',
-					enum: [ChatDefaultPermissionLevel.Manual, ChatDefaultPermissionLevel.Assisted, ChatDefaultPermissionLevel.AllowAll],
-					enumDescriptions: [
-						nls.localize('chat.defaultConfiguration.approvals.manual', "Manual permissions — asks when approval settings don't apply."),
-						nls.localize('chat.defaultConfiguration.approvals.assisted', "Assisted permissions — evaluates risk before running tools."),
-						nls.localize('chat.defaultConfiguration.approvals.allowAll', "Allow All — runs tool calls without asking."),
-					],
-					default: ChatDefaultPermissionLevel.Manual,
-					description: nls.localize('chat.defaultConfiguration.approvals.description', "The starting approval behavior for new agent sessions. If enterprise policy disables auto approval, new sessions use Manual permissions."),
-				},
-			},
-			default: { mode: 'interactive', approvals: ChatDefaultPermissionLevel.Manual },
-			markdownDescription: nls.localize('chat.defaultConfiguration.settingDescription', "Controls the default configuration for new agent sessions (such as Copilot). You can still change the mode and approval behavior per session, and each session remembers what was used."),
-		},
 		[ChatConfiguration.DefaultModel]: {
 			type: 'string',
 			default: '',
@@ -2140,45 +2090,12 @@ Registry.as<IEditorPaneRegistry>(EditorExtensions.EditorPane).registerEditorPane
 		new SyncDescriptor(AgentPluginEditorInput)
 	]
 );
-function isStringKeyedObject(value: unknown): value is Record<string, unknown> {
-	return !!value && typeof value === 'object' && !Array.isArray(value);
-}
-
-function migrateChatDefaultConfiguration(value: unknown): Record<string, unknown> | undefined {
-	if (!isStringKeyedObject(value)) {
-		return undefined;
-	}
-	let approvals: ChatDefaultPermissionLevel;
-	switch (value.approvals) {
-		case ChatPermissionLevel.Default:
-			approvals = ChatDefaultPermissionLevel.Manual;
-			break;
-		case ChatPermissionLevel.AutoApprove:
-			approvals = ChatDefaultPermissionLevel.AllowAll;
-			break;
-		default:
-			return undefined;
-	}
-	return { ...value, approvals };
-}
-
 /** Maps the retired boolean form of the Agent Merge merge setting onto its enum. */
 function migrateAgentMergeMergePullRequest(value: unknown): unknown {
 	return typeof value === 'boolean' ? (value ? 'always' : 'never') : value;
 }
 
 Registry.as<IConfigurationMigrationRegistry>(Extensions.ConfigurationMigration).registerConfigurationMigrations([
-	{
-		key: 'chat.agentSessions.defaultConfiguration',
-		migrateFn: (value, _accessor) => ([
-			['chat.agentSessions.defaultConfiguration', { value: undefined }],
-			[ChatConfiguration.DefaultConfiguration, { value: migrateChatDefaultConfiguration(value) ?? value }]
-		])
-	},
-	{
-		key: ChatConfiguration.DefaultConfiguration,
-		migrateFn: value => ({ value: migrateChatDefaultConfiguration(value) ?? value })
-	},
 	{
 		key: 'chat.experimental.autoApprovals.enabled',
 		migrateFn: () => ({ value: undefined })
