@@ -14,14 +14,13 @@ import { FileOperationError, FileOperationResult, IFileService } from '../../../
 import { Queue } from '../../../../base/common/async.js';
 import { VSBuffer } from '../../../../base/common/buffer.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
-import { CancellationToken } from '../../../../base/common/cancellation.js';
-import { IExtensionGalleryService, IExtensionInfo, IGalleryExtension, IGalleryMetadata, Metadata } from '../../../../platform/extensionManagement/common/extensionManagement.js';
-import { areSameExtensions, getGalleryExtensionId, getExtensionId, isMalicious } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
+import { IGalleryExtension, IGalleryMetadata, Metadata } from '../../../../platform/extensionManagement/common/extensionManagement.js';
+import { areSameExtensions, getGalleryExtensionId } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { ITranslations, localizeManifest } from '../../../../platform/extensionManagement/common/extensionNls.js';
 import { localize, localize2 } from '../../../../nls.js';
 import * as semver from '../../../../base/common/semver/semver.js';
-import { isString, isUndefined } from '../../../../base/common/types.js';
+import { isUndefined } from '../../../../base/common/types.js';
 import { getErrorMessage } from '../../../../base/common/errors.js';
 import { ResourceMap } from '../../../../base/common/map.js';
 import { IExtensionManifestPropertiesService } from '../../extensions/common/extensionManifestPropertiesService.js';
@@ -32,10 +31,7 @@ import { IsWebContext } from '../../../../platform/contextkey/common/contextkeys
 import { IEditorService } from '../../editor/common/editorService.js';
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { basename } from '../../../../base/common/path.js';
-import { IExtensionStorageService } from '../../../../platform/extensionManagement/common/extensionStorage.js';
-import { isNonEmptyArray } from '../../../../base/common/arrays.js';
 import { ILifecycleService, LifecyclePhase } from '../../lifecycle/common/lifecycle.js';
-import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { validateExtensionManifest } from '../../../../platform/extensions/common/extensionValidator.js';
 import Severity from '../../../../base/common/severity.js';
@@ -43,16 +39,6 @@ import { IStringDictionary } from '../../../../base/common/collections.js';
 import { IUserDataProfileService } from '../../userDataProfile/common/userDataProfile.js';
 import { IUserDataProfilesService } from '../../../../platform/userDataProfile/common/userDataProfile.js';
 import { IUriIdentityService } from '../../../../platform/uriIdentity/common/uriIdentity.js';
-
-type GalleryExtensionInfo = { readonly id: string; preRelease?: boolean; migrateStorageFrom?: string };
-type ExtensionInfo = { readonly id: string; preRelease: boolean };
-
-function isGalleryExtensionInfo(obj: unknown): obj is GalleryExtensionInfo {
-	const galleryExtensionInfo = obj as GalleryExtensionInfo | undefined;
-	return typeof galleryExtensionInfo?.id === 'string'
-		&& (galleryExtensionInfo.preRelease === undefined || typeof galleryExtensionInfo.preRelease === 'boolean')
-		&& (galleryExtensionInfo.migrateStorageFrom === undefined || typeof galleryExtensionInfo.migrateStorageFrom === 'string');
-}
 
 function isUriComponents(obj: unknown): obj is UriComponents {
 	if (!obj) {
@@ -98,7 +84,6 @@ export class WebExtensionsScannerService extends Disposable implements IWebExten
 	declare readonly _serviceBrand: undefined;
 
 	private readonly systemExtensionsCacheResource: URI | undefined = undefined;
-	private readonly customBuiltinExtensionsCacheResource: URI | undefined = undefined;
 	private readonly resourcesAccessQueueMap = new ResourceMap<Queue<IWebExtension[]>>();
 
 	constructor(
@@ -106,11 +91,8 @@ export class WebExtensionsScannerService extends Disposable implements IWebExten
 		@IBuiltinExtensionsScannerService private readonly builtinExtensionsScannerService: IBuiltinExtensionsScannerService,
 		@IFileService private readonly fileService: IFileService,
 		@ILogService private readonly logService: ILogService,
-		@IExtensionGalleryService private readonly galleryService: IExtensionGalleryService,
 		@IExtensionManifestPropertiesService private readonly extensionManifestPropertiesService: IExtensionManifestPropertiesService,
 		@IExtensionResourceLoaderService private readonly extensionResourceLoaderService: IExtensionResourceLoaderService,
-		@IExtensionStorageService private readonly extensionStorageService: IExtensionStorageService,
-		@IStorageService private readonly storageService: IStorageService,
 		@IProductService private readonly productService: IProductService,
 		@IUserDataProfilesService private readonly userDataProfilesService: IUserDataProfilesService,
 		@IUriIdentityService private readonly uriIdentityService: IUriIdentityService,
@@ -119,75 +101,20 @@ export class WebExtensionsScannerService extends Disposable implements IWebExten
 		super();
 		if (isWeb) {
 			this.systemExtensionsCacheResource = joinPath(environmentService.userRoamingDataHome, 'systemExtensionsCache.json');
-			this.customBuiltinExtensionsCacheResource = joinPath(environmentService.userRoamingDataHome, 'customBuiltinExtensionsCache.json');
 
 			// Eventually update caches
 			lifecycleService.when(LifecyclePhase.Eventually).then(() => this.updateCaches());
 		}
 	}
 
-	private _customBuiltinExtensionsInfoPromise: Promise<{ extensions: ExtensionInfo[]; extensionsToMigrate: [string, string][]; extensionLocations: URI[]; extensionGalleryResources: URI[] }> | undefined;
-	private readCustomBuiltinExtensionsInfoFromEnv(): Promise<{ extensions: ExtensionInfo[]; extensionsToMigrate: [string, string][]; extensionLocations: URI[]; extensionGalleryResources: URI[] }> {
-		if (!this._customBuiltinExtensionsInfoPromise) {
-			this._customBuiltinExtensionsInfoPromise = (async () => {
-				let extensions: ExtensionInfo[] = [];
-				const extensionLocations: URI[] = [];
-				const extensionGalleryResources: URI[] = [];
-				const extensionsToMigrate: [string, string][] = [];
-				const customBuiltinExtensionsInfo = this.environmentService.options && Array.isArray(this.environmentService.options.additionalBuiltinExtensions)
-					? this.environmentService.options.additionalBuiltinExtensions.map(additionalBuiltinExtension => isString(additionalBuiltinExtension) ? { id: additionalBuiltinExtension } : additionalBuiltinExtension)
-					: [];
-				for (const e of customBuiltinExtensionsInfo) {
-					if (isGalleryExtensionInfo(e)) {
-						extensions.push({ id: e.id, preRelease: !!e.preRelease });
-						if (e.migrateStorageFrom) {
-							extensionsToMigrate.push([e.migrateStorageFrom, e.id]);
-						}
-					} else if (isUriComponents(e)) {
-						const extensionLocation = URI.revive(e);
-						if (await this.extensionResourceLoaderService.isExtensionGalleryResource(extensionLocation)) {
-							extensionGalleryResources.push(extensionLocation);
-						} else {
-							extensionLocations.push(extensionLocation);
-						}
-					}
-				}
-				if (extensions.length) {
-					extensions = await this.checkAdditionalBuiltinExtensions(extensions);
-				}
-				if (extensions.length) {
-					this.logService.info('Found additional builtin gallery extensions in env', extensions);
-				}
-				if (extensionLocations.length) {
-					this.logService.info('Found additional builtin location extensions in env', extensionLocations.map(e => e.toString()));
-				}
-				if (extensionGalleryResources.length) {
-					this.logService.info('Found additional builtin extension gallery resources in env', extensionGalleryResources.map(e => e.toString()));
-				}
-				return { extensions, extensionsToMigrate, extensionLocations, extensionGalleryResources };
-			})();
+	private _customBuiltinExtensionLocationsPromise: Promise<URI[]> | undefined;
+	private readCustomBuiltinExtensionLocationsFromEnv(): Promise<URI[]> {
+		if (!this._customBuiltinExtensionLocationsPromise) {
+			this._customBuiltinExtensionLocationsPromise = Promise.resolve(this.environmentService.options && Array.isArray(this.environmentService.options.additionalBuiltinExtensions)
+				? this.environmentService.options.additionalBuiltinExtensions.filter(isUriComponents).map(location => URI.revive(location))
+				: []);
 		}
-		return this._customBuiltinExtensionsInfoPromise;
-	}
-
-	private async checkAdditionalBuiltinExtensions(extensions: ExtensionInfo[]): Promise<ExtensionInfo[]> {
-		const extensionsControlManifest = await this.galleryService.getExtensionsControlManifest();
-		const result: ExtensionInfo[] = [];
-		for (const extension of extensions) {
-			if (isMalicious({ id: extension.id }, extensionsControlManifest.malicious)) {
-				this.logService.info(`Checking additional builtin extensions: Ignoring '${extension.id}' because it is reported to be malicious.`);
-				continue;
-			}
-			const deprecationInfo = extensionsControlManifest.deprecated[extension.id.toLowerCase()];
-			if (deprecationInfo?.extension?.autoMigrate) {
-				const preReleaseExtensionId = deprecationInfo.extension.id;
-				this.logService.info(`Checking additional builtin extensions: '${extension.id}' is deprecated, instead using '${preReleaseExtensionId}'`);
-				result.push({ id: preReleaseExtensionId, preRelease: !!extension.preRelease });
-			} else {
-				result.push(extension);
-			}
-		}
-		return result;
+		return this._customBuiltinExtensionLocationsPromise;
 	}
 
 	/**
@@ -215,17 +142,11 @@ export class WebExtensionsScannerService extends Disposable implements IWebExten
 	 * All extensions defined via `additionalBuiltinExtensions` API
 	 */
 	private async readCustomBuiltinExtensions(scanOptions?: ScanOptions): Promise<IScannedExtension[]> {
-		const [customBuiltinExtensionsFromLocations, customBuiltinExtensionsFromGallery] = await Promise.all([
-			this.getCustomBuiltinExtensionsFromLocations(scanOptions),
-			this.getCustomBuiltinExtensionsFromGallery(scanOptions),
-		]);
-		const customBuiltinExtensions: IScannedExtension[] = [...customBuiltinExtensionsFromLocations, ...customBuiltinExtensionsFromGallery];
-		await this.migrateExtensionsStorage(customBuiltinExtensions);
-		return customBuiltinExtensions;
+		return this.getCustomBuiltinExtensionsFromLocations(scanOptions);
 	}
 
 	private async getCustomBuiltinExtensionsFromLocations(scanOptions?: ScanOptions): Promise<IScannedExtension[]> {
-		const { extensionLocations } = await this.readCustomBuiltinExtensionsInfoFromEnv();
+		const extensionLocations = await this.readCustomBuiltinExtensionLocationsFromEnv();
 		if (!extensionLocations.length) {
 			return [];
 		}
@@ -246,94 +167,8 @@ export class WebExtensionsScannerService extends Disposable implements IWebExten
 		return result;
 	}
 
-	private async getCustomBuiltinExtensionsFromGallery(scanOptions?: ScanOptions): Promise<IScannedExtension[]> {
-		if (!this.galleryService.isEnabled()) {
-			this.logService.info('Ignoring fetching additional builtin extensions from gallery as it is disabled.');
-			return [];
-		}
-		const result: IScannedExtension[] = [];
-		const { extensions, extensionGalleryResources } = await this.readCustomBuiltinExtensionsInfoFromEnv();
-		try {
-			const cacheValue = JSON.stringify({
-				extensions: extensions.sort((a, b) => a.id.localeCompare(b.id)),
-				extensionGalleryResources: extensionGalleryResources.map(e => e.toString()).sort()
-			});
-			const useCache = this.storageService.get('additionalBuiltinExtensions', StorageScope.APPLICATION, '{}') === cacheValue;
-			const webExtensions = await (useCache ? this.getCustomBuiltinExtensionsFromCache() : this.updateCustomBuiltinExtensionsCache());
-			if (webExtensions.length) {
-				await Promise.all(webExtensions.map(async webExtension => {
-					try {
-						const extension = await this.toScannedExtension(webExtension, true);
-						if (extension.isValid || !scanOptions?.skipInvalidExtensions) {
-							result.push(extension);
-						} else {
-							this.logService.info(`Skipping invalid additional builtin gallery extension ${webExtension.identifier.id}`);
-						}
-					} catch (error) {
-						this.logService.info(`Ignoring additional builtin extension ${webExtension.identifier.id} because there is an error while converting it into scanned extension`, getErrorMessage(error));
-					}
-				}));
-			}
-			this.storageService.store('additionalBuiltinExtensions', cacheValue, StorageScope.APPLICATION, StorageTarget.MACHINE);
-		} catch (error) {
-			this.logService.info('Ignoring following additional builtin extensions as there is an error while fetching them from gallery', extensions.map(({ id }) => id), getErrorMessage(error));
-		}
-		return result;
-	}
-
-	private async getCustomBuiltinExtensionsFromCache(): Promise<IWebExtension[]> {
-		const cachedCustomBuiltinExtensions = await this.readCustomBuiltinExtensionsCache();
-		const webExtensionsMap = new Map<string, IWebExtension>();
-		for (const webExtension of cachedCustomBuiltinExtensions) {
-			const existing = webExtensionsMap.get(webExtension.identifier.id.toLowerCase());
-			if (existing) {
-				// Incase there are duplicates always take the latest version
-				if (semver.gt(existing.version, webExtension.version)) {
-					continue;
-				}
-			}
-			/* Update preRelease flag in the cache - https://github.com/microsoft/vscode/issues/142831 */
-			if (webExtension.metadata?.isPreReleaseVersion && !webExtension.metadata?.preRelease) {
-				webExtension.metadata.preRelease = true;
-			}
-			webExtensionsMap.set(webExtension.identifier.id.toLowerCase(), webExtension);
-		}
-		return [...webExtensionsMap.values()];
-	}
-
-	private _migrateExtensionsStoragePromise: Promise<void> | undefined;
-	private async migrateExtensionsStorage(customBuiltinExtensions: IExtension[]): Promise<void> {
-		if (!this._migrateExtensionsStoragePromise) {
-			this._migrateExtensionsStoragePromise = (async () => {
-				const { extensionsToMigrate } = await this.readCustomBuiltinExtensionsInfoFromEnv();
-				if (!extensionsToMigrate.length) {
-					return;
-				}
-				const fromExtensions = await this.galleryService.getExtensions(extensionsToMigrate.map(([id]) => ({ id })), CancellationToken.None);
-				try {
-					await Promise.allSettled(extensionsToMigrate.map(async ([from, to]) => {
-						const toExtension = customBuiltinExtensions.find(extension => areSameExtensions(extension.identifier, { id: to }));
-						if (toExtension) {
-							const fromExtension = fromExtensions.find(extension => areSameExtensions(extension.identifier, { id: from }));
-							const fromExtensionManifest = fromExtension ? await this.galleryService.getManifest(fromExtension, CancellationToken.None) : null;
-							const fromExtensionId = fromExtensionManifest ? getExtensionId(fromExtensionManifest.publisher, fromExtensionManifest.name) : from;
-							const toExtensionId = getExtensionId(toExtension.manifest.publisher, toExtension.manifest.name);
-							this.extensionStorageService.addToMigrationList(fromExtensionId, toExtensionId);
-						} else {
-							this.logService.info(`Skipped migrating extension storage from '${from}' to '${to}', because the '${to}' extension is not found.`);
-						}
-					}));
-				} catch (error) {
-					this.logService.error(error);
-				}
-			})();
-		}
-		return this._migrateExtensionsStoragePromise;
-	}
-
 	private async updateCaches(): Promise<void> {
 		await this.updateSystemExtensionsCache();
-		await this.updateCustomBuiltinExtensionsCache();
 	}
 
 	private async updateSystemExtensionsCache(): Promise<void> {
@@ -344,122 +179,6 @@ export class WebExtensionsScannerService extends Disposable implements IWebExten
 				return systemExtension && semver.gt(cached.version, systemExtension.manifest.version);
 			});
 		await this.writeSystemExtensionsCache(() => cachedSystemExtensions);
-	}
-
-	private _updateCustomBuiltinExtensionsCachePromise: Promise<IWebExtension[]> | undefined;
-	private async updateCustomBuiltinExtensionsCache(): Promise<IWebExtension[]> {
-		if (!this._updateCustomBuiltinExtensionsCachePromise) {
-			this._updateCustomBuiltinExtensionsCachePromise = (async () => {
-				this.logService.info('Updating additional builtin extensions cache');
-				const { extensions, extensionGalleryResources } = await this.readCustomBuiltinExtensionsInfoFromEnv();
-				const [galleryWebExtensions, extensionGalleryResourceWebExtensions] = await Promise.all([
-					this.resolveBuiltinGalleryExtensions(extensions),
-					this.resolveBuiltinExtensionGalleryResources(extensionGalleryResources)
-				]);
-				const webExtensionsMap = new Map<string, IWebExtension>();
-				for (const webExtension of [...galleryWebExtensions, ...extensionGalleryResourceWebExtensions]) {
-					webExtensionsMap.set(webExtension.identifier.id.toLowerCase(), webExtension);
-				}
-				await this.resolveDependenciesAndPackedExtensions(extensionGalleryResourceWebExtensions, webExtensionsMap);
-				const webExtensions = [...webExtensionsMap.values()];
-				await this.writeCustomBuiltinExtensionsCache(() => webExtensions);
-				return webExtensions;
-			})();
-		}
-		return this._updateCustomBuiltinExtensionsCachePromise;
-	}
-
-	private async resolveBuiltinExtensionGalleryResources(extensionGalleryResources: URI[]): Promise<IWebExtension[]> {
-		if (extensionGalleryResources.length === 0) {
-			return [];
-		}
-		const result = new Map<string, IWebExtension>();
-		const extensionInfos: IExtensionInfo[] = [];
-		await Promise.all(extensionGalleryResources.map(async extensionGalleryResource => {
-			try {
-				const webExtension = await this.toWebExtensionFromExtensionGalleryResource(extensionGalleryResource);
-				result.set(webExtension.identifier.id.toLowerCase(), webExtension);
-				extensionInfos.push({ id: webExtension.identifier.id, version: webExtension.version });
-			} catch (error) {
-				this.logService.info(`Ignoring additional builtin extension from gallery resource ${extensionGalleryResource.toString()} because there is an error while converting it into web extension`, getErrorMessage(error));
-			}
-		}));
-		const galleryExtensions = await this.galleryService.getExtensions(extensionInfos, CancellationToken.None);
-		for (const galleryExtension of galleryExtensions) {
-			const webExtension = result.get(galleryExtension.identifier.id.toLowerCase());
-			if (webExtension) {
-				result.set(galleryExtension.identifier.id.toLowerCase(), {
-					...webExtension,
-					identifier: { id: webExtension.identifier.id, uuid: galleryExtension.identifier.uuid },
-					readmeUri: galleryExtension.assets.readme ? URI.parse(galleryExtension.assets.readme.uri) : undefined,
-					changelogUri: galleryExtension.assets.changelog ? URI.parse(galleryExtension.assets.changelog.uri) : undefined,
-					metadata: { isPreReleaseVersion: galleryExtension.properties.isPreReleaseVersion, preRelease: galleryExtension.properties.isPreReleaseVersion, isBuiltin: true, pinned: true }
-				});
-			}
-		}
-		return [...result.values()];
-	}
-
-	private async resolveBuiltinGalleryExtensions(extensions: IExtensionInfo[]): Promise<IWebExtension[]> {
-		if (extensions.length === 0) {
-			return [];
-		}
-		const webExtensions: IWebExtension[] = [];
-		const galleryExtensionsMap = await this.getExtensionsWithDependenciesAndPackedExtensions(extensions);
-		const missingExtensions = extensions.filter(({ id }) => !galleryExtensionsMap.has(id.toLowerCase()));
-		if (missingExtensions.length) {
-			this.logService.info('Skipping the additional builtin extensions because their compatible versions are not found.', missingExtensions);
-		}
-		await Promise.all([...galleryExtensionsMap.values()].map(async gallery => {
-			try {
-				const webExtension = await this.toWebExtensionFromGallery(gallery, { isPreReleaseVersion: gallery.properties.isPreReleaseVersion, preRelease: gallery.properties.isPreReleaseVersion, isBuiltin: true });
-				webExtensions.push(webExtension);
-			} catch (error) {
-				this.logService.info(`Ignoring additional builtin extension ${gallery.identifier.id} because there is an error while converting it into web extension`, getErrorMessage(error));
-			}
-		}));
-		return webExtensions;
-	}
-
-	private async resolveDependenciesAndPackedExtensions(webExtensions: IWebExtension[], result: Map<string, IWebExtension>): Promise<void> {
-		const extensionInfos: IExtensionInfo[] = [];
-		for (const webExtension of webExtensions) {
-			for (const e of [...(webExtension.manifest?.extensionDependencies ?? []), ...(webExtension.manifest?.extensionPack ?? [])]) {
-				if (!result.has(e.toLowerCase())) {
-					extensionInfos.push({ id: e, version: webExtension.version });
-				}
-			}
-		}
-		if (extensionInfos.length === 0) {
-			return;
-		}
-		const galleryExtensions = await this.getExtensionsWithDependenciesAndPackedExtensions(extensionInfos, new Set<string>([...result.keys()]));
-		await Promise.all([...galleryExtensions.values()].map(async gallery => {
-			try {
-				const webExtension = await this.toWebExtensionFromGallery(gallery, { isPreReleaseVersion: gallery.properties.isPreReleaseVersion, preRelease: gallery.properties.isPreReleaseVersion, isBuiltin: true });
-				result.set(webExtension.identifier.id.toLowerCase(), webExtension);
-			} catch (error) {
-				this.logService.info(`Ignoring additional builtin extension ${gallery.identifier.id} because there is an error while converting it into web extension`, getErrorMessage(error));
-			}
-		}));
-	}
-
-	private async getExtensionsWithDependenciesAndPackedExtensions(toGet: IExtensionInfo[], seen: Set<string> = new Set<string>(), result: Map<string, IGalleryExtension> = new Map<string, IGalleryExtension>()): Promise<Map<string, IGalleryExtension>> {
-		if (toGet.length === 0) {
-			return result;
-		}
-		const extensions = await this.galleryService.getExtensions(toGet, { compatible: true, targetPlatform: TargetPlatform.WEB }, CancellationToken.None);
-		const packsAndDependencies = new Map<string, IExtensionInfo>();
-		for (const extension of extensions) {
-			result.set(extension.identifier.id.toLowerCase(), extension);
-			for (const id of [...(isNonEmptyArray(extension.properties.dependencies) ? extension.properties.dependencies : []), ...(isNonEmptyArray(extension.properties.extensionPack) ? extension.properties.extensionPack : [])]) {
-				if (!result.has(id.toLowerCase()) && !packsAndDependencies.has(id.toLowerCase()) && !seen.has(id.toLowerCase())) {
-					const extensionInfo = toGet.find(e => areSameExtensions(e, extension.identifier));
-					packsAndDependencies.set(id.toLowerCase(), { id, preRelease: extensionInfo?.preRelease });
-				}
-			}
-		}
-		return this.getExtensionsWithDependenciesAndPackedExtensions([...packsAndDependencies.values()].filter(({ id }) => !result.has(id.toLowerCase())), seen, result);
 	}
 
 	async scanSystemExtensions(): Promise<IExtension[]> {
@@ -589,15 +308,7 @@ export class WebExtensionsScannerService extends Disposable implements IWebExten
 			return extension;
 		}
 
-		// Update custom builtin extensions to custom builtin extensions cache
 		if (isBuiltin) {
-			await this.writeCustomBuiltinExtensionsCache(customBuiltinExtensions => {
-				// Remove the existing extension to avoid duplicates
-				customBuiltinExtensions = customBuiltinExtensions.filter(extension => !areSameExtensions(extension.identifier, webExtension.identifier));
-				customBuiltinExtensions.push(webExtension);
-				return customBuiltinExtensions;
-			});
-
 			const installedExtensions = await this.readInstalledExtensions(profileLocation);
 			// Also add to installed extensions if it is installed to update its version
 			if (installedExtensions.some(e => areSameExtensions(e.identifier, webExtension.identifier))) {
@@ -839,14 +550,6 @@ export class WebExtensionsScannerService extends Disposable implements IWebExten
 
 	private writeInstalledExtensions(profileLocation: URI, updateFn: (extensions: IWebExtension[]) => IWebExtension[]): Promise<IWebExtension[]> {
 		return this.withWebExtensions(profileLocation, updateFn);
-	}
-
-	private readCustomBuiltinExtensionsCache(): Promise<IWebExtension[]> {
-		return this.withWebExtensions(this.customBuiltinExtensionsCacheResource);
-	}
-
-	private writeCustomBuiltinExtensionsCache(updateFn: (extensions: IWebExtension[]) => IWebExtension[]): Promise<IWebExtension[]> {
-		return this.withWebExtensions(this.customBuiltinExtensionsCacheResource, updateFn);
 	}
 
 	private readSystemExtensionsCache(): Promise<IWebExtension[]> {

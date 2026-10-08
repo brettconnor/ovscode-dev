@@ -236,13 +236,8 @@ export interface IWorkbenchConstructionOptions {
 	 */
 	readonly secretStorageProvider?: ISecretStorageProvider;
 
-	/**
-	 * Additional builtin extensions those cannot be uninstalled but only be disabled.
-	 * It can be one of the following:
-	 * 	- an extension in the Marketplace
-	 * 	- location of the extension where it is hosted.
-	 */
-	readonly additionalBuiltinExtensions?: readonly (MarketplaceExtension | UriComponents)[];
+	/** Additional local extension locations that cannot be uninstalled, only disabled. */
+	readonly additionalBuiltinExtensions?: readonly UriComponents[];
 
 	/**
 	 * List of extensions to be enabled if they are installed.
@@ -436,12 +431,8 @@ export interface IResourceUriProvider {
 	(uri: URI): URI;
 }
 
-/**
- * The identifier of an extension in the format: `PUBLISHER.NAME`. For example: `vscode.csharp`
- */
+/** The identifier of an extension in the format `PUBLISHER.NAME`. */
 export type ExtensionId = string;
-
-export type MarketplaceExtension = ExtensionId | { readonly id: ExtensionId; preRelease?: boolean; migrateStorageFrom?: ExtensionId };
 
 export interface ICommonTelemetryPropertiesResolver {
 	(): { [key: string]: unknown };
