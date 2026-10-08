@@ -31,7 +31,6 @@ import { IHostService } from '../../../services/host/browser/host.js';
 import { URI } from '../../../../base/common/uri.js';
 import { IExtension, ExtensionState, IExtensionsWorkbenchService, InstallExtensionOptions, ExtensionRuntimeState, ExtensionRuntimeActionType, AutoRestartConfigurationKey, VIEWLET_ID, IExtensionsViewPaneContainer, IExtensionsNotification } from '../common/extensions.js';
 import { ACTIVE_GROUP, IEditorService, MODAL_GROUP, SIDE_GROUP } from '../../../services/editor/common/editorService.js';
-import { IURLService, IURLHandler, IOpenURLOptions } from '../../../../platform/url/common/url.js';
 import { ExtensionsInput, IExtensionEditorOptions } from '../common/extensionsInput.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
 import { IProgressOptions, IProgressService, ProgressLocation } from '../../../../platform/progress/common/progress.js';
@@ -903,7 +902,7 @@ class Extensions extends Disposable {
 	}
 }
 
-export class ExtensionsWorkbenchService extends Disposable implements IExtensionsWorkbenchService, IURLHandler {
+export class ExtensionsWorkbenchService extends Disposable implements IExtensionsWorkbenchService {
 
 	declare readonly _serviceBrand: undefined;
 
@@ -936,7 +935,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		@IConfigurationService private readonly configurationService: IConfigurationService,
 		@ITelemetryService private readonly telemetryService: ITelemetryService,
 		@INotificationService private readonly notificationService: INotificationService,
-		@IURLService urlService: IURLService,
 		@IWorkbenchExtensionEnablementService private readonly extensionEnablementService: IWorkbenchExtensionEnablementService,
 		@IHostService private readonly hostService: IHostService,
 		@IProgressService private readonly progressService: IProgressService,
@@ -991,8 +989,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 			this._register(this.webExtensions.onReset(e => this.reset()));
 			this.extensionsServers.push(this.webExtensions);
 		}
-
-		urlService.registerHandler(this);
 
 		this.whenInitialized = this.initialize();
 	}
@@ -2405,36 +2401,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		}
 
 		this.notificationService.error(err);
-	}
-
-	handleURL(uri: URI, options?: IOpenURLOptions): Promise<boolean> {
-		if (!/^extension/.test(uri.path)) {
-			return Promise.resolve(false);
-		}
-
-		this.onOpenExtensionUrl(uri);
-		return Promise.resolve(true);
-	}
-
-	private onOpenExtensionUrl(uri: URI): void {
-		const match = /^extension\/([^/]+)$/.exec(uri.path);
-
-		if (!match) {
-			return;
-		}
-
-		const extensionId = match[1];
-
-		this.queryLocal().then(async local => {
-			let extension = local.find(local => areSameExtensions(local.identifier, { id: extensionId }));
-			if (!extension) {
-				[extension] = await this.getExtensions([{ id: extensionId }], { source: 'uri' }, CancellationToken.None);
-			}
-			if (extension) {
-				await this.hostService.focus(mainWindow);
-				await this.open(extension);
-			}
-		}).then(undefined, error => this.onError(error));
 	}
 
 	private getDismissedNotifications(): string[] {
