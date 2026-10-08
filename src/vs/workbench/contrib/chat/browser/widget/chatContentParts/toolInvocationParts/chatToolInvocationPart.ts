@@ -42,7 +42,6 @@ import { ChatToolOutputSubPart } from './chatToolOutputPart.js';
 import { ChatToolPostExecuteConfirmationPart } from './chatToolPostExecuteConfirmationPart.js';
 import { ChatToolProgressSubPart } from './chatToolProgressPart.js';
 import { ChatToolStreamingSubPart } from './chatToolStreamingSubPart.js';
-import { ChatOtherClientToolProgressPart } from './chatOtherClientToolProgressPart.js';
 import { hasToolInvocationError, isCarouselToolConfirmation } from './chatToolPartUtilities.js';
 
 /**
@@ -296,9 +295,6 @@ export class ChatToolInvocationPart extends Disposable implements IChatContentPa
 
 	private createToolInvocationSubPart(): BaseChatToolInvocationSubPart {
 		if (this.toolInvocation.kind === 'toolInvocation') {
-			if (this.toolInvocation.otherClientToolCall && !IChatToolInvocation.isComplete(this.toolInvocation)) {
-				return this.instantiationService.createInstance(ChatOtherClientToolProgressPart, this.toolInvocation, this.renderer, this.announcedToolProgressKeys);
-			}
 			if (this.toolInvocation.toolSpecificData?.kind === 'extensions') {
 				return this.instantiationService.createInstance(ExtensionsInstallConfirmationWidgetSubPart, this.toolInvocation, this.context);
 			}
