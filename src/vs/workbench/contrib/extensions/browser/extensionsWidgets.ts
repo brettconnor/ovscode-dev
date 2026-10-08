@@ -241,7 +241,6 @@ export class RatingsWidget extends ExtensionWidget {
 		readonly container: HTMLElement,
 		private small: boolean,
 		@IHoverService private readonly hoverService: IHoverService,
-		@IOpenerService private readonly openerService: IOpenerService,
 	) {
 		super();
 		container.classList.add('extension-ratings');
