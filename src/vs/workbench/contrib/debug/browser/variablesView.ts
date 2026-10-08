@@ -30,9 +30,7 @@ import { IHoverService } from '../../../../platform/hover/browser/hover.js';
 import { IInstantiationService, ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
 import { IKeybindingService } from '../../../../platform/keybinding/common/keybinding.js';
 import { WorkbenchAsyncDataTree } from '../../../../platform/list/browser/listService.js';
-import { INotificationService } from '../../../../platform/notification/common/notification.js';
 import { IOpenerService } from '../../../../platform/opener/common/opener.js';
-import { ProgressLocation } from '../../../../platform/progress/common/progress.js';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
 import { IThemeService } from '../../../../platform/theme/common/themeService.js';
 import { ViewAction, ViewPane } from '../../../browser/parts/views/viewPane.js';
@@ -41,7 +39,6 @@ import { IViewDescriptorService } from '../../../common/views.js';
 import { IEditorService, SIDE_GROUP } from '../../../services/editor/common/editorService.js';
 import { IExtensionService } from '../../../services/extensions/common/extensions.js';
 import { IViewsService } from '../../../services/views/common/viewsService.js';
-import { IExtensionsWorkbenchService } from '../../extensions/common/extensions.js';
 import { CONTEXT_BREAK_WHEN_VALUE_CHANGES_SUPPORTED, CONTEXT_BREAK_WHEN_VALUE_IS_ACCESSED_SUPPORTED, CONTEXT_BREAK_WHEN_VALUE_IS_READ_SUPPORTED, CONTEXT_VARIABLES_FOCUSED, DebugVisualizationType, IDebugService, IDebugViewWithVariables, IExpression, IScope, IStackFrame, IViewModel, VARIABLES_VIEW_ID, WATCH_VIEW_ID } from '../common/debug.js';
 import { getContextForVariable } from '../common/debugContext.js';
 import { ErrorScope, Expression, Scope, StackFrame, Variable, VisualizedExpression, getUriForDebugMemory } from '../common/debugModel.js';
@@ -761,14 +758,12 @@ CommandsRegistry.registerCommand({
 			memoryReference = arg.memoryReference;
 		}
 
-		const extensionsWorkbenchService = accessor.get(IExtensionsWorkbenchService);
 		const editorService = accessor.get(IEditorService);
-		const notificationService = accessor.get(INotificationService);
 		const extensionService = accessor.get(IExtensionService);
 		const telemetryService = accessor.get(ITelemetryService);
 
 		const ext = await extensionService.getExtension(HEX_EDITOR_EXTENSION_ID);
-		if (ext || await tryInstallHexEditor(extensionsWorkbenchService, notificationService)) {
+		if (ext) {
 			/* __GDPR__
 				"debug/didViewMemory" : {
 					"owner": "connor4312",
@@ -789,19 +784,6 @@ CommandsRegistry.registerCommand({
 		}
 	}
 });
-
-async function tryInstallHexEditor(extensionsWorkbenchService: IExtensionsWorkbenchService, notificationService: INotificationService): Promise<boolean> {
-	try {
-		await extensionsWorkbenchService.install(HEX_EDITOR_EXTENSION_ID, {
-			justification: localize("viewMemory.prompt", "Inspecting binary data requires this extension."),
-			enable: true
-		}, ProgressLocation.Notification);
-		return true;
-	} catch (error) {
-		notificationService.error(error);
-		return false;
-	}
-}
 
 CommandsRegistry.registerCommand({
 	metadata: {

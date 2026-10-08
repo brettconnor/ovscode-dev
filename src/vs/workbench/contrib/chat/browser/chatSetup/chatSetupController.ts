@@ -290,7 +290,11 @@ export class ChatSetupController extends Disposable {
 	}
 
 	private async doInstall(): Promise<void> {
-		await this.extensionsWorkbenchService.install(defaultChat.chatExtensionId, {
+		const [extension] = await this.extensionsWorkbenchService.getExtensions([{ id: defaultChat.chatExtensionId }], CancellationToken.None);
+		if (!extension) {
+			throw new Error(localize('chatExtensionNotFound', "The configured chat extension could not be found."));
+		}
+		await this.extensionsWorkbenchService.install(extension, {
 			enable: true,
 			isApplicationScoped: true, 	// install into all profiles
 			isMachineScoped: false,		// do not ask to sync

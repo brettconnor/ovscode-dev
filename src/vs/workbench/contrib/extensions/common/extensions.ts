@@ -139,7 +139,6 @@ export interface IExtensionsWorkbenchService {
 	getExtensions(extensionInfos: IExtensionInfo[], options: IExtensionQueryOptions, token: CancellationToken): Promise<IExtension[]>;
 	getResourceExtensions(locations: URI[], isWorkspaceScoped: boolean): Promise<IExtension[]>;
 	canInstall(extension: IExtension): Promise<true | IMarkdownString>;
-	install(id: string, installOptions?: InstallExtensionOptions, progressLocation?: ProgressLocation | string): Promise<IExtension>;
 	install(vsix: URI, installOptions?: InstallExtensionOptions, progressLocation?: ProgressLocation | string): Promise<IExtension>;
 	install(extension: IExtension, installOptions?: InstallExtensionOptions, progressLocation?: ProgressLocation | string): Promise<IExtension>;
 	installInServer(extension: IExtension, server: IExtensionManagementServer, installOptions?: InstallOptions): Promise<void>;

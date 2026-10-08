@@ -1855,7 +1855,7 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		return new MarkdownString().appendText(nls.localize('cannot be installed', "Cannot install the '{0}' extension because it is not available in this setup.", extension.displayName ?? extension.identifier.id));
 	}
 
-	async install(arg: string | URI | IExtension, installOptions: InstallExtensionOptions = {}, progressLocation?: ProgressLocation | string): Promise<IExtension> {
+	async install(arg: URI | IExtension, installOptions: InstallExtensionOptions = {}, progressLocation?: ProgressLocation | string): Promise<IExtension> {
 		const extension = await this._install(arg, installOptions, progressLocation);
 
 		if (!extension) {
@@ -1883,7 +1883,7 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		return extension;
 	}
 
-	private async _install(arg: string | URI | IExtension, installOptions: InstallExtensionOptions = {}, progressLocation?: ProgressLocation | string): Promise<IExtension | undefined> {
+	private async _install(arg: URI | IExtension, installOptions: InstallExtensionOptions = {}, progressLocation?: ProgressLocation | string): Promise<IExtension | undefined> {
 		let installable: URI | IGalleryExtension | IResourceExtension | undefined;
 		let extension: IExtension | undefined;
 		let servers: IExtensionManagementServer[] | undefined;
@@ -1894,19 +1894,8 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 			let installableInfo: IExtensionInfo | undefined;
 			let gallery: IGalleryExtension | undefined;
 
-			// Install by id
-			if (isString(arg)) {
-				extension = this.local.find(e => areSameExtensions(e.identifier, { id: arg }));
-				if (extension?.isBuiltin) {
-					if (this.productService.builtInExtensionsEnabledWithAutoUpdates?.some(id => id.toLowerCase() === arg.toLowerCase())) {
-						return extension;
-					}
-				} else {
-					installableInfo = { id: arg, version: installOptions.version, preRelease: installOptions.installPreReleaseVersion ?? this.extensionManagementService.preferPreReleases };
-				}
-			}
 			// Install by gallery
-			else if (arg.gallery) {
+			if (arg.gallery) {
 				extension = arg;
 				gallery = arg.gallery;
 				if (installOptions.version && installOptions.version !== gallery?.version) {
@@ -1962,7 +1951,7 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 			if (!servers || servers.length) {
 				if (!installable) {
 					if (!gallery) {
-						const id = isString(arg) ? arg : (<IExtension>arg).identifier.id;
+						const id = arg.identifier.id;
 						const manifest = await this.extensionGalleryManifestService.getExtensionGalleryManifest();
 						const reportIssueUri = manifest ? getExtensionGalleryManifestResourceUri(manifest, ExtensionGalleryResourceType.ContactSupportUri) : undefined;
 						const reportIssueMessage = reportIssueUri ? nls.localize('report issue', "If this issue persists, please report it at {0}", reportIssueUri.toString()) : '';
