@@ -32,7 +32,6 @@ import { MenuId, IMenuService, MenuItemAction, SubmenuItemAction } from '../../.
 import { INotificationService, Severity } from '../../../../platform/notification/common/notification.js';
 import { IOpenerService } from '../../../../platform/opener/common/opener.js';
 import { IQuickPickItem, IQuickInputService, QuickPickItem } from '../../../../platform/quickinput/common/quickInput.js';
-import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { alert } from '../../../../base/browser/ui/aria/aria.js';
 import { IWorkbenchThemeService, IWorkbenchTheme, IWorkbenchColorTheme, IWorkbenchFileIconTheme, IWorkbenchProductIconTheme } from '../../../services/themes/common/workbenchThemeService.js';
 import { ILabelService } from '../../../../platform/label/common/label.js';
