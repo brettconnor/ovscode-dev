@@ -337,26 +337,6 @@ suite('ChatResponseAccessibleView', () => {
 			assert.strictEqual(getToolSpecificDataDescription(resourcesData), '');
 		});
 
-		test('describes configured automation results', () => {
-			assert.deepStrictEqual([
-				getToolSpecificDataDescription({
-					kind: 'automationConfigured',
-					automationId: 'automation-1',
-					automationName: 'Morning review',
-					operation: 'created',
-				}),
-				getToolSpecificDataDescription({
-					kind: 'automationConfigured',
-					automationId: 'automation-1',
-					automationName: 'Morning review',
-					operation: 'updated',
-				}),
-			], [
-				'Created an automation: Morning review',
-				'Edited an automation: Morning review',
-			]);
-		});
-
 	});
 
 	suite('getResultDetailsDescription', () => {
