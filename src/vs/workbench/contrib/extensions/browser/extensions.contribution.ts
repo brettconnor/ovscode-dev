@@ -405,7 +405,7 @@ class ExtensionsContributions extends Disposable implements IWorkbenchContributi
 
 	constructor(
 		@IExtensionManagementServerService private readonly extensionManagementServerService: IExtensionManagementServerService,
-		@IExtensionGalleryManifestService private readonly extensionGalleryManifestService: IExtensionGalleryManifestService,
+		@IExtensionGalleryManifestService extensionGalleryManifestService: IExtensionGalleryManifestService,
 		@IContextKeyService private readonly contextKeyService: IContextKeyService,
 		@IExtensionsWorkbenchService private readonly extensionsWorkbenchService: IExtensionsWorkbenchService,
 		@IWorkbenchExtensionEnablementService private readonly extensionEnablementService: IWorkbenchExtensionEnablementService,
