@@ -8,7 +8,7 @@ import * as dom from '../../../../../../base/browser/dom.js';
 import { Event } from '../../../../../../base/common/event.js';
 import { Disposable, IDisposable } from '../../../../../../base/common/lifecycle.js';
 import { IInstantiationService } from '../../../../../../platform/instantiation/common/instantiation.js';
-import { ExtensionsList, getExtensions } from '../../../../extensions/browser/extensionsViewer.js';
+import { ExtensionsList, getInstalledExtensions } from '../../../../extensions/browser/extensionsViewer.js';
 import { IExtensionsWorkbenchService } from '../../../../extensions/common/extensions.js';
 import { IChatExtensionsContent } from '../../../common/chatService/chatService.js';
 import { IChatRendererContent } from '../../../common/model/chatViewModel.js';
@@ -43,7 +43,7 @@ export class ChatExtensionsContentPart extends Disposable implements IChatConten
 
 		const extensionsList = dom.append(this.domNode, dom.$('.extensions-list'));
 		const list = this._register(instantiationService.createInstance(ExtensionsList, extensionsList, ChatViewId, { alwaysConsumeMouseWheel: false }, { onFocus: Event.None, onBlur: Event.None, filters: {} }));
-		getExtensions(extensionsContent.extensions, extensionsWorkbenchService).then(extensions => {
+		Promise.resolve(getInstalledExtensions(extensionsContent.extensions, extensionsWorkbenchService)).then(extensions => {
 			loadingElement.remove();
 			if (this._store.isDisposed) {
 				return;
