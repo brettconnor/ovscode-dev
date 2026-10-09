@@ -34,20 +34,6 @@
 	gap: 4px;
 }
 
-.chat-agent-hover .chat-agent-hover-publisher .codicon.codicon-extensions-verified-publisher {
-	color: var(--vscode-extensionIcon-verifiedForeground);
-}
-
-.chat-agent-hover .extension-verified-publisher {
-	display: none;
-}
-
-.chat-agent-hover.verifiedPublisher .extension-verified-publisher {
-	display: flex;
-	align-items: start;
-	margin-top: 1px;
-}
-
 .chat-agent-hover .chat-agent-hover-warning .codicon {
 	color: var(--vscode-notificationsWarningIcon-foreground) !important;
 	margin-right: 3px;

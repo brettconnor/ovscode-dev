@@ -6,7 +6,6 @@
 import * as dom from '../../../../../base/browser/dom.js';
 import { IHoverAction, IManagedHoverOptions } from '../../../../../base/browser/ui/hover/hover.js';
 import { renderIcon } from '../../../../../base/browser/ui/iconLabel/iconLabels.js';
-import { CancellationTokenSource } from '../../../../../base/common/cancellation.js';
 import { Codicon } from '../../../../../base/common/codicons.js';
 import { Emitter, Event } from '../../../../../base/common/event.js';
 import { Disposable } from '../../../../../base/common/lifecycle.js';
@@ -17,8 +16,6 @@ import { localize } from '../../../../../nls.js';
 import { ICommandService } from '../../../../../platform/commands/common/commands.js';
 import { getFullyQualifiedId, IChatAgentData, IChatAgentNameService, IChatAgentService } from '../../common/participants/chatAgents.js';
 import { showExtensionsWithIdsCommandId } from '../../../extensions/browser/extensionsActions.js';
-import { IExtensionsWorkbenchService } from '../../../extensions/common/extensions.js';
-import { verifiedPublisherIcon } from '../../../../services/extensionManagement/common/extensionsIcons.js';
 
 export class ChatAgentHover extends Disposable {
 	public readonly domNode: HTMLElement;
@@ -34,7 +31,6 @@ export class ChatAgentHover extends Disposable {
 
 	constructor(
 		@IChatAgentService private readonly chatAgentService: IChatAgentService,
-		@IExtensionsWorkbenchService private readonly extensionService: IExtensionsWorkbenchService,
 		@IChatAgentNameService private readonly chatAgentNameService: IChatAgentNameService,
 	) {
 		super();
@@ -65,12 +61,9 @@ export class ChatAgentHover extends Disposable {
 
 		hoverElement.separator.textContent = '|';
 
-		const verifiedBadge = dom.$('span.extension-verified-publisher', undefined, renderIcon(verifiedPublisherIcon));
-
 		this.publisherName = dom.$('span.chat-agent-hover-publisher-name');
 		dom.append(
 			hoverElement.publisher,
-			verifiedBadge,
 			this.publisherName);
 
 		hoverElement.warning.appendChild(renderIcon(Codicon.warning));
@@ -105,18 +98,6 @@ export class ChatAgentHover extends Disposable {
 		this.description.textContent = description;
 		this.domNode.classList.toggle('allowedName', isAllowed);
 
-		this.domNode.classList.toggle('verifiedPublisher', false);
-		if (!agent.isDynamic) {
-			const cancel = this._register(new CancellationTokenSource());
-			this.extensionService.getExtensions([{ id: agent.extensionId.value }], cancel.token).then(extensions => {
-				cancel.dispose();
-				const extension = extensions[0];
-				if (extension?.publisherDomain?.verified) {
-					this.domNode.classList.toggle('verifiedPublisher', true);
-					this._onDidChangeContents.fire();
-				}
-			});
-		}
 	}
 }
 
