@@ -37,7 +37,7 @@ import { ITelemetryService } from '../../../../../../platform/telemetry/common/t
 import { FolderThemeIcon, IThemeService } from '../../../../../../platform/theme/common/themeService.js';
 import { fillEditorsDragData } from '../../../../../browser/dnd.js';
 import { StaticResourceContextKey } from '../../../../../common/contextkeys.js';
-import { IEditorService, SIDE_GROUP } from '../../../../../services/editor/common/editorService.js';
+import { SIDE_GROUP } from '../../../../../services/editor/common/editorService.js';
 import { INotebookDocumentService } from '../../../../../services/notebook/common/notebookDocumentService.js';
 import { ExplorerFolderContext } from '../../../../files/common/files.js';
 import { IWorkspaceSymbol } from '../../../../search/common/search.js';
@@ -51,8 +51,6 @@ import { IChatMarkdownAnchorService } from './chatMarkdownAnchorService.js';
 import { IConfigurationService } from '../../../../../../platform/configuration/common/configuration.js';
 import { ChatConfiguration } from '../../../common/constants.js';
 import { getMediaMime } from '../../../../../../base/common/mime.js';
-import { Schemas } from '../../../../../../base/common/network.js';
-import { Codicon } from '../../../../../../base/common/codicons.js';
 import { ThemeIcon } from '../../../../../../base/common/themables.js';
 import { getEditorOverrideForChatResource } from '../chatEditorAssociations.js';
 
@@ -162,7 +160,6 @@ export class InlineAnchorWidget extends Disposable {
 		@IThemeService themeService: IThemeService,
 		@INotebookDocumentService private readonly notebookDocumentService: INotebookDocumentService,
 		@IOpenerService private readonly openerService: IOpenerService,
-		@IEditorService private readonly editorService: IEditorService,
 		@IChatPetService private readonly chatPetService: IChatPetService,
 	) {
 		super();

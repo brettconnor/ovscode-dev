@@ -48,7 +48,6 @@ import { ChatAgentLocation, isSupportedChatFileScheme } from '../../common/const
 import { IChatWidget, IChatWidgetService, IQuickChatService } from '../chat.js';
 import { IChatContextPickerItem, IChatContextPickService, IChatContextValueItem, isChatContextPickerPickItem } from '../attachments/chatContextPickService.js';
 import { IChatExecuteActionContext } from './chatExecuteActions.js';
-import { IChatAttachmentResolveService } from '../attachments/chatAttachmentResolveService.js';
 import { isQuickChat } from '../widget/chatWidget.js';
 import { resizeImage } from '../chatImageUtils.js';
 import { registerPromptActions } from '../promptSyntax/promptFileActions.js';
@@ -609,8 +608,6 @@ export class AttachContextAction extends Action2 {
 	private async _handleQPPick(accessor: ServicesAccessor, widget: IChatWidget, isInBackground: boolean, pick: IQuickPickServicePickItem) {
 		const fileService = accessor.get(IFileService);
 		const textModelService = accessor.get(ITextModelService);
-		const chatAttachmentResolveService = accessor.get(IChatAttachmentResolveService);
-
 		const toAttach: IChatRequestVariableEntry[] = [];
 
 		if (isIQuickPickItemWithResource(pick) && pick.resource) {
