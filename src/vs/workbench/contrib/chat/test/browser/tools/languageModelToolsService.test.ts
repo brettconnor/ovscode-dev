@@ -3146,10 +3146,10 @@ suite('LanguageModelToolsService', () => {
 		// should also include the namespaced form (e.g. 'vscode/oldName' → 'vscode/newName')
 		const toolWithLegacy: IToolData = {
 			id: 'myNewBrowser',
-			toolReferenceName: 'openIntegratedBrowser',
-			legacyToolReferenceFullNames: ['openSimpleBrowser'],
+			toolReferenceName: 'currentToolName',
+			legacyToolReferenceFullNames: ['legacyToolName'],
 			modelDescription: 'Open browser',
-			displayName: 'Open Integrated Browser',
+			displayName: 'Current Tool',
 			source: ToolDataSource.Internal,
 			canBeReferencedInPrompt: true,
 		};
@@ -3159,10 +3159,10 @@ suite('LanguageModelToolsService', () => {
 		const deprecated = service.getDeprecatedFullReferenceNames();
 
 		// The simple legacy name should map to the full reference name
-		assert.deepStrictEqual(deprecated.get('openSimpleBrowser'), new Set(['vscode/openIntegratedBrowser']));
+		assert.deepStrictEqual(deprecated.get('legacyToolName'), new Set(['vscode/currentToolName']));
 
 		// The namespaced legacy name should also map to the full reference name
-		assert.deepStrictEqual(deprecated.get('vscode/openSimpleBrowser'), new Set(['vscode/openIntegratedBrowser']));
+		assert.deepStrictEqual(deprecated.get('vscode/legacyToolName'), new Set(['vscode/currentToolName']));
 	});
 
 	test('getToolByFullReferenceName', () => {

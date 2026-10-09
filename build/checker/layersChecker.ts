@@ -59,11 +59,6 @@ export const RULES: IRule[] = [
 		disallowedTypes: NATIVE_TYPES,
 	},
 
-	// Browser view preload script
-	{
-		target: '**/vs/platform/browserView/electron-browser/preload-browserView.ts',
-		disallowedTypes: NATIVE_TYPES,
-	},
 
 	// Validated IPC wrapper
 	{

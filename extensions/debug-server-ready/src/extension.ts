@@ -14,7 +14,7 @@ const WEB_ROOT = '${workspaceFolder}';
 
 interface ServerReadyAction {
 	pattern: string;
-	action?: 'openExternally' | 'openIntegratedBrowser' | 'debugWithChrome' | 'debugWithEdge' | 'startDebugging';
+	action?: 'openExternally' | 'debugWithChrome' | 'debugWithEdge' | 'startDebugging';
 	uriFormat?: string;
 	webRoot?: string;
 	name?: string;
@@ -191,10 +191,6 @@ class ServerReadyDetector extends vscode.Disposable {
 
 			case 'openExternally':
 				await vscode.env.openExternal(vscode.Uri.parse(uri));
-				break;
-
-			case 'openIntegratedBrowser':
-				vscode.commands.executeCommand('workbench.action.browser.open', uri);
 				break;
 
 			case 'debugWithChrome':

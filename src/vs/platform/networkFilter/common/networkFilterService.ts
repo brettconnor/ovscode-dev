@@ -25,7 +25,7 @@ function isFilteredNetworkScheme(uri: URI): boolean {
 
 /**
  * Service that filters network requests made by agent tools (fetch tool,
- * integrated browser) based on the configured allowed/denied domain lists.
+ * based on the configured allowed/denied domain lists.
  *
  * Filtering is active for all callers when the `chat.agent.networkFilter` setting
  * is enabled.

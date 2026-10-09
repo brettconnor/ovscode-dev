@@ -29,7 +29,6 @@ import { IChatWidget, IChatWidgetService } from '../chat.js';
 import { IChatContextService } from '../contextContrib/chatContextService.js';
 import { ITextModel } from '../../../../../editor/common/model.js';
 import { IRange } from '../../../../../editor/common/core/range.js';
-import { BrowserEditorInput } from '../../../browserView/common/browserEditorInput.js';
 
 export class ChatImplicitContextContribution extends Disposable implements IWorkbenchContribution {
 	static readonly ID = 'chat.implicitContext';
@@ -101,14 +100,6 @@ export class ChatImplicitContextContribution extends Disposable implements IWork
 						this.updateImplicitContext();
 					}));
 				}
-				const browserEditor = this.findActiveBrowserEditor();
-				if (browserEditor) {
-					activeEditorDisposables.add(browserEditor.onceModelResolves(model => {
-						activeEditorDisposables.add(model.onDidChangeSharingState(() => this.updateImplicitContext()));
-						this.updateImplicitContext();
-					}));
-				}
-
 				this.updateImplicitContext();
 			})));
 		this._register(autorun((reader) => {
@@ -168,14 +159,6 @@ export class ChatImplicitContextContribution extends Disposable implements IWork
 		const activeEditorPane = this.editorService.activeEditorPane;
 		if (activeEditorPane?.input instanceof WebviewInput) {
 			return activeEditorPane as WebviewEditor;
-		}
-		return undefined;
-	}
-
-	private findActiveBrowserEditor(): BrowserEditorInput | undefined {
-		const activeEditorPane = this.editorService.activeEditorPane;
-		if (activeEditorPane?.input instanceof BrowserEditorInput) {
-			return activeEditorPane.input;
 		}
 		return undefined;
 	}
@@ -264,11 +247,6 @@ export class ChatImplicitContextContribution extends Disposable implements IWork
 			}
 		}
 
-		const browser = this.findActiveBrowserEditor();
-		if (browser?.isSharingAvailable && useSuggestedContext) {
-			newValue = browser.resource;
-		}
-
 		const uri = newValue instanceof URI ? newValue : (isStringImplicitContextValue(newValue) ? undefined : newValue?.uri);
 		if (uri && (
 			await this.ignoredFilesService.fileIsIgnored(uri, cancelTokenSource.token) ||
@@ -293,7 +271,7 @@ export class ChatImplicitContextContribution extends Disposable implements IWork
 				// existing values so the attachment bar stays visible.
 				// But when there's no active editor at all, clear the values.
 				const hasActiveEditor = !!this.editorService.activeEditor;
-				if (newValue !== undefined || !widget.input.implicitContext.hasValue || !hasActiveEditor || browser) {
+				if (newValue !== undefined || !widget.input.implicitContext.hasValue || !hasActiveEditor) {
 					widget.input.implicitContext.setValues([{ value: newValue, isSelection }, { value: providerContext, isSelection: false }]);
 				}
 			} else {
@@ -411,9 +389,6 @@ export class ChatImplicitContext extends Disposable implements IChatRequestImpli
 
 	get name(): string {
 		if (URI.isUri(this.value)) {
-			if (this.value.scheme === Schemas.vscodeBrowser) {
-				return `browser`;
-			}
 			return `file:${basename(this.value)}`;
 		}
 		if (isLocation(this.value)) {
@@ -499,10 +474,6 @@ export class ChatImplicitContext extends Disposable implements IChatRequestImpli
 
 	public toBaseEntries(): IChatRequestVariableEntry[] {
 		if (!this.value) {
-			return [];
-		}
-
-		if (URI.isUri(this.value) && this.value.scheme === Schemas.vscodeBrowser) {
 			return [];
 		}
 

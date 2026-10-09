@@ -54,7 +54,6 @@ import { getMediaMime } from '../../../../../../base/common/mime.js';
 import { Schemas } from '../../../../../../base/common/network.js';
 import { Codicon } from '../../../../../../base/common/codicons.js';
 import { ThemeIcon } from '../../../../../../base/common/themables.js';
-import { BrowserEditorInput } from '../../../../browserView/common/browserEditorInput.js';
 import { getEditorOverrideForChatResource } from '../chatEditorAssociations.js';
 
 type ContentRefData =
@@ -204,10 +203,6 @@ export class InlineAnchorWidget extends Disposable {
 				iconText = [filePathLabel, dom.$('span.label-suffix', undefined, suffix)];
 			} else if (location.uri.scheme === 'vscode-notebook-cell' && this.data.kind !== 'symbol') {
 				iconText = [`${filePathLabel} • cell${this.getCellIndex(location.uri)}`];
-			} else if (location.uri.scheme === Schemas.vscodeBrowser) {
-				defaultIcon = Codicon.globe;
-				const editorName = this.editorService.findEditors(location.uri)[0]?.editor?.getName() ?? BrowserEditorInput.DEFAULT_LABEL;
-				iconText = [editorName];
 			} else {
 				iconText = [filePathLabel];
 			}

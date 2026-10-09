@@ -95,7 +95,6 @@ Actions **not** present in single-pane mode: **Close Editor Area** (the standard
 
 - **Changes** — a custom `SessionChangesEditor` (Branch Changes dropdown + diff stats + embedded multi-diff). Pinned first, present for every session with a workspace, including New Session drafts.
 - **File** — the empty File tab (`EmptyFileEditorInput`) as a landing tab, plus real file editors the user opens. Opened **pinned, inactive, preserve-focus** so it never steals focus from the chat.
-- **Browser** — the integrated browser (`BrowserEditorInput`).
 
 The **auto-managed** tabs (the pinned Changes tab and the default File tab) are opened under `suppressEditorPartAutoVisibility()` — they **never reveal the editor content**. Only a user action (opening an actual file/diff, or dragging the sash) reveals the editor.
 

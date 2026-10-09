@@ -106,7 +106,7 @@ export function getChatMarkdownRenderOptions(options?: MarkdownRenderOptions): M
 				override: allowedChatMarkdownHtmlTags,
 			},
 			...options?.sanitizerConfig,
-			allowedLinkSchemes: { augment: [product.urlProtocol, 'copilot-skill', Schemas.vscodeBrowser] },
+			allowedLinkSchemes: { augment: [product.urlProtocol, 'copilot-skill'] },
 			remoteImageIsAllowed: _remoteImageDisallowed,
 		}
 	};

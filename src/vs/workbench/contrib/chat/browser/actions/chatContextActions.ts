@@ -33,10 +33,9 @@ import { AnythingQuickAccessProviderRunOptions } from '../../../../../platform/q
 import { IQuickInputService, IQuickPickItem, IQuickPickItemWithResource, QuickPickItem } from '../../../../../platform/quickinput/common/quickInput.js';
 import { resolveCommandsContext } from '../../../../browser/parts/editor/editorCommandsContext.js';
 import { ResourceContextKey } from '../../../../common/contextkeys.js';
-import { EditorResourceAccessor, isEditorCommandsContext, isEditorInput, SideBySideEditor } from '../../../../common/editor.js';
+import { EditorResourceAccessor, isEditorCommandsContext, SideBySideEditor } from '../../../../common/editor.js';
 import { IEditorGroupsService } from '../../../../services/editor/common/editorGroupsService.js';
 import { IEditorService } from '../../../../services/editor/common/editorService.js';
-import { BrowserEditorInput } from '../../../browserView/common/browserEditorInput.js';
 import { ExplorerFolderContext } from '../../../files/common/files.js';
 import { CTX_INLINE_CHAT_V2_ENABLED } from '../../../inlineChat/common/inlineChat.js';
 import { AnythingQuickAccessProvider, type IAnythingQuickPickItem } from '../../../search/browser/anythingQuickAccess.js';
@@ -466,12 +465,6 @@ function isIQuickPickItemWithResource(obj: unknown): obj is IQuickPickItemWithRe
 		&& URI.isUri((obj as IQuickPickItemWithResource).resource));
 }
 
-function isAnythingQuickPickItemWithBrowserEditor(obj: unknown): obj is IAnythingQuickPickItem & { readonly editor: NonNullable<IAnythingQuickPickItem['editor']> } {
-	const editor = (obj as IAnythingQuickPickItem | undefined)?.editor;
-	return editor instanceof BrowserEditorInput || (!!editor && !isEditorInput(editor) && editor.options?.override === BrowserEditorInput.EDITOR_ID);
-}
-
-
 export class AttachContextAction extends Action2 {
 
 	constructor() {
@@ -620,12 +613,7 @@ export class AttachContextAction extends Action2 {
 
 		const toAttach: IChatRequestVariableEntry[] = [];
 
-		if (isAnythingQuickPickItemWithBrowserEditor(pick)) {
-			const entry = await chatAttachmentResolveService.resolveEditorAttachContext(pick.editor);
-			if (entry) {
-				toAttach.push(entry);
-			}
-		} else if (isIQuickPickItemWithResource(pick) && pick.resource) {
+		if (isIQuickPickItemWithResource(pick) && pick.resource) {
 			if (/\.(png|jpg|jpeg|bmp|gif|tiff)$/i.test(pick.resource.path)) {
 				// checks if the file is an image
 				if (URI.isUri(pick.resource)) {
@@ -640,11 +628,6 @@ export class AttachContextAction extends Action2 {
 						kind: 'image',
 						references: [{ reference: pick.resource, kind: 'reference' }]
 					});
-				}
-			} else if (pick.resource.scheme === Schemas.vscodeBrowser) {
-				const entry = await chatAttachmentResolveService.resolveEditorAttachContext({ resource: pick.resource });
-				if (entry) {
-					toAttach.push(entry);
 				}
 			} else {
 				let omittedState = OmittedState.NotOmitted;

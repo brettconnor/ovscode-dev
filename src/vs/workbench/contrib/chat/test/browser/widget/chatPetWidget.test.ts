@@ -22,7 +22,7 @@ import { NullTelemetryServiceShape } from '../../../../../../platform/telemetry/
 import { TestStorageService } from '../../../../../test/common/workbenchTestServices.js';
 import { IHostService } from '../../../../../services/host/browser/host.js';
 import { IChatModel } from '../../../common/model/chatModel.js';
-import { CHAT_PET_OPEN_ACHIEVEMENTS_COMMAND_ID, chatPetAchievements, ChatPetAccessoryIds, ChatPetAchievementIds, didExplicitlyEnableChatPetAutopilot, disabledChatPetAchievements, getChatPetAchievement, getChatPetAchievementPresentation, getChatPetCustomizationAchievementIds, getUnlockedChatPetAccessories, isUserAuthoredChatPetCustomization, shouldUnlockChatPetIntegratedBrowserShare } from '../../../browser/chatPetAchievements.js';
+import { CHAT_PET_OPEN_ACHIEVEMENTS_COMMAND_ID, chatPetAchievements, ChatPetAccessoryIds, ChatPetAchievementIds, didExplicitlyEnableChatPetAutopilot, disabledChatPetAchievements, getChatPetAchievement, getChatPetAchievementPresentation, getChatPetCustomizationAchievementIds, getUnlockedChatPetAccessories, isUserAuthoredChatPetCustomization } from '../../../browser/chatPetAchievements.js';
 import { ChatPetService, getChatPetVariant } from '../../../browser/chatPetService.js';
 import '../../../browser/widget/media/chat.css';
 import { getChatPetAccessoryImageSource, hasChatPetAccessoryImageDimensions, hasChatPetBodyImageDimensions } from '../../../browser/widget/chatPetAccessoryRenderer.js';
@@ -1623,15 +1623,6 @@ suite('ChatPetWidget', () => {
 		], [true, true, false, false, false, false]);
 	});
 
-	test('unlocks browser sharing only after sharing succeeds', () => {
-		assert.deepStrictEqual([
-			shouldUnlockChatPetIntegratedBrowserShare(false, false),
-			shouldUnlockChatPetIntegratedBrowserShare(false, true),
-			shouldUnlockChatPetIntegratedBrowserShare(true, false),
-			shouldUnlockChatPetIntegratedBrowserShare(true, true),
-		], [false, false, false, true]);
-	});
-
 	test('recognizes only an explicit Interactive to Autopilot switch', () => {
 		assert.deepStrictEqual([
 			didExplicitlyEnableChatPetAutopilot('interactive', 'plan'),
@@ -1672,11 +1663,10 @@ suite('ChatPetWidget', () => {
 			disabledAchievementIds: disabledChatPetAchievements.map(achievement => achievement.id),
 			disabledAccessoryIds: disabledChatPetAchievements.flatMap(achievement => achievement.accessories.map(accessory => accessory.id)),
 		}, {
-			count: 13,
+			count: 12,
 			achievementIds: [
 				ChatPetAchievementIds.RequestRevision,
 				ChatPetAchievementIds.FirstChatMessage,
-				ChatPetAchievementIds.IntegratedBrowserShared,
 				ChatPetAchievementIds.ModelSwitch,
 				ChatPetAchievementIds.McpServerPresent,
 				ChatPetAchievementIds.CustomSkillPresent,

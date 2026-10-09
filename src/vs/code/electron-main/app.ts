@@ -37,10 +37,6 @@ import { DiagnosticsMainService, IDiagnosticsMainService } from '../../platform/
 import { DialogMainService, IDialogMainService } from '../../platform/dialogs/electron-main/dialogMainService.js';
 import { IEncryptionMainService } from '../../platform/encryption/common/encryptionService.js';
 import { EncryptionMainService } from '../../platform/encryption/electron-main/encryptionMainService.js';
-import { ipcBrowserViewChannelName } from '../../platform/browserView/common/browserView.js';
-import { ipcBrowserViewGroupChannelName } from '../../platform/browserView/common/browserViewGroup.js';
-import { BrowserViewMainService, IBrowserViewMainService } from '../../platform/browserView/electron-main/browserViewMainService.js';
-import { BrowserViewGroupMainService, IBrowserViewGroupMainService } from '../../platform/browserView/electron-main/browserViewGroupMainService.js';
 import { NativeParsedArgs } from '../../platform/environment/common/argv.js';
 import { IEnvironmentMainService } from '../../platform/environment/electron-main/environmentMainService.js';
 import { isLaunchedFromCli } from '../../platform/environment/node/argvHelper.js';
@@ -574,10 +570,6 @@ export class CodeApplication extends Disposable {
 
 			// Handle any in-page navigation
 			contents.on('will-navigate', event => {
-				if (BrowserViewMainService.isBrowserViewWebContents(contents)) {
-					return; // Allow navigation in integrated browser views
-				}
-
 				this.logService.error('webContents#will-navigate: Prevented webcontent navigation');
 
 				event.preventDefault(); // Prevent any in-page navigation
@@ -1198,10 +1190,6 @@ export class CodeApplication extends Disposable {
 		// Encryption
 		services.set(IEncryptionMainService, new SyncDescriptor(EncryptionMainService));
 
-		// Browser View
-		services.set(IBrowserViewMainService, new SyncDescriptor(BrowserViewMainService, undefined, false /* proxied to other processes */));
-		services.set(IBrowserViewGroupMainService, new SyncDescriptor(BrowserViewGroupMainService, undefined, false /* proxied to other processes */));
-
 		// Keyboard Layout
 		services.set(IKeyboardLayoutMainService, new SyncDescriptor(KeyboardLayoutMainService));
 
@@ -1371,16 +1359,6 @@ export class CodeApplication extends Disposable {
 		// Encryption
 		const encryptionChannel = ProxyChannel.fromService(accessor.get(IEncryptionMainService), disposables);
 		mainProcessElectronServer.registerChannel('encryption', encryptionChannel);
-
-		// Browser View
-		const browserViewChannel = ProxyChannel.fromService(accessor.get(IBrowserViewMainService), disposables);
-		mainProcessElectronServer.registerChannel(ipcBrowserViewChannelName, browserViewChannel);
-		sharedProcessClient.then(client => client.registerChannel(ipcBrowserViewChannelName, browserViewChannel));
-
-		// Browser View Group
-		const browserViewGroupChannel = ProxyChannel.fromService(accessor.get(IBrowserViewGroupMainService), disposables);
-		mainProcessElectronServer.registerChannel(ipcBrowserViewGroupChannelName, browserViewGroupChannel);
-		sharedProcessClient.then(client => client.registerChannel(ipcBrowserViewGroupChannelName, browserViewGroupChannel));
 
 		// Signing
 		const signChannel = ProxyChannel.fromService(accessor.get(ISignService), disposables);

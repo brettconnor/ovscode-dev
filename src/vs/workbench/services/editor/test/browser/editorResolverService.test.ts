@@ -18,15 +18,13 @@ import { TestConfigurationService } from '../../../../../platform/configuration/
 import { createEditorPart, ITestInstantiationService, TestFileEditorInput, TestServiceAccessor, workbenchInstantiationService } from '../../../../test/browser/workbenchTestServices.js';
 
 suite('EditorResolverService', () => {
-	test('Agents window editor defaults use the Integrated Browser for HTML when available and follow the Markdown editor setting', () => {
+	test('Agents window editor defaults follow the Markdown editor setting', () => {
 		assert.deepStrictEqual({
-			enabled: editorsAssociationsAgentsWindowDefault({ markdownDefaultEditor: true, integratedBrowserAvailable: true }),
-			disabled: editorsAssociationsAgentsWindowDefault({ markdownDefaultEditor: false, integratedBrowserAvailable: true }),
-			unavailable: editorsAssociationsAgentsWindowDefault({ markdownDefaultEditor: true, integratedBrowserAvailable: false }),
+			enabled: editorsAssociationsAgentsWindowDefault({ markdownDefaultEditor: true }),
+			disabled: editorsAssociationsAgentsWindowDefault({ markdownDefaultEditor: false }),
 		}, {
-			enabled: { '*.html': 'workbench.editor.browser', '*.md': 'vscode.markdown.editor' },
-			disabled: { '*.html': 'workbench.editor.browser', '*.md': 'vscode.markdown.preview.editor' },
-			unavailable: { '*.md': 'vscode.markdown.editor' },
+			enabled: { '*.md': 'vscode.markdown.editor' },
+			disabled: { '*.md': 'vscode.markdown.preview.editor' },
 		});
 	});
 
@@ -144,7 +142,7 @@ suite('EditorResolverService', () => {
 		const [part, service] = await createEditorResolverService();
 		const resource = URI.file('/workspace/index.test');
 		const editorId = 'TEST_EDITOR';
-		const existingEditor = constructDisposableFileEditorInput(URI.from({ scheme: Schemas.vscodeBrowser, path: 'browser-id' }), editorId, disposables);
+		const existingEditor = constructDisposableFileEditorInput(URI.from({ scheme: 'test-browser', path: 'browser-id' }), editorId, disposables);
 		Object.defineProperty(existingEditor, 'preferredResource', { value: resource });
 		await part.activeGroup.openEditor(existingEditor);
 		let createCount = 0;

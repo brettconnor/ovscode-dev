@@ -603,10 +603,6 @@
 			"project": "vscode-workbench"
 		},
 		{
-			"name": "vs/workbench/contrib/browserView",
-			"project": "vscode-workbench"
-		},
-		{
 			"name": "vs/workbench/contrib/dropOrPasteInto",
 			"project": "vscode-workbench"
 		},

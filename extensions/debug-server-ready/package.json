@@ -47,12 +47,10 @@
                       "action": {
                         "type": "string",
                         "enum": [
-                          "openExternally",
-                          "openIntegratedBrowser"
+                          "openExternally"
                         ],
                         "enumDescriptions": [
-                          "%debug.server.ready.action.openExternally.description%",
-                          "%debug.server.ready.action.openIntegratedBrowser.description%"
+                          "%debug.server.ready.action.openExternally.description%"
                         ],
                         "markdownDescription": "%debug.server.ready.action.description%",
                         "default": "openExternally"

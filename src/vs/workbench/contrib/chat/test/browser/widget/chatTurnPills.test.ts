@@ -15,7 +15,6 @@ import { ActionListItemKind, IActionListItem } from '../../../../../../platform/
 import { IActionWidgetService } from '../../../../../../platform/actionWidget/browser/actionWidget.js';
 import { TestConfigurationService } from '../../../../../../platform/configuration/test/common/testConfigurationService.js';
 import { IOpenerService, OpenExternalOptions, OpenInternalOptions } from '../../../../../../platform/opener/common/opener.js';
-import { BrowserViewEditorId } from '../../../../browserView/common/browserView.js';
 import { chatArtifactPillOptions, ChatTurnPillsWidget, EMPTY_DIFF_STATS, openChatTurnFile, previewKind } from '../../../browser/widget/chatTurnPills.js';
 import { Codicon } from '../../../../../../base/common/codicons.js';
 import { ChatPillActionViewItem, ChatPillsWidget, IChatPill, type IChatPillEntry, type IChatPillSection } from '../../../../../browser/chatPills.js';
@@ -346,7 +345,7 @@ suite('ChatTurnPills', () => {
 		assert.strictEqual(previewKind(URI.file('/workspace/index.html'), false), undefined);
 	});
 
-	test('opens an HTML resource in the Integrated Browser', async () => {
+	test('opens an HTML resource without a forced editor override', async () => {
 		const resource = URI.file('/workspace/index.html');
 		let opened: { resource: string; options: OpenInternalOptions | OpenExternalOptions | undefined } | undefined;
 		const openerService = new class extends mock<IOpenerService>() {
@@ -363,13 +362,13 @@ suite('ChatTurnPills', () => {
 			options: {
 				fromUserGesture: true,
 				editorOptions: {
-					override: BrowserViewEditorId,
+					override: undefined,
 				},
 			},
 		});
 	});
 
-	test('prefers a configured chat editor association over the Integrated Browser', async () => {
+	test('uses a configured chat editor association for HTML resources', async () => {
 		const resource = URI.file('/workspace/index.html');
 		let opened: { resource: string; options: OpenInternalOptions | OpenExternalOptions | undefined } | undefined;
 		const openerService = new class extends mock<IOpenerService>() {

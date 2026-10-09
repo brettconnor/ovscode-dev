@@ -64,8 +64,7 @@ export interface ITunnelConnectFn {
  *   the consumer's Electron session can pin it.
  *
  * If certificate generation or server startup fails the proxy simply
- * does not start — the worst outcome is that the browser view falls
- * back to not having remote network access.
+ * does not start — the consumer falls back to having no remote network access.
  */
 export class TunnelProxy extends Disposable {
 

@@ -20,7 +20,6 @@ export const ChatPetAchievementIds = {
 	ChatReferenceOpened: 'chatReferenceOpened',
 	UsefulOutputCopied: 'usefulOutputCopied',
 	AutopilotEnabled: 'autopilotEnabled',
-	IntegratedBrowserShared: 'integratedBrowserShared',
 	ChatOutputCopied: 'chatOutputCopied',
 	CustomSkillPresent: 'customSkillPresent',
 	McpServerPresent: 'mcpServerPresent',
@@ -103,22 +102,6 @@ const enabledChatPetAchievements: readonly IChatPetAchievement[] = [
 				id: ChatPetAccessoryIds.CowboyHat,
 				label: localize('chatPet.accessory.cowboyHat', "Cowboy Hat"),
 				atlasName: 'cowboy-hat',
-				atlasCellSize: 96,
-				coversAntennae: true,
-			},
-		],
-	},
-	{
-		id: ChatPetAchievementIds.IntegratedBrowserShared,
-		title: localize('chatPet.achievement.integratedBrowserShared.title', "Shared Perspective"),
-		description: localize('chatPet.achievement.integratedBrowserShared.description', "You shared the integrated browser with the agent."),
-		hint: localize('chatPet.achievement.integratedBrowserShared.hint', "Let the agent see what you see in the integrated browser."),
-		enabled: true,
-		accessories: [
-			{
-				id: ChatPetAccessoryIds.BaseballCap,
-				label: localize('chatPet.accessory.baseballCap', "Baseball Cap"),
-				atlasName: 'baseball-cap',
 				atlasCellSize: 96,
 				coversAntennae: true,
 			},
@@ -387,10 +370,6 @@ export function didExplicitlyEnableChatPetAutopilot(previousMode: string, select
 
 export function hasChatPetImageAttachment(entries: readonly { readonly kind: string }[]): boolean {
 	return entries.some(entry => entry.kind === 'image');
-}
-
-export function shouldUnlockChatPetIntegratedBrowserShare(shared: boolean, succeeded: boolean): boolean {
-	return shared && succeeded;
 }
 
 export function isUserAuthoredChatPetCustomization(source: AICustomizationSource, isBuiltin: boolean | undefined): boolean {

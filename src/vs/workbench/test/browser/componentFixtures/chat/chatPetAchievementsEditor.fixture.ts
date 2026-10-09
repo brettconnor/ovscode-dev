@@ -94,7 +94,7 @@ export default defineThemedFixtureGroup({ path: 'chat/petAchievements/standalone
 		labels: { kind: 'screenshot' },
 		render: context => renderAchievementsEditor(context, {
 			enabled: true,
-			unlockedAchievements: [ChatPetAchievementIds.IntegratedBrowserShared],
+			unlockedAchievements: [ChatPetAchievementIds.RequestRevision],
 			width: 550,
 			height: 500,
 		}),

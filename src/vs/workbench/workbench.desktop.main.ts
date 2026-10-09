@@ -93,7 +93,6 @@ import './services/auxiliaryWindow/electron-browser/auxiliaryWindowService.js';
 import '../platform/extensionManagement/electron-browser/extensionsProfileScannerService.js';
 import '../platform/sandbox/electron-browser/sandboxHelperService.js';
 import '../platform/webContentExtractor/electron-browser/webContentExtractorService.js';
-import './services/browserView/electron-browser/playwrightWorkbenchService.js';
 import './services/process/electron-browser/processService.js';
 import './services/power/electron-browser/powerService.js';
 
@@ -163,9 +162,6 @@ import './contrib/externalTerminal/electron-browser/externalTerminal.contributio
 
 // Webview
 import './contrib/webview/electron-browser/webview.contribution.js';
-
-// Browser
-import './contrib/browserView/electron-browser/browserView.contribution.js';
 
 // Splash
 import './contrib/splash/electron-browser/splash.contribution.js';

@@ -16,7 +16,6 @@ import { IConfigurationService } from '../../../../../platform/configuration/com
 import { IInstantiationService } from '../../../../../platform/instantiation/common/instantiation.js';
 import { IOpenerService } from '../../../../../platform/opener/common/opener.js';
 import { DEFAULT_LABELS_CONTAINER, ResourceLabels } from '../../../../browser/labels.js';
-import { BrowserViewEditorId } from '../../../browserView/common/browserView.js';
 import { getEditorOverrideForChatResource } from './chatEditorAssociations.js';
 import { ChatPillsWidget, getChatPillEntries, IChatPill, type IChatPillSection } from '../../../../browser/chatPills.js';
 import { ChatChangesPillActionViewItem } from '../../../../browser/chatChangesPill.js';
@@ -95,7 +94,7 @@ export async function openChatTurnFile(file: IPreviewFile, openerService: IOpene
 	await openerService.open(file.uri, {
 		fromUserGesture: true,
 		editorOptions: {
-			override: configuredOverride ?? (file.kind === 'html' ? BrowserViewEditorId : undefined),
+			override: configuredOverride,
 		},
 	});
 }

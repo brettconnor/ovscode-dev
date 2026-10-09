@@ -14,7 +14,6 @@ declare class URL {
 
 const openApiCommand = 'simpleBrowser.api.open';
 const showCommand = 'simpleBrowser.show';
-const integratedBrowserCommand = 'workbench.action.browser.open';
 
 const enabledHosts = new Set<string>([
 	'localhost',
@@ -32,21 +31,6 @@ const enabledHosts = new Set<string>([
 
 const openerId = 'simpleBrowser.open';
 
-/**
- * Checks if the integrated browser should be used instead of the simple browser
- */
-async function shouldUseIntegratedBrowser(): Promise<boolean> {
-	const commands = await vscode.commands.getCommands(true);
-	return commands.includes(integratedBrowserCommand);
-}
-
-/**
- * Opens a URL in the integrated browser
- */
-async function openInIntegratedBrowser(url?: string): Promise<void> {
-	await vscode.commands.executeCommand(integratedBrowserCommand, url);
-}
-
 export function activate(context: vscode.ExtensionContext) {
 
 	const manager = new SimpleBrowserManager(context.extensionUri);
@@ -59,10 +43,6 @@ export function activate(context: vscode.ExtensionContext) {
 	}));
 
 	context.subscriptions.push(vscode.commands.registerCommand(showCommand, async (url?: string) => {
-		if (await shouldUseIntegratedBrowser()) {
-			return openInIntegratedBrowser(url);
-		}
-
 		if (!url) {
 			url = await vscode.window.showInputBox({
 				placeHolder: vscode.l10n.t("https://example.com"),
@@ -79,11 +59,7 @@ export function activate(context: vscode.ExtensionContext) {
 		preserveFocus?: boolean;
 		viewColumn: vscode.ViewColumn;
 	}) => {
-		if (await shouldUseIntegratedBrowser()) {
-			await openInIntegratedBrowser(url.toString(true));
-		} else {
-			manager.show(url, showOptions);
-		}
+		manager.show(url, showOptions);
 	}));
 
 	context.subscriptions.push(vscode.window.registerExternalUriOpener(openerId, {
@@ -99,13 +75,9 @@ export function activate(context: vscode.ExtensionContext) {
 			return vscode.ExternalUriOpenerPriority.None;
 		},
 		async openExternalUri(resolveUri: vscode.Uri) {
-			if (await shouldUseIntegratedBrowser()) {
-				await openInIntegratedBrowser(resolveUri.toString(true));
-			} else {
-				return manager.show(resolveUri, {
-					viewColumn: vscode.window.activeTextEditor ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active
-				});
-			}
+			return manager.show(resolveUri, {
+				viewColumn: vscode.window.activeTextEditor ? vscode.ViewColumn.Beside : vscode.ViewColumn.Active
+			});
 		}
 	}, {
 		schemes: ['http', 'https'],

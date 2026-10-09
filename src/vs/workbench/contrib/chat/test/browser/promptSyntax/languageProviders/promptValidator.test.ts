@@ -114,7 +114,7 @@ suite('PromptValidator', () => {
 		disposables.add(conflictToolSet2.addTool(conflictTool2));
 
 		// Tool in the vscode toolset with a legacy name — for testing namespaced deprecated name resolution
-		const toolInVscodeSet = { id: 'browserTool', toolReferenceName: 'openIntegratedBrowser', legacyToolReferenceFullNames: ['openSimpleBrowser'], displayName: 'Open Integrated Browser', canBeReferencedInPrompt: true, modelDescription: 'Open browser', source: ToolDataSource.Internal, inputSchema: {} } satisfies IToolData;
+		const toolInVscodeSet = { id: 'browserTool', toolReferenceName: 'currentToolName', legacyToolReferenceFullNames: ['legacyToolName'], displayName: 'Current Tool', canBeReferencedInPrompt: true, modelDescription: 'Open browser', source: ToolDataSource.Internal, inputSchema: {} } satisfies IToolData;
 		disposables.add(toolService.registerToolData(toolInVscodeSet));
 		disposables.add(toolService.vscodeToolSet.addTool(toolInVscodeSet));
 
@@ -514,19 +514,19 @@ suite('PromptValidator', () => {
 		});
 
 		test('namespaced deprecated tool name in tools header shows rename hint', async () => {
-			// When a tool is in a toolset (e.g. vscode/openIntegratedBrowser) and has a legacy name,
-			// using the namespaced old name (vscode/openSimpleBrowser) should show the rename hint
+			// When a tool is in a toolset (e.g. vscode/currentToolName) and has a legacy name,
+			// using the namespaced old name (vscode/legacyToolName) should show the rename hint
 			const content = [
 				'---',
 				'description: "Test"',
-				`tools: ['vscode/openSimpleBrowser']`,
+				`tools: ['vscode/legacyToolName']`,
 				'---',
 			].join('\n');
 			const markers = await validate(content, PromptsType.agent);
 			assert.deepStrictEqual(
 				markers.map(m => ({ severity: m.severity, message: m.message })),
 				[
-					{ severity: MarkerSeverity.Info, message: `Tool or toolset 'vscode/openSimpleBrowser' has been renamed, use 'vscode/openIntegratedBrowser' instead.` },
+					{ severity: MarkerSeverity.Info, message: `Tool or toolset 'vscode/legacyToolName' has been renamed, use 'vscode/currentToolName' instead.` },
 				]
 			);
 		});
@@ -536,14 +536,14 @@ suite('PromptValidator', () => {
 			const content = [
 				'---',
 				'description: "Test"',
-				`tools: ['openSimpleBrowser']`,
+				`tools: ['legacyToolName']`,
 				'---',
 			].join('\n');
 			const markers = await validate(content, PromptsType.agent);
 			assert.deepStrictEqual(
 				markers.map(m => ({ severity: m.severity, message: m.message })),
 				[
-					{ severity: MarkerSeverity.Info, message: `Tool or toolset 'openSimpleBrowser' has been renamed, use 'vscode/openIntegratedBrowser' instead.` },
+					{ severity: MarkerSeverity.Info, message: `Tool or toolset 'legacyToolName' has been renamed, use 'vscode/currentToolName' instead.` },
 				]
 			);
 		});
@@ -2071,14 +2071,14 @@ suite('PromptValidator', () => {
 				'I need',
 				'#tool:ms-azuretools.vscode-azure-github-copilot/azure_recommend_custom_modes',
 				'#tool:github.vscode-pull-request-github/suggest-fix',
-				'#tool:openSimpleBrowser',
+				'#tool:legacyToolName',
 			].join('\n');
 			const markers = await validate(content, PromptsType.prompt);
 			const actual = markers.sort((a, b) => a.startLineNumber - b.startLineNumber).map(m => ({ message: m.message, startColumn: m.startColumn, endColumn: m.endColumn }));
 			assert.deepEqual(actual, [
 				{ message: `Unknown extension tool 'ms-azuretools.vscode-azure-github-copilot/azure_recommend_custom_modes'. It is likely to be a missing extension, please ensure it is installed and enabled.`, startColumn: 7, endColumn: 77 },
 				{ message: `Tool or toolset 'github.vscode-pull-request-github/suggest-fix' also needs to be enabled in the header.`, startColumn: 7, endColumn: 52 },
-				{ message: `Tool or toolset 'openSimpleBrowser' has been renamed, use 'vscode/openIntegratedBrowser' instead.`, startColumn: 7, endColumn: 24 },
+				{ message: `Tool or toolset 'legacyToolName' has been renamed, use 'vscode/currentToolName' instead.`, startColumn: 7, endColumn: 24 },
 			]);
 		});
 

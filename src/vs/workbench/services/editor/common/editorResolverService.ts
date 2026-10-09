@@ -8,7 +8,6 @@ import { Event } from '../../../../base/common/event.js';
 import { IDisposable } from '../../../../base/common/lifecycle.js';
 import { Schemas } from '../../../../base/common/network.js';
 import { posix } from '../../../../base/common/path.js';
-import { isWeb } from '../../../../base/common/platform.js';
 import { basename } from '../../../../base/common/resources.js';
 import { URI } from '../../../../base/common/uri.js';
 import { localize } from '../../../../nls.js';
@@ -56,13 +55,8 @@ function markdownEditorAgentsWindowDefault(markdownDefaultEditor?: boolean): str
  *
  * Pass `false` to use the Markdown preview editor for `*.md` files.
  */
-export function editorsAssociationsAgentsWindowDefault(options?: { markdownDefaultEditor?: boolean; integratedBrowserAvailable?: boolean }): Record<string, string> {
-	const associations: Record<string, string> = {};
-	if (options?.integratedBrowserAvailable ?? !isWeb) {
-		associations['*.html'] = 'workbench.editor.browser';
-	}
-	associations['*.md'] = markdownEditorAgentsWindowDefault(options?.markdownDefaultEditor);
-	return associations;
+export function editorsAssociationsAgentsWindowDefault(options?: { markdownDefaultEditor?: boolean }): Record<string, string> {
+	return { '*.md': markdownEditorAgentsWindowDefault(options?.markdownDefaultEditor) };
 }
 
 export function diffEditorsAssociationsAgentsWindowDefault(options?: { markdownDefaultEditor?: boolean }): Record<string, string> {

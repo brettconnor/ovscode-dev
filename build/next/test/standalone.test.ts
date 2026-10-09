@@ -33,10 +33,6 @@ const preloads = [
 		file: 'vs/base/parts/sandbox/electron-browser/preload-aux.ts',
 		markers: ['startsWith(', 'setZoomLevel(', 'exposeInMainWorld('],
 	},
-	{
-		file: 'vs/platform/browserView/electron-browser/preload-browserView.ts',
-		markers: ['isTrusted', 'exposeInMainWorld(', 'getBoundingClientRect(', '_onPicked('],
-	},
 ];
 const javascriptFiles = preloads.map(({ file }) => file.replace(/\.ts$/, '.js')).sort();
 

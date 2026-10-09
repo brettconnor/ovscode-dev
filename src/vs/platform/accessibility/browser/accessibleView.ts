@@ -55,7 +55,6 @@ export const enum AccessibleViewProviderId {
 	Survey = 'survey',
 	Automations = 'automations',
 	ConnectionDiagnostics = 'connectionDiagnostics',
-	BrowserElementCommenting = 'browserElementCommenting',
 	ChatPetAchievements = 'chatPetAchievements',
 }
 

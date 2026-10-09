@@ -8,7 +8,6 @@ import { Disposable, DisposableStore, IDisposable, toDisposable } from '../../..
 import { ThemeIcon } from '../../../../../base/common/themables.js';
 import { localize } from '../../../../../nls.js';
 import { IWorkbenchContribution } from '../../../../common/contributions.js';
-import { browserChatToolReferenceNames } from '../../../../../platform/browserView/common/browserChatToolReferenceNames.js';
 import { ILanguageModelToolsService, IToolData, ToolDataSource } from '../../common/tools/languageModelToolsService.js';
 
 /**
@@ -46,15 +45,6 @@ export class ClientToolSetsContribution extends Disposable implements IWorkbench
 				'getTaskOutput',
 				'problems',
 			],
-		}));
-
-		this._register(this._registerDynamicToolSet(toolsService, {
-			id: 'vscode-browser',
-			referenceName: 'vscodeBrowser',
-			icon: Codicon.browser,
-			description: localize('clientToolSet.browser.description', "Integrated Browser"),
-			detail: localize('clientToolSet.browser.detail', "Open, navigate, and inspect pages in the built-in browser."),
-			members: browserChatToolReferenceNames,
 		}));
 
 		this._register(this._registerDynamicToolSet(toolsService, {
