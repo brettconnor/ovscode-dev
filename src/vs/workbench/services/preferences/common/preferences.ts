@@ -37,7 +37,6 @@ export enum SettingValueType {
 	Object = 'object',
 	BooleanObject = 'boolean-object',
 	LanguageTag = 'language-tag',
-	ExtensionToggle = 'extension-toggle',
 	ComplexObject = 'complex-object',
 }
 
@@ -97,9 +96,7 @@ export interface ISetting {
 
 	// Internal properties
 	allKeysAreBoolean?: boolean;
-	displayExtensionId?: string;
 	title?: string;
-	extensionGroupTitle?: string;
 	internalOrder?: number;
 }
 

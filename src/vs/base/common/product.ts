@@ -168,7 +168,6 @@ export interface IProductConfiguration {
 	readonly extensionPublisherOrgs?: readonly string[];
 	readonly trustedExtensionPublishers?: readonly string[];
 
-	readonly extensionRecommendations?: IStringDictionary<IExtensionRecommendations>;
 	readonly remoteExtensionTips?: IStringDictionary<IRemoteExtensionTip>;
 	readonly virtualWorkspaceExtensionTips?: IStringDictionary<IVirtualWorkspaceExtensionTip>;
 	readonly extensionKeywords?: IStringDictionary<string[]>;
@@ -302,15 +301,6 @@ export interface ITunnelApplicationConfig {
 	authenticationProviders: IStringDictionary<{ scopes: string[] }>;
 	editorWebUrl: string;
 	extension: IRemoteExtensionTip;
-}
-
-export interface IExtensionRecommendations {
-	readonly onSettingsEditorOpen?: ISettingsEditorOpenCondition;
-}
-
-export interface ISettingsEditorOpenCondition {
-	readonly prerelease?: boolean | string;
-	readonly descriptionOverride?: string;
 }
 
 export interface IAppCenterConfiguration {

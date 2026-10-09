@@ -13,14 +13,13 @@ import { URI } from '../../../../base/common/uri.js';
 import { ILanguageService } from '../../../../editor/common/languages/language.js';
 import { ConfigurationTarget, getLanguageTagSettingPlainKey, IConfigurationValue } from '../../../../platform/configuration/common/configuration.js';
 import { ConfigurationDefaultValueSource, ConfigurationScope, EditPresentationTypes, Extensions, IConfigurationRegistry } from '../../../../platform/configuration/common/configurationRegistry.js';
-import { IProductService } from '../../../../platform/product/common/productService.js';
 import { Registry } from '../../../../platform/registry/common/platform.js';
 import { USER_LOCAL_AND_REMOTE_SETTINGS } from '../../../../platform/request/common/request.js';
 import { APPLICATION_SCOPES, FOLDER_SCOPES, IWorkbenchConfigurationService, LOCAL_MACHINE_SCOPES, REMOTE_MACHINE_SCOPES, WORKSPACE_SCOPES } from '../../../services/configuration/common/configuration.js';
 import { IWorkbenchEnvironmentService } from '../../../services/environment/common/environmentService.js';
 import { IExtensionSetting, ISearchResult, ISetting, ISettingMatch, SettingMatchType, SettingValueType } from '../../../services/preferences/common/preferences.js';
 import { IUserDataProfileService } from '../../../services/userDataProfile/common/userDataProfile.js';
-import { ENABLE_EXTENSION_TOGGLE_SETTINGS, ENABLE_LANGUAGE_FILTER, EXP_ASSIGNMENT_SETTING_TAG, MODIFIED_SETTING_TAG, POLICY_SETTING_TAG, REQUIRE_TRUSTED_WORKSPACE_SETTING_TAG, compareTwoNullableNumbers, wordifyKey } from '../common/preferences.js';
+import { ENABLE_LANGUAGE_FILTER, EXP_ASSIGNMENT_SETTING_TAG, MODIFIED_SETTING_TAG, POLICY_SETTING_TAG, REQUIRE_TRUSTED_WORKSPACE_SETTING_TAG, compareTwoNullableNumbers, wordifyKey } from '../common/preferences.js';
 import { SettingsTarget } from './preferencesWidgets.js';
 import { ITOCEntry, tocData } from './settingsLayout.js';
 import { IExperimentalSettingsService } from '../../../services/configuration/common/experimentalSettings.js';
@@ -174,7 +173,6 @@ export class SettingsTreeSettingElement extends SettingsTreeElement {
 		private readonly isWorkspaceTrusted: boolean,
 		private readonly languageFilter: string | undefined,
 		private readonly languageService: ILanguageService,
-		private readonly productService: IProductService,
 		private readonly userDataProfileService: IUserDataProfileService,
 		private readonly configurationService: IWorkbenchConfigurationService,
 		private readonly experimentalSettingsService: IExperimentalSettingsService,
@@ -230,9 +228,7 @@ export class SettingsTreeSettingElement extends SettingsTreeElement {
 	}
 
 	private initSettingValueType() {
-		if (isExtensionToggleSetting(this.setting, this.productService)) {
-			this.valueType = SettingValueType.ExtensionToggle;
-		} else if (this.setting.enum && (!this.setting.type || settingTypeEnumRenderable(this.setting.type))) {
+		if (this.setting.enum && (!this.setting.type || settingTypeEnumRenderable(this.setting.type))) {
 			this.valueType = SettingValueType.Enum;
 		} else if (this.setting.type === 'string') {
 			if (this.setting.editPresentation === EditPresentationTypes.Multiline) {
@@ -581,7 +577,6 @@ export class SettingsTreeModel implements IDisposable {
 		@IWorkbenchConfigurationService private readonly _configurationService: IWorkbenchConfigurationService,
 		@ILanguageService private readonly _languageService: ILanguageService,
 		@IUserDataProfileService private readonly _userDataProfileService: IUserDataProfileService,
-		@IProductService private readonly _productService: IProductService,
 		@IExperimentalSettingsService private readonly _experimentalSettingsService: IExperimentalSettingsService,
 	) {
 	}
@@ -696,7 +691,6 @@ export class SettingsTreeModel implements IDisposable {
 			this._isWorkspaceTrusted,
 			this._viewState.languageFilter,
 			this._languageService,
-			this._productService,
 			this._userDataProfileService,
 			this._configurationService,
 			this._experimentalSettingsService);
@@ -838,12 +832,6 @@ function trimCategoryForGroup(category: string, groupId: string): string {
 	}
 
 	return trimmed;
-}
-
-function isExtensionToggleSetting(setting: ISetting, productService: IProductService): boolean {
-	return ENABLE_EXTENSION_TOGGLE_SETTINGS &&
-		!!productService.extensionRecommendations &&
-		!!setting.displayExtensionId;
 }
 
 function isExcludeSetting(setting: ISetting): boolean {
@@ -997,10 +985,9 @@ export class SearchResultModel extends SettingsTreeModel {
 		@IWorkbenchEnvironmentService private readonly environmentService: IWorkbenchEnvironmentService,
 		@ILanguageService languageService: ILanguageService,
 		@IUserDataProfileService userDataProfileService: IUserDataProfileService,
-		@IProductService productService: IProductService,
 		@IExperimentalSettingsService experimentalSettingsService: IExperimentalSettingsService
 	) {
-		super(viewState, isWorkspaceTrusted, configurationService, languageService, userDataProfileService, productService, experimentalSettingsService);
+		super(viewState, isWorkspaceTrusted, configurationService, languageService, userDataProfileService, experimentalSettingsService);
 		this.settingsOrderByTocIndex = settingsOrderByTocIndex;
 		this.cachedUniqueSearchResults = new Map();
 		this.update({ id: 'searchResultModel', label: '' });

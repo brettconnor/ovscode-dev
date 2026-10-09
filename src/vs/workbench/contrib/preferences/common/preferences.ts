@@ -3,16 +3,10 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { raceTimeout } from '../../../../base/common/async.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
-import { IStringDictionary } from '../../../../base/common/collections.js';
-import { IExtensionRecommendations } from '../../../../base/common/product.js';
 import { localize } from '../../../../nls.js';
 import { RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
-import { IExtensionGalleryService, IGalleryExtension } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
-import { IProductService } from '../../../../platform/product/common/productService.js';
-import { IChatEntitlementService } from '../../../services/chat/common/chatEntitlementService.js';
 import { ISearchResult, ISettingsEditorModel } from '../../../services/preferences/common/preferences.js';
 
 export interface IWorkbenchSettingsConfiguration {
@@ -113,9 +107,6 @@ export const KEYBOARD_LAYOUT_OPEN_PICKER = 'workbench.action.openKeyboardLayoutP
 
 export const ENABLE_LANGUAGE_FILTER = true;
 
-export const ENABLE_EXTENSION_TOGGLE_SETTINGS = true;
-export const EXTENSION_FETCH_TIMEOUT_MS = 1000;
-
 export const STRING_MATCH_SEARCH_PROVIDER_NAME = 'local';
 export const TF_IDF_SEARCH_PROVIDER_NAME = 'tfIdf';
 export const FILTER_MODEL_SEARCH_PROVIDER_NAME = 'filterModel';
@@ -125,74 +116,6 @@ export const LLM_RANKED_SEARCH_PROVIDER_NAME = 'llmRanked';
 export enum WorkbenchSettingsEditorSettings {
 	ShowAISearchToggle = 'workbench.settings.showAISearchToggle',
 	EnableNaturalLanguageSearch = 'workbench.settings.enableNaturalLanguageSearch',
-}
-
-export type ExtensionToggleData = {
-	settingsEditorRecommendedExtensions: IStringDictionary<IExtensionRecommendations>;
-	recommendedExtensionsGalleryInfo: IStringDictionary<IGalleryExtension>;
-};
-
-let cachedExtensionToggleData: ExtensionToggleData | undefined;
-
-export async function getExperimentalExtensionToggleData(
-	chatEntitlementService: IChatEntitlementService,
-	extensionGalleryService: IExtensionGalleryService,
-	productService: IProductService,
-): Promise<ExtensionToggleData | undefined> {
-	if (!ENABLE_EXTENSION_TOGGLE_SETTINGS) {
-		return undefined;
-	}
-
-	if (!extensionGalleryService.isEnabled()) {
-		return undefined;
-	}
-
-	if (chatEntitlementService.sentiment.hidden || chatEntitlementService.sentiment.disabled) {
-		return undefined;
-	}
-
-	if (cachedExtensionToggleData) {
-		return cachedExtensionToggleData;
-	}
-
-	if (productService.extensionRecommendations) {
-		const settingsEditorRecommendedExtensions: IStringDictionary<IExtensionRecommendations> = {};
-		Object.keys(productService.extensionRecommendations).forEach(extensionId => {
-			const extensionInfo = productService.extensionRecommendations![extensionId];
-			if (extensionInfo.onSettingsEditorOpen) {
-				settingsEditorRecommendedExtensions[extensionId] = extensionInfo;
-			}
-		});
-
-		const recommendedExtensionsGalleryInfo: IStringDictionary<IGalleryExtension> = {};
-		for (const key in settingsEditorRecommendedExtensions) {
-			const extensionId = key;
-			// Recommend prerelease if not on Stable.
-			const isStable = productService.quality === 'stable';
-			try {
-				const extensions = await raceTimeout(
-					extensionGalleryService.getExtensions([{ id: extensionId, preRelease: !isStable }], CancellationToken.None),
-					EXTENSION_FETCH_TIMEOUT_MS);
-				if (extensions?.length === 1) {
-					recommendedExtensionsGalleryInfo[key] = extensions[0];
-				} else {
-					// same as network connection fail. we do not want a blank settings page: https://github.com/microsoft/vscode/issues/195722
-					// so instead of returning partial data we return undefined here
-					return undefined;
-				}
-			} catch (e) {
-				// Network connection fail. Return nothing rather than partial data.
-				return undefined;
-			}
-		}
-
-		cachedExtensionToggleData = {
-			settingsEditorRecommendedExtensions,
-			recommendedExtensionsGalleryInfo
-		};
-		return cachedExtensionToggleData;
-	}
-	return undefined;
 }
 
 /**

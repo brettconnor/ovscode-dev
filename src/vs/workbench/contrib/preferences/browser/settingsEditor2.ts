@@ -34,8 +34,7 @@ import { ICommandService } from '../../../../platform/commands/common/commands.j
 import { ConfigurationTarget, IConfigurationUpdateOverrides } from '../../../../platform/configuration/common/configuration.js';
 import { ConfigurationScope, Extensions, IConfigurationRegistry } from '../../../../platform/configuration/common/configurationRegistry.js';
 import { IContextKey, IContextKeyService } from '../../../../platform/contextkey/common/contextkey.js';
-import { IExtensionGalleryService, IExtensionManagementService, IGalleryExtension } from '../../../../platform/extensionManagement/common/extensionManagement.js';
-import { IExtensionManifest } from '../../../../platform/extensions/common/extensions.js';
+import { IExtensionManagementService } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { IKeybindingService } from '../../../../platform/keybinding/common/keybinding.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
@@ -56,13 +55,13 @@ import { IChatEntitlementService } from '../../../services/chat/common/chatEntit
 import { APPLICATION_SCOPES, IWorkbenchConfigurationService } from '../../../services/configuration/common/configuration.js';
 import { IEditorGroup, IEditorGroupsService } from '../../../services/editor/common/editorGroupsService.js';
 import { IExtensionService } from '../../../services/extensions/common/extensions.js';
-import { ALWAYS_SHOW_ADVANCED_SETTINGS_SETTING, IOpenSettingsOptions, IPreferencesService, ISearchResult, ISetting, ISettingsEditorModel, ISettingsEditorOptions, ISettingsGroup, SettingMatchType, SettingValueType, validateSettingsEditorOptions } from '../../../services/preferences/common/preferences.js';
+import { ALWAYS_SHOW_ADVANCED_SETTINGS_SETTING, IOpenSettingsOptions, IPreferencesService, ISearchResult, ISetting, ISettingsEditorModel, ISettingsEditorOptions, SettingMatchType, SettingValueType, validateSettingsEditorOptions } from '../../../services/preferences/common/preferences.js';
 import { SettingsEditor2Input } from '../../../services/preferences/common/preferencesEditorInput.js';
-import { nullRange, Settings2EditorModel } from '../../../services/preferences/common/preferencesModels.js';
+import { Settings2EditorModel } from '../../../services/preferences/common/preferencesModels.js';
 import { IUserDataProfileService } from '../../../services/userDataProfile/common/userDataProfile.js';
 import { IUserDataSyncWorkbenchService } from '../../../services/userDataSync/common/userDataSync.js';
 import { SuggestEnabledInputWithHistory } from '../../codeEditor/browser/suggestEnabledInput/suggestEnabledInput.js';
-import { ADVANCED_SETTING_TAG, CONTEXT_AI_SETTING_RESULTS_AVAILABLE, CONTEXT_SETTINGS_EDITOR, CONTEXT_SETTINGS_FIRST_ROW_FOCUS, CONTEXT_SETTINGS_ROW_FOCUS, CONTEXT_SETTINGS_SEARCH_FOCUS, CONTEXT_TOC_ROW_FOCUS, EMBEDDINGS_SEARCH_PROVIDER_NAME, ENABLE_LANGUAGE_FILTER, EXP_ASSIGNMENT_SETTING_TAG, EXTENSION_FETCH_TIMEOUT_MS, EXTENSION_SETTING_TAG, FEATURE_SETTING_TAG, FILTER_MODEL_SEARCH_PROVIDER_NAME, getExperimentalExtensionToggleData, ID_SETTING_TAG, IPreferencesSearchService, ISearchProvider, LANGUAGE_SETTING_TAG, LLM_RANKED_SEARCH_PROVIDER_NAME, MODIFIED_SETTING_TAG, POLICY_SETTING_TAG, REQUIRE_TRUSTED_WORKSPACE_SETTING_TAG, SETTINGS_EDITOR_COMMAND_CLEAR_SEARCH_RESULTS, SETTINGS_EDITOR_COMMAND_SHOW_AI_RESULTS, SETTINGS_EDITOR_COMMAND_SUGGEST_FILTERS, SETTINGS_EDITOR_COMMAND_TOGGLE_AI_SEARCH, STRING_MATCH_SEARCH_PROVIDER_NAME, TF_IDF_SEARCH_PROVIDER_NAME, WorkbenchSettingsEditorSettings, WORKSPACE_TRUST_SETTING_TAG } from '../common/preferences.js';
+import { ADVANCED_SETTING_TAG, CONTEXT_AI_SETTING_RESULTS_AVAILABLE, CONTEXT_SETTINGS_EDITOR, CONTEXT_SETTINGS_FIRST_ROW_FOCUS, CONTEXT_SETTINGS_ROW_FOCUS, CONTEXT_SETTINGS_SEARCH_FOCUS, CONTEXT_TOC_ROW_FOCUS, EMBEDDINGS_SEARCH_PROVIDER_NAME, ENABLE_LANGUAGE_FILTER, EXP_ASSIGNMENT_SETTING_TAG, EXTENSION_SETTING_TAG, FEATURE_SETTING_TAG, FILTER_MODEL_SEARCH_PROVIDER_NAME, ID_SETTING_TAG, IPreferencesSearchService, ISearchProvider, LANGUAGE_SETTING_TAG, LLM_RANKED_SEARCH_PROVIDER_NAME, MODIFIED_SETTING_TAG, POLICY_SETTING_TAG, REQUIRE_TRUSTED_WORKSPACE_SETTING_TAG, SETTINGS_EDITOR_COMMAND_CLEAR_SEARCH_RESULTS, SETTINGS_EDITOR_COMMAND_SHOW_AI_RESULTS, SETTINGS_EDITOR_COMMAND_SUGGEST_FILTERS, SETTINGS_EDITOR_COMMAND_TOGGLE_AI_SEARCH, STRING_MATCH_SEARCH_PROVIDER_NAME, TF_IDF_SEARCH_PROVIDER_NAME, WorkbenchSettingsEditorSettings, WORKSPACE_TRUST_SETTING_TAG } from '../common/preferences.js';
 import { settingsHeaderBorder, settingsSashBorder, settingsTextInputBorder } from '../common/settingsEditorColorRegistry.js';
 import './media/settingsEditor2.css';
 import { preferencesAiResultsIcon, preferencesClearInputIcon, preferencesFilterIcon } from './preferencesIcons.js';
@@ -254,11 +253,6 @@ export class SettingsEditor2 extends EditorPane {
 	private dimension!: DOM.Dimension;
 
 	private installedExtensionIds: string[] = [];
-	private dismissedExtensionSettings: string[] = [];
-
-	private readonly DISMISSED_EXTENSION_SETTINGS_STORAGE_KEY = 'settingsEditor2.dismissedExtensionSettings';
-	private readonly DISMISSED_EXTENSION_SETTINGS_DELIMITER = '\t';
-
 	private readonly SEARCH_HISTORY_STORAGE_KEY = 'settingsEditor2.searchHistory';
 
 	private readonly inputChangeListener: MutableDisposable<IDisposable>;
@@ -285,7 +279,6 @@ export class SettingsEditor2 extends EditorPane {
 		@ILanguageService private readonly languageService: ILanguageService,
 		@IExtensionManagementService private readonly extensionManagementService: IExtensionManagementService,
 		@IProductService private readonly productService: IProductService,
-		@IExtensionGalleryService private readonly extensionGalleryService: IExtensionGalleryService,
 		@IEditorProgressService private readonly editorProgressService: IEditorProgressService,
 		@IUserDataProfileService userDataProfileService: IUserDataProfileService,
 		@IKeybindingService private readonly keybindingService: IKeybindingService,
@@ -312,10 +305,6 @@ export class SettingsEditor2 extends EditorPane {
 		this.scheduledRefreshes = new Map<string, DisposableStore>();
 
 		this.editorMemento = this.getEditorMemento<ISettingsEditor2State>(editorGroupService, textResourceConfigurationService, SETTINGS_EDITOR_STATE_KEY);
-
-		this.dismissedExtensionSettings = this.storageService
-			.get(this.DISMISSED_EXTENSION_SETTINGS_STORAGE_KEY, StorageScope.PROFILE, '')
-			.split(this.DISMISSED_EXTENSION_SETTINGS_DELIMITER);
 
 		this._register(configurationService.onDidChangeConfiguration(e => {
 			if (e.affectedKeys.has(WorkbenchSettingsEditorSettings.ShowAISearchToggle)
@@ -379,9 +368,6 @@ export class SettingsEditor2 extends EditorPane {
 
 	private async whenCurrentProfileChanged(): Promise<void> {
 		this.updatedConfigSchemaDelayer.trigger(() => {
-			this.dismissedExtensionSettings = this.storageService
-				.get(this.DISMISSED_EXTENSION_SETTINGS_STORAGE_KEY, StorageScope.PROFILE, '')
-				.split(this.DISMISSED_EXTENSION_SETTINGS_DELIMITER);
 			this.onConfigUpdate(undefined, true);
 		});
 	}
@@ -934,19 +920,6 @@ export class SettingsEditor2 extends EditorPane {
 		this.onConfigUpdate(undefined, true);
 	}
 
-	private onDidDismissExtensionSetting(extensionId: string): void {
-		if (!this.dismissedExtensionSettings.includes(extensionId)) {
-			this.dismissedExtensionSettings.push(extensionId);
-		}
-		this.storageService.store(
-			this.DISMISSED_EXTENSION_SETTINGS_STORAGE_KEY,
-			this.dismissedExtensionSettings.join(this.DISMISSED_EXTENSION_SETTINGS_DELIMITER),
-			StorageScope.PROFILE,
-			StorageTarget.USER
-		);
-		this.onConfigUpdate(undefined, true);
-	}
-
 	private onDidClickSetting(evt: ISettingLinkClickEvent, recursed?: boolean): void {
 		// eslint-disable-next-line no-restricted-syntax
 		const targetElement = this.currentSettingsModel?.getElementsByName(evt.targetKey)?.[0];
@@ -1186,7 +1159,6 @@ export class SettingsEditor2 extends EditorPane {
 	private createSettingsTree(container: HTMLElement): void {
 		this.settingRenderers = this._register(this.instantiationService.createInstance(SettingTreeRenderers));
 		this._register(this.settingRenderers.onDidChangeSetting(e => this.onDidChangeSetting(e.key, e.value, e.type, e.manualReset, e.scope)));
-		this._register(this.settingRenderers.onDidDismissExtensionSetting((e) => this.onDidDismissExtensionSetting(e)));
 		this._register(this.settingRenderers.onDidOpenSettings(settingKey => {
 			this.openSettingsFile({ revealSetting: { key: settingKey, edit: true } });
 		}));
@@ -1491,112 +1463,9 @@ export class SettingsEditor2 extends EditorPane {
 			this.hasWarnedMissingSettings = true;
 		}
 
-		const additionalGroups: ISettingsGroup[] = [];
-		let setAdditionalGroups = false;
-		const toggleData = await getExperimentalExtensionToggleData(this.chatEntitlementService, this.extensionGalleryService, this.productService);
-		if (toggleData && groups.filter(g => g.extensionInfo).length && Object.keys(toggleData.settingsEditorRecommendedExtensions).length) {
-			// Refresh installed extensions once per onConfigUpdate invocation for performance,
-			// instead of per extension. The installed list may still change while iterating.
-			await this.refreshInstalledExtensionsList();
-			for (const key in toggleData.settingsEditorRecommendedExtensions) {
-				const extension: IGalleryExtension = toggleData.recommendedExtensionsGalleryInfo[key];
-				if (!extension) {
-					continue;
-				}
-
-				const extensionId = extension.identifier.id;
-				const extensionInstalled = this.installedExtensionIds.includes(extensionId);
-
-				// Drill down to see whether the group and setting already exist
-				// and need to be removed.
-				const matchingGroupIndex = groups.findIndex(g =>
-					g.extensionInfo && g.extensionInfo!.id.toLowerCase() === extensionId.toLowerCase() &&
-					g.sections.length === 1 && g.sections[0].settings.length === 1 && g.sections[0].settings[0].displayExtensionId
-				);
-				if (extensionInstalled || this.dismissedExtensionSettings.includes(extensionId)) {
-					if (matchingGroupIndex !== -1) {
-						groups.splice(matchingGroupIndex, 1);
-						setAdditionalGroups = true;
-					}
-					continue;
-				}
-
-				if (matchingGroupIndex !== -1) {
-					continue;
-				}
-
-				// Create the entry. extensionInstalled is false in this case.
-				let manifest: IExtensionManifest | null = null;
-				try {
-					manifest = await raceTimeout(
-						this.extensionGalleryService.getManifest(extension, CancellationToken.None),
-						EXTENSION_FETCH_TIMEOUT_MS
-					) ?? null;
-				} catch (e) {
-					// Likely a networking issue.
-					// Skip adding a button for this extension to the Settings editor.
-					continue;
-				}
-
-				if (manifest === null) {
-					continue;
-				}
-
-				const contributesConfiguration = manifest?.contributes?.configuration;
-
-				let groupTitle: string | undefined;
-				if (!Array.isArray(contributesConfiguration)) {
-					groupTitle = contributesConfiguration?.title;
-				} else if (contributesConfiguration.length === 1) {
-					groupTitle = contributesConfiguration[0].title;
-				}
-
-				const recommendationInfo = toggleData.settingsEditorRecommendedExtensions[key];
-				const extensionName = extension.displayName ?? extension.name ?? extensionId;
-				const settingKey = `${key}.manageExtension`;
-				const setting: ISetting = {
-					range: nullRange,
-					key: settingKey,
-					keyRange: nullRange,
-					value: null,
-					valueRange: nullRange,
-					description: [recommendationInfo.onSettingsEditorOpen?.descriptionOverride ?? extension.description],
-					descriptionIsMarkdown: false,
-					descriptionRanges: [],
-					scope: ConfigurationScope.WINDOW,
-					type: 'null',
-					displayExtensionId: extensionId,
-					extensionGroupTitle: groupTitle ?? extensionName,
-					categoryLabel: 'Extensions',
-					title: extensionName
-				};
-				const additionalGroup: ISettingsGroup = {
-					sections: [{
-						settings: [setting],
-					}],
-					id: extensionId,
-					title: setting.extensionGroupTitle!,
-					titleRange: nullRange,
-					range: nullRange,
-					extensionInfo: {
-						id: extensionId,
-						displayName: extension.displayName,
-					}
-				};
-				groups.push(additionalGroup);
-				additionalGroups.push(additionalGroup);
-				setAdditionalGroups = true;
-			}
-		}
-
 		resolvedSettingsRoot.children!.push(await createTocTreeForExtensionSettings(this.extensionService, extensionSettingsGroups, filter));
 
 		resolvedSettingsRoot.children!.unshift(getCommonlyUsedData(groups));
-
-		if (toggleData && setAdditionalGroups) {
-			// Add the additional groups to the model to help with searching.
-			this.defaultSettingsEditorModel.setAdditionalGroups(additionalGroups);
-		}
 
 		if (!this.workspaceTrustManagementService.isWorkspaceTrusted() && (this.viewState.settingsTarget instanceof URI || this.viewState.settingsTarget === ConfigurationTarget.WORKSPACE)) {
 			const configuredUntrustedWorkspaceSettings = resolveConfiguredUntrustedSettings(groups, this.viewState.settingsTarget, this.viewState.languageFilter, this.configurationService);
