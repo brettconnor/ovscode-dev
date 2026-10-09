@@ -37,7 +37,7 @@ import { ITelemetryService } from '../../../../../../platform/telemetry/common/t
 import { FolderThemeIcon, IThemeService } from '../../../../../../platform/theme/common/themeService.js';
 import { fillEditorsDragData } from '../../../../../browser/dnd.js';
 import { StaticResourceContextKey } from '../../../../../common/contextkeys.js';
-import { SIDE_GROUP } from '../../../../../services/editor/common/editorService.js';
+import { IEditorService, SIDE_GROUP } from '../../../../../services/editor/common/editorService.js';
 import { INotebookDocumentService } from '../../../../../services/notebook/common/notebookDocumentService.js';
 import { ExplorerFolderContext } from '../../../../files/common/files.js';
 import { IWorkspaceSymbol } from '../../../../search/common/search.js';
