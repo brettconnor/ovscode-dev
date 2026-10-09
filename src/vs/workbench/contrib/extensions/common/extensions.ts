@@ -132,7 +132,6 @@ export interface IExtensionsWorkbenchService {
 	install(vsix: URI, installOptions?: InstallExtensionOptions, progressLocation?: ProgressLocation | string): Promise<IExtension>;
 	installInServer(extension: IExtension, server: IExtensionManagementServer): Promise<void>;
 	uninstall(extension: IExtension): Promise<void>;
-	togglePreRelease(extension: IExtension): Promise<void>;
 	setEnablement(extensions: IExtension | IExtension[], enablementState: EnablementState): Promise<void>;
 	open(extension: IExtension | string, options?: IExtensionEditorOptions): Promise<void>;
 	openSearch(searchValue: string, focus?: boolean): Promise<void>;

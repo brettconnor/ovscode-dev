@@ -18,7 +18,6 @@ import {
 	InstallOptions, IProductVersion,
 	UninstallExtensionInfo,
 	AllowedExtensionsConfigKey,
-	ExtensionManagementError,
 	MaliciousExtensionInfo,
 } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IWorkbenchExtensionEnablementService, EnablementState, IExtensionManagementServerService, IExtensionManagementServer, IWorkbenchExtensionManagementService, IResourceExtension } from '../../../services/extensionManagement/common/extensionManagement.js';
@@ -1730,17 +1729,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		}
 		return nls.localize('multipleDependentsUninstallError', "Cannot uninstall '{0}' extension alone. '{1}', '{2}' and other extensions depend on this. Do you want to uninstall all these extensions?",
 			extension.displayName, dependents[0].manifest.displayName, dependents[1].manifest.displayName);
-	}
-
-	async togglePreRelease(extension: IExtension): Promise<void> {
-		if (!extension.local) {
-			return;
-		}
-		if (extension.preRelease !== extension.isPreReleaseVersion) {
-			await this.extensionManagementService.updateMetadata(extension.local, { preRelease: !extension.preRelease });
-			return;
-		}
-		await this.install(extension, { installPreReleaseVersion: !extension.preRelease, preRelease: !extension.preRelease });
 	}
 
 	async toggleApplyExtensionToAllProfiles(extension: IExtension): Promise<void> {

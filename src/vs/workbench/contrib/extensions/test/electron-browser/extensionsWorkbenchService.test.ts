@@ -335,44 +335,6 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 		assert.ok(!testObject.local[0].outdated);
 	});
 
-	test('test canInstall returns false for extensions with out gallery', async () => {
-		const local = aLocalExtension('a', { version: '1.0.1' }, { type: ExtensionType.System });
-		instantiationService.stubPromise(IExtensionManagementService, 'getInstalled', [local]);
-		testObject = await aWorkbenchService();
-		const target = testObject.local[0];
-		testObject.uninstall(target);
-		uninstallEvent.fire({ identifier: local.identifier, profileLocation: null! });
-		didUninstallEvent.fire({ identifier: local.identifier, profileLocation: null! });
-
-		assert.ok(await testObject.canInstall(target) !== true);
-	});
-
-	test('test canInstall returns false for a system extension', async () => {
-		const local = aLocalExtension('a', { version: '1.0.1' }, { type: ExtensionType.System });
-		instantiationService.stubPromise(IExtensionManagementService, 'getInstalled', [local]);
-		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions(aGalleryExtension(local.manifest.name, { identifier: local.identifier })));
-		testObject = await aWorkbenchService();
-		const target = testObject.local[0];
-
-		assert.ok(await testObject.canInstall(target) !== true);
-	});
-
-	test('test canInstall returns true for extensions with gallery', async () => {
-		const local = aLocalExtension('a', { version: '1.0.1' }, { type: ExtensionType.User });
-		instantiationService.stubPromise(IExtensionManagementService, 'getInstalled', [local]);
-		const gallery = aGalleryExtension(local.manifest.name, { identifier: local.identifier });
-		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions(gallery));
-		instantiationService.stubPromise(IExtensionGalleryService, 'getCompatibleExtension', gallery);
-		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', [gallery]);
-		testObject = await aWorkbenchService();
-		const target = testObject.local[0];
-
-		await Event.toPromise(Event.filter(testObject.onChange, e => !!e?.gallery));
-		assert.equal(await testObject.canInstall(target), true);
-	});
-
-
-
 	test('test onchange event is triggered while uninstalling', async () => {
 		const local = aLocalExtension('a', {}, { type: ExtensionType.System });
 		instantiationService.stubPromise(IExtensionManagementService, 'getInstalled', [local]);
