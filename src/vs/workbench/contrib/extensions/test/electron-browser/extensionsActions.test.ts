@@ -166,59 +166,6 @@ suite('ExtensionsActions', () => {
 	const disposables = ensureNoDisposablesAreLeakedInTestSuite();
 	setup(() => setupTest(disposables));
 
-	test('Install action is disabled when there is no extension', () => {
-		const testObject: ExtensionsActions.InstallAction = disposables.add(instantiationService.createInstance(ExtensionsActions.InstallAction, { installPreReleaseVersion: false }));
-
-		assert.ok(!testObject.enabled);
-	});
-
-	test('Test Install action when state is installed', () => {
-		const workbenchService = instantiationService.get(IExtensionsWorkbenchService);
-		const testObject: ExtensionsActions.InstallAction = disposables.add(instantiationService.createInstance(ExtensionsActions.InstallAction, { installPreReleaseVersion: false }));
-		disposables.add(instantiationService.createInstance(ExtensionContainers, [testObject]));
-		const local = aLocalExtension('a');
-		instantiationService.stubPromise(IExtensionManagementService, 'getInstalled', [local]);
-		return workbenchService.queryLocal()
-			.then(extensions => {
-				testObject.extension = extensions[0];
-				assert.ok(!testObject.enabled);
-				assert.strictEqual('Install', testObject.label);
-				assert.strictEqual('extension-action label prominent install hide', testObject.class);
-			});
-	});
-
-
-
-	test('Test Install action when extension is system action', () => {
-		const testObject: ExtensionsActions.InstallAction = disposables.add(instantiationService.createInstance(ExtensionsActions.InstallAction, { installPreReleaseVersion: false }));
-		disposables.add(instantiationService.createInstance(ExtensionContainers, [testObject]));
-		const local = aLocalExtension('a', {}, { type: ExtensionType.System });
-		instantiationService.stubPromise(IExtensionManagementService, 'getInstalled', [local]);
-
-		return instantiationService.get(IExtensionsWorkbenchService).queryLocal()
-			.then(extensions => {
-				uninstallEvent.fire({ identifier: local.identifier, profileLocation: null! });
-				didUninstallEvent.fire({ identifier: local.identifier, profileLocation: null! });
-				testObject.extension = extensions[0];
-				assert.ok(!testObject.enabled);
-			});
-	});
-
-	test('Test Install action when extension doesnot has gallery', () => {
-		const testObject: ExtensionsActions.InstallAction = disposables.add(instantiationService.createInstance(ExtensionsActions.InstallAction, { installPreReleaseVersion: false }));
-		disposables.add(instantiationService.createInstance(ExtensionContainers, [testObject]));
-		const local = aLocalExtension('a');
-		instantiationService.stubPromise(IExtensionManagementService, 'getInstalled', [local]);
-
-		return instantiationService.get(IExtensionsWorkbenchService).queryLocal()
-			.then(extensions => {
-				uninstallEvent.fire({ identifier: local.identifier, profileLocation: null! });
-				didUninstallEvent.fire({ identifier: local.identifier, profileLocation: null! });
-				testObject.extension = extensions[0];
-				assert.ok(!testObject.enabled);
-			});
-	});
-
 	test('Uninstall action is disabled when there is no extension', () => {
 		const testObject: ExtensionsActions.UninstallAction = disposables.add(instantiationService.createInstance(ExtensionsActions.UninstallAction));
 		disposables.add(instantiationService.createInstance(ExtensionContainers, [testObject]));

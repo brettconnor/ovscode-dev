@@ -19,9 +19,7 @@ import {
 	UninstallExtensionInfo,
 	AllowedExtensionsConfigKey,
 	ExtensionManagementError,
-	ExtensionManagementErrorCode,
 	MaliciousExtensionInfo,
-	shouldRequireRepositorySignatureFor,
 } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IWorkbenchExtensionEnablementService, EnablementState, IExtensionManagementServerService, IExtensionManagementServer, IWorkbenchExtensionManagementService, IResourceExtension } from '../../../services/extensionManagement/common/extensionManagement.js';
 import { getGalleryExtensionTelemetryData, getLocalExtensionTelemetryData, areSameExtensions, groupByExtension, getGalleryExtensionId, findMatchingMaliciousEntry } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
@@ -48,14 +46,14 @@ import { IExtensionService, IExtensionsStatus as IExtensionRuntimeStatus, toExte
 import { TelemetryTrustedValue } from '../../../../platform/telemetry/common/telemetryUtils.js';
 import { ILifecycleService, LifecyclePhase } from '../../../services/lifecycle/common/lifecycle.js';
 import { IUserDataProfileService } from '../../../services/userDataProfile/common/userDataProfile.js';
-import { IDialogService, IPromptButton } from '../../../../platform/dialogs/common/dialogs.js';
+import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
 import { IUpdateService, StateType } from '../../../../platform/update/common/update.js';
 import { isEngineValid } from '../../../../platform/extensions/common/extensionValidator.js';
 import { IUriIdentityService } from '../../../../platform/uriIdentity/common/uriIdentity.js';
 import { IWorkspaceContextService } from '../../../../platform/workspace/common/workspace.js';
 import { ShowCurrentReleaseNotesActionId } from '../../update/common/update.js';
 import { IViewsService } from '../../../services/views/common/viewsService.js';
-import { IMarkdownString, MarkdownString } from '../../../../base/common/htmlContent.js';
+import { MarkdownString } from '../../../../base/common/htmlContent.js';
 import { ExtensionGalleryResourceType, ExtensionGalleryServiceUrlConfigKey, getExtensionGalleryManifestResourceUri, IExtensionGalleryManifest, IExtensionGalleryManifestService } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
 import { hash } from '../../../../base/common/hash.js';
 import { IUserDataProfilesService } from '../../../../platform/userDataProfile/common/userDataProfile.js';
@@ -579,9 +577,6 @@ class Extensions extends Disposable {
 		return this.local;
 	}
 
-	canInstall(galleryExtension: IGalleryExtension): Promise<true | IMarkdownString> {
-		return this.server.extensionManagementService.canInstall(galleryExtension);
-	}
 
 	private onInstallExtension(event: InstallExtensionEvent): void {
 		const { source } = event;
@@ -1529,50 +1524,8 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		return undefined;
 	}
 
-	async canInstall(extension: IExtension): Promise<true | IMarkdownString> {
-		if (!(extension instanceof Extension)) {
-			return new MarkdownString().appendText(nls.localize('not an extension', "The provided object is not an extension."));
-		}
 
-		if (extension.isMalicious) {
-			return new MarkdownString().appendText(nls.localize('malicious', "This extension is reported to be problematic."));
-		}
-
-		if (extension.deprecationInfo?.disallowInstall) {
-			return new MarkdownString().appendText(nls.localize('disallowed', "This extension is disallowed to be installed."));
-		}
-
-		if (extension.gallery) {
-			if (!extension.gallery.isSigned && shouldRequireRepositorySignatureFor(extension.private, await this.extensionGalleryManifestService.getExtensionGalleryManifest())) {
-				return new MarkdownString().appendText(nls.localize('not signed', "This extension is not signed."));
-			}
-
-			const localResult = this.localExtensions ? await this.localExtensions.canInstall(extension.gallery) : undefined;
-			if (localResult === true) {
-				return true;
-			}
-
-			const remoteResult = this.remoteExtensions ? await this.remoteExtensions.canInstall(extension.gallery) : undefined;
-			if (remoteResult === true) {
-				return true;
-			}
-
-			const webResult = this.webExtensions ? await this.webExtensions.canInstall(extension.gallery) : undefined;
-			if (webResult === true) {
-				return true;
-			}
-
-			return localResult ?? remoteResult ?? webResult ?? new MarkdownString().appendText(nls.localize('cannot be installed', "Cannot install the '{0}' extension because it is not available in this setup.", extension.displayName ?? extension.identifier.id));
-		}
-
-		if (extension.resourceExtension && await this.extensionManagementService.canInstall(extension.resourceExtension) === true) {
-			return true;
-		}
-
-		return new MarkdownString().appendText(nls.localize('cannot be installed', "Cannot install the '{0}' extension because it is not available in this setup.", extension.displayName ?? extension.identifier.id));
-	}
-
-	async install(arg: URI | IExtension, installOptions: InstallExtensionOptions = {}, progressLocation?: ProgressLocation | string): Promise<IExtension> {
+	async install(arg: URI, installOptions: InstallExtensionOptions = {}, progressLocation?: ProgressLocation | string): Promise<IExtension> {
 		const extension = await this._install(arg, installOptions, progressLocation);
 
 		if (!extension) {
@@ -1600,113 +1553,25 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		return extension;
 	}
 
-	private async _install(arg: URI | IExtension, installOptions: InstallExtensionOptions = {}, progressLocation?: ProgressLocation | string): Promise<IExtension | undefined> {
-		let installable: URI | IGalleryExtension | IResourceExtension | undefined;
-		let extension: IExtension | undefined;
-		let servers: IExtensionManagementServer[] | undefined;
-
-		if (arg instanceof URI) {
-			installable = arg;
-		} else {
-			let gallery: IGalleryExtension | undefined;
-
-			// Install by gallery
-			if (arg.gallery) {
-				extension = arg;
-				gallery = arg.gallery;
-			}
-			// Install by resource
-			else if (arg.resourceExtension) {
-				extension = arg;
-				installable = arg.resourceExtension;
-			}
-
-			if (!extension && gallery) {
-				extension = this.instantiationService.createInstance(Extension, ext => this.getExtensionState(ext), ext => this.getRuntimeState(ext), undefined, undefined, gallery, undefined);
-				(<Extension>extension).setExtensionsControlManifest(await this.extensionManagementService.getExtensionsControlManifest());
-			}
-
-			if (extension?.isMalicious) {
-				throw new Error(nls.localize('malicious', "This extension is reported to be problematic."));
-			}
-
-			if (gallery) {
-				// If requested to install everywhere
-				// then install the extension in all the servers where it is not installed
-				if (installOptions.installEverywhere) {
-					servers = [];
-					const installableServers = await this.extensionManagementService.getInstallableServers(gallery);
-					for (const extensionsServer of this.extensionsServers) {
-						if (installableServers.includes(extensionsServer.server) && !extensionsServer.local.find(e => areSameExtensions(e.identifier, gallery.identifier))) {
-							servers.push(extensionsServer.server);
-						}
-					}
-				}
-				// If requested to enable and extension is already installed
-				// Check if the extension is disabled because of extension kind
-				// If so, install the extension in the server that is compatible.
-				else if (installOptions.enable && extension?.local) {
-					servers = [];
-					if (extension.enablementState === EnablementState.DisabledByExtensionKind) {
-						const [installableServer] = await this.extensionManagementService.getInstallableServers(gallery);
-						if (installableServer) {
-							servers.push(installableServer);
-						}
-					}
-				}
-			}
-
-			if (!servers || servers.length) {
-				if (!installable) {
-					if (!gallery) {
-						const id = arg.identifier.id;
-						const manifest = await this.extensionGalleryManifestService.getExtensionGalleryManifest();
-						const reportIssueUri = manifest ? getExtensionGalleryManifestResourceUri(manifest, ExtensionGalleryResourceType.ContactSupportUri) : undefined;
-						const reportIssueMessage = reportIssueUri ? nls.localize('report issue', "If this issue persists, please report it at {0}", reportIssueUri.toString()) : '';
-						const message = nls.localize('not found', "The extension '{0}' cannot be installed because it was not found.", id);
-						throw new ExtensionManagementError(reportIssueMessage ? `${message} ${reportIssueMessage}` : message, ExtensionManagementErrorCode.NotFound);
-					}
-					installable = gallery;
-				}
-				if (extension?.isWorkspaceScoped) {
-					installOptions.isWorkspaceScoped = true;
-				}
-			}
-		}
-
-		if (installable) {
-			if (installOptions.justification) {
-				const buttons: IPromptButton<boolean>[] = [];
-				buttons.push({
+	private async _install(vsix: URI, installOptions: InstallExtensionOptions = {}, progressLocation?: ProgressLocation | string): Promise<IExtension> {
+		if (installOptions.justification) {
+			const result = await this.dialogService.prompt<boolean>({
+				title: nls.localize('installExtensionTitle', "Install Extension"),
+				message: nls.localize('installVSIXMessage', "Would you like to install the extension?"),
+				detail: isString(installOptions.justification) ? installOptions.justification : installOptions.justification.reason,
+				cancelButton: true,
+				buttons: [{
 					label: isString(installOptions.justification) || !installOptions.justification.action
 						? nls.localize({ key: 'installButtonLabel', comment: ['&& denotes a mnemonic'] }, "&&Install Extension")
-						: nls.localize({ key: 'installButtonLabelWithAction', comment: ['&& denotes a mnemonic'] }, "&&Install Extension and {0}", installOptions.justification.action), run: () => true
-				});
-				if (!extension) {
-					buttons.push({ label: nls.localize('open', "Open Extension"), run: () => { this.open(extension!); return false; } });
-				}
-				const result = await this.dialogService.prompt<boolean>({
-					title: nls.localize('installExtensionTitle', "Install Extension"),
-					message: extension ? nls.localize('installExtensionMessage', "Would you like to install '{0}' extension from '{1}'?", extension.displayName, extension.publisherDisplayName) : nls.localize('installVSIXMessage', "Would you like to install the extension?"),
-					detail: isString(installOptions.justification) ? installOptions.justification : installOptions.justification.reason,
-					cancelButton: true,
-					buttons,
-				});
-				if (!result.result) {
-					throw new CancellationError();
-				}
-			}
-			if (installable instanceof URI) {
-				extension = await this.doInstall(undefined, () => this.installFromVSIX(installable, installOptions), progressLocation);
-			} else if (extension) {
-				if (extension.resourceExtension) {
-					extension = await this.doInstall(extension, () => this.extensionManagementService.installResourceExtension(installable as IResourceExtension, installOptions), progressLocation);
-				} else {
-					extension = await this.doInstall(extension, () => this.installFromGallery(extension!, installable as IGalleryExtension, installOptions, servers), progressLocation);
-				}
+						: nls.localize({ key: 'installButtonLabelWithAction', comment: ['&& denotes a mnemonic'] }, "&&Install Extension and {0}", installOptions.justification.action),
+					run: () => true
+				}]
+			});
+			if (!result.result) {
+				throw new CancellationError();
 			}
 		}
-		return extension;
+		return this.doInstall(undefined, () => this.installFromVSIX(vsix, installOptions), progressLocation);
 	}
 
 	async installInServer(extension: IExtension, server: IExtensionManagementServer): Promise<void> {
@@ -1944,18 +1809,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 			}
 		}
 		return this.extensionManagementService.installVSIX(vsix, manifest, installOptions);
-	}
-
-	private installFromGallery(extension: IExtension, gallery: IGalleryExtension, installOptions: InstallExtensionOptions, servers: IExtensionManagementServer[] | undefined): Promise<ILocalExtension> {
-		installOptions = installOptions ?? {};
-		installOptions.pinned = installOptions.pinned ?? extension.local?.pinned ?? false;
-		if (extension.local && !servers) {
-			installOptions.productVersion = this.getProductVersion();
-			installOptions.operation = InstallOperation.Update;
-			return this.extensionManagementService.updateFromGallery(gallery, extension.local, installOptions);
-		} else {
-			return this.extensionManagementService.installFromGallery(gallery, installOptions, servers);
-		}
 	}
 
 	private async waitAndGetInstalledExtension(identifier: IExtensionIdentifier): Promise<IExtension> {
