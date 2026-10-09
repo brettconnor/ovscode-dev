@@ -14,7 +14,7 @@ import { ITelemetryService } from '../../../../platform/telemetry/common/telemet
 import {
 	IExtensionGalleryService, ILocalExtension, IGalleryExtension,
 	InstallExtensionEvent, DidUninstallExtensionEvent, InstallOperation, InstallExtensionResult,
-	IExtensionsControlManifest, IExtensionInfo, IExtensionQueryOptions, IDeprecationInfo, isTargetPlatformCompatible,
+	IExtensionsControlManifest, IExtensionInfo, IDeprecationInfo, isTargetPlatformCompatible,
 	InstallOptions, IProductVersion,
 	UninstallExtensionInfo,
 	AllowedExtensionsConfigKey,
@@ -1013,19 +1013,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		return this.local;
 	}
 
-	getExtensions(extensionInfos: IExtensionInfo[], token: CancellationToken): Promise<IExtension[]>;
-	getExtensions(extensionInfos: IExtensionInfo[], options: IExtensionQueryOptions, token: CancellationToken): Promise<IExtension[]>;
-	async getExtensions(extensionInfos: IExtensionInfo[], arg1: any, arg2?: any): Promise<IExtension[]> {
-		if (!this.galleryService.isEnabled()) {
-			return [];
-		}
-
-		extensionInfos.forEach(e => e.preRelease = e.preRelease ?? this.extensionManagementService.preferPreReleases);
-		const extensionsControlManifest = await this.extensionManagementService.getExtensionsControlManifest();
-		const galleryExtensions = await this.galleryService.getExtensions(extensionInfos, arg1, arg2);
-		return galleryExtensions.map(gallery => this.fromGallery(gallery, extensionsControlManifest));
-	}
-
 	async getResourceExtensions(locations: URI[], isWorkspaceScoped: boolean): Promise<IExtension[]> {
 		const resourceExtensions = await this.extensionManagementService.getExtensions(locations);
 		return resourceExtensions.map(resourceExtension => this.getInstalledExtensionMatchingLocation(resourceExtension.location)
@@ -1175,30 +1162,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		return this.extensionsNotification;
 	}
 
-
-	private fromGallery(gallery: IGalleryExtension, extensionsControlManifest: IExtensionsControlManifest): IExtension {
-		let extension = this.getInstalledExtensionMatchingGallery(gallery);
-		if (!extension) {
-			extension = this.instantiationService.createInstance(Extension, ext => this.getExtensionState(ext), ext => this.getRuntimeState(ext), undefined, undefined, gallery, undefined);
-			(<Extension>extension).setExtensionsControlManifest(extensionsControlManifest);
-		}
-		return extension;
-	}
-
-	private getInstalledExtensionMatchingGallery(gallery: IGalleryExtension): IExtension | null {
-		for (const installed of this.local) {
-			if (installed.identifier.uuid) { // Installed from Gallery
-				if (installed.identifier.uuid === gallery.identifier.uuid) {
-					return installed;
-				}
-			} else if (installed.local?.source !== 'resource') {
-				if (areSameExtensions(installed.identifier, gallery.identifier)) { // Installed from other sources
-					return installed;
-				}
-			}
-		}
-		return null;
-	}
 
 	private getInstalledExtensionMatchingLocation(location: URI): IExtension | null {
 		return this.local.find(e => e.local && this.uriIdentityService.extUri.isEqualOrParent(location, e.local?.location)) ?? null;

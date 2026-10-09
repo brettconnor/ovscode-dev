@@ -29,7 +29,6 @@ import { ProgressService } from '../../../../services/progress/browser/progressS
 import { INotificationService } from '../../../../../platform/notification/common/notification.js';
 import { NativeURLService } from '../../../../../platform/url/common/urlService.js';
 import { URI } from '../../../../../base/common/uri.js';
-import { CancellationToken } from '../../../../../base/common/cancellation.js';
 import { ExtensionType, ExtensionIdentifier } from '../../../../../platform/extensions/common/extensions.js';
 import { ExtensionKind } from '../../../../../platform/environment/common/environment.js';
 import { IRemoteAgentService } from '../../../../services/remote/common/remoteAgentService.js';
@@ -154,58 +153,6 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 		instantiationService.stub(IMeteredConnectionService, { isConnectionMetered: false, onDidChangeIsConnectionMetered: Event.None });
 	});
 
-	test('test gallery extension', async () => {
-		const expected = aGalleryExtension('expectedName', {
-			displayName: 'expectedDisplayName',
-			version: '1.5.0',
-			publisherId: 'expectedPublisherId',
-			publisher: 'expectedPublisher',
-			publisherDisplayName: 'expectedPublisherDisplayName',
-			description: 'expectedDescription',
-			installCount: 1000,
-			rating: 4,
-			ratingCount: 100
-		}, {
-			dependencies: ['pub.1', 'pub.2'],
-		}, {
-			manifest: { uri: 'uri:manifest', fallbackUri: 'fallback:manifest' },
-			readme: { uri: 'uri:readme', fallbackUri: 'fallback:readme' },
-			changelog: { uri: 'uri:changelog', fallbackUri: 'fallback:changlog' },
-			download: { uri: 'uri:download', fallbackUri: 'fallback:download' },
-			icon: { uri: 'uri:icon', fallbackUri: 'fallback:icon' },
-			license: { uri: 'uri:license', fallbackUri: 'fallback:license' },
-			repository: { uri: 'uri:repository', fallbackUri: 'fallback:repository' },
-			signature: { uri: 'uri:signature', fallbackUri: 'fallback:signature' },
-			coreTranslations: []
-		});
-
-		testObject = await aWorkbenchService();
-		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions(expected));
-
-		return testObject.getExtensions([{ id: 'test' }], CancellationToken.None).then(pagedResponse => {
-			assert.strictEqual(1, pagedResponse.length);
-			const actual = pagedResponse[0];
-
-			assert.strictEqual(ExtensionType.User, actual.type);
-			assert.strictEqual('expectedName', actual.name);
-			assert.strictEqual('expectedDisplayName', actual.displayName);
-			assert.strictEqual('expectedpublisher.expectedname', actual.identifier.id);
-			assert.strictEqual('expectedPublisher', actual.publisher);
-			assert.strictEqual('expectedPublisherDisplayName', actual.publisherDisplayName);
-			assert.strictEqual('1.5.0', actual.version);
-			assert.strictEqual('1.5.0', actual.latestVersion);
-			assert.strictEqual('expectedDescription', actual.description);
-			assert.strictEqual('uri:icon', actual.iconUrl);
-			assert.strictEqual('fallback:icon', actual.iconUrlFallback);
-			assert.strictEqual('uri:license', actual.licenseUrl);
-			assert.strictEqual(ExtensionState.Uninstalled, actual.state);
-			assert.strictEqual(1000, actual.installCount);
-			assert.strictEqual(4, actual.rating);
-			assert.strictEqual(100, actual.ratingCount);
-			assert.strictEqual(false, actual.outdated);
-			assert.deepStrictEqual(['pub.1', 'pub.2'], actual.dependencies);
-		});
-	});
 
 	test('test for empty installed extensions', async () => {
 		testObject = await aWorkbenchService();
@@ -377,43 +324,6 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 		});
 	});
 
-	test('test extension state computation', async () => {
-		const gallery = aGalleryExtension('gallery1');
-		testObject = await aWorkbenchService();
-		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions(gallery));
-
-		return testObject.getExtensions([{ id: 'test' }], CancellationToken.None).then(page => {
-			const extension = page[0];
-			assert.strictEqual(ExtensionState.Uninstalled, extension.state);
-
-			const identifier = gallery.identifier;
-
-			// Installing
-			installEvent.fire({ identifier, source: gallery, profileLocation: null! });
-			const local = testObject.local;
-			assert.strictEqual(1, local.length);
-			const actual = local[0];
-			assert.strictEqual(`${gallery.publisher}.${gallery.name}`, actual.identifier.id);
-			assert.strictEqual(ExtensionState.Installing, actual.state);
-
-			// Installed
-			didInstallEvent.fire([{ identifier, source: gallery, operation: InstallOperation.Install, local: aLocalExtension(gallery.name, gallery, { identifier }), profileLocation: null! }]);
-			assert.strictEqual(ExtensionState.Installed, actual.state);
-			assert.strictEqual(1, testObject.local.length);
-
-			testObject.uninstall(actual);
-
-			// Uninstalling
-			uninstallEvent.fire({ identifier, profileLocation: null! });
-			assert.strictEqual(ExtensionState.Uninstalling, actual.state);
-
-			// Uninstalled
-			didUninstallEvent.fire({ identifier, profileLocation: null! });
-			assert.strictEqual(ExtensionState.Uninstalled, actual.state);
-
-			assert.strictEqual(0, testObject.local.length);
-		});
-	});
 
 	test('test extension doesnot show outdated for system extensions', async () => {
 		const local = aLocalExtension('a', { version: '1.0.1' }, { type: ExtensionType.System });
@@ -461,42 +371,7 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 		assert.equal(await testObject.canInstall(target), true);
 	});
 
-	test('test onchange event is triggered while installing', async () => {
-		const gallery = aGalleryExtension('gallery1');
-		testObject = await aWorkbenchService();
-		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions(gallery));
 
-		const page = await testObject.getExtensions([{ id: 'test' }], CancellationToken.None);
-		const extension = page[0];
-		assert.strictEqual(ExtensionState.Uninstalled, extension.state);
-
-		installEvent.fire({ identifier: gallery.identifier, source: gallery, profileLocation: null! });
-		const promise = Event.toPromise(testObject.onChange);
-
-		// Installed
-		didInstallEvent.fire([{ identifier: gallery.identifier, source: gallery, operation: InstallOperation.Install, local: aLocalExtension(gallery.name, gallery, gallery), profileLocation: null! }]);
-
-		await promise;
-	});
-
-	test('test onchange event is triggered when installation is finished', async () => {
-		const gallery = aGalleryExtension('gallery1');
-		testObject = await aWorkbenchService();
-		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions(gallery));
-		const target = sinon.spy();
-
-		return testObject.getExtensions([{ id: 'test' }], CancellationToken.None).then(page => {
-			const extension = page[0];
-			assert.strictEqual(ExtensionState.Uninstalled, extension.state);
-
-			disposableStore.add(testObject.onChange(target));
-
-			// Installing
-			installEvent.fire({ identifier: gallery.identifier, source: gallery, profileLocation: null! });
-
-			assert.ok(target.calledOnce);
-		});
-	});
 
 	test('test onchange event is triggered while uninstalling', async () => {
 		const local = aLocalExtension('a', {}, { type: ExtensionType.System });
@@ -525,18 +400,6 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 		assert.ok(target.calledOnce);
 	});
 
-	test('test uninstalled extensions are always enabled', async () => {
-		return instantiationService.get(IWorkbenchExtensionEnablementService).setEnablement([aLocalExtension('b')], EnablementState.DisabledGlobally)
-			.then(() => instantiationService.get(IWorkbenchExtensionEnablementService).setEnablement([aLocalExtension('c')], EnablementState.DisabledWorkspace))
-			.then(async () => {
-				testObject = await aWorkbenchService();
-				instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions(aGalleryExtension('a')));
-				return testObject.getExtensions([{ id: 'test' }], CancellationToken.None).then(pagedResponse => {
-					const actual = pagedResponse[0];
-					assert.strictEqual(actual.enablementState, EnablementState.EnabledGlobally);
-				});
-			});
-	});
 
 	test('test enablement state installed enabled extension', async () => {
 		return instantiationService.get(IWorkbenchExtensionEnablementService).setEnablement([aLocalExtension('b')], EnablementState.DisabledGlobally)
