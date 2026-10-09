@@ -13,7 +13,7 @@ import { ToggleActionViewItem } from '../../../../base/browser/ui/toggle/toggle.
 import { ITreeElement } from '../../../../base/browser/ui/tree/tree.js';
 import { CodeWindow } from '../../../../base/browser/window.js';
 import { Action } from '../../../../base/common/actions.js';
-import { CancelablePromise, createCancelablePromise, Delayer, raceTimeout } from '../../../../base/common/async.js';
+import { CancelablePromise, createCancelablePromise, Delayer } from '../../../../base/common/async.js';
 import { CancellationToken, CancellationTokenSource } from '../../../../base/common/cancellation.js';
 import { Color } from '../../../../base/common/color.js';
 import { fromNow } from '../../../../base/common/date.js';
@@ -38,7 +38,6 @@ import { IExtensionManagementService } from '../../../../platform/extensionManag
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { IKeybindingService } from '../../../../platform/keybinding/common/keybinding.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
-import { IProductService } from '../../../../platform/product/common/productService.js';
 import { IEditorProgressService, IProgressRunner } from '../../../../platform/progress/common/progress.js';
 import { Registry } from '../../../../platform/registry/common/platform.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
@@ -278,7 +277,6 @@ export class SettingsEditor2 extends EditorPane {
 		@IExtensionService private readonly extensionService: IExtensionService,
 		@ILanguageService private readonly languageService: ILanguageService,
 		@IExtensionManagementService private readonly extensionManagementService: IExtensionManagementService,
-		@IProductService private readonly productService: IProductService,
 		@IEditorProgressService private readonly editorProgressService: IEditorProgressService,
 		@IUserDataProfileService userDataProfileService: IUserDataProfileService,
 		@IKeybindingService private readonly keybindingService: IKeybindingService,
