@@ -12,9 +12,9 @@ import { CancellationError } from '../../../../base/common/errors.js';
 import { Disposable, MutableDisposable } from '../../../../base/common/lifecycle.js';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
 import {
-	IExtensionGalleryService, ILocalExtension, IGalleryExtension,
+	ILocalExtension, IGalleryExtension,
 	InstallExtensionEvent, DidUninstallExtensionEvent, InstallOperation, InstallExtensionResult,
-	IExtensionsControlManifest, IExtensionInfo, IDeprecationInfo, isTargetPlatformCompatible,
+	IExtensionsControlManifest, IDeprecationInfo, isTargetPlatformCompatible,
 	InstallOptions, IProductVersion,
 	UninstallExtensionInfo,
 	AllowedExtensionsConfigKey,
@@ -763,7 +763,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
 		@IEditorService private readonly editorService: IEditorService,
 		@IWorkbenchExtensionManagementService private readonly extensionManagementService: IWorkbenchExtensionManagementService,
-		@IExtensionGalleryService private readonly galleryService: IExtensionGalleryService,
 		@IExtensionGalleryManifestService private readonly extensionGalleryManifestService: IExtensionGalleryManifestService,
 		@IConfigurationService private readonly configurationService: IConfigurationService,
 		@ITelemetryService private readonly telemetryService: ITelemetryService,
@@ -1609,26 +1608,17 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 		if (arg instanceof URI) {
 			installable = arg;
 		} else {
-			let installableInfo: IExtensionInfo | undefined;
 			let gallery: IGalleryExtension | undefined;
 
 			// Install by gallery
 			if (arg.gallery) {
 				extension = arg;
 				gallery = arg.gallery;
-				if (installOptions.version && installOptions.version !== gallery?.version) {
-					installableInfo = { id: extension.identifier.id, version: installOptions.version };
-				}
 			}
 			// Install by resource
 			else if (arg.resourceExtension) {
 				extension = arg;
 				installable = arg.resourceExtension;
-			}
-
-			if (installableInfo) {
-				const targetPlatform = extension?.server ? await extension.server.extensionManagementService.getTargetPlatform() : undefined;
-				gallery = (await this.galleryService.getExtensions([installableInfo], { targetPlatform }, CancellationToken.None)).at(0);
 			}
 
 			if (!extension && gallery) {
@@ -1673,18 +1663,10 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 						const manifest = await this.extensionGalleryManifestService.getExtensionGalleryManifest();
 						const reportIssueUri = manifest ? getExtensionGalleryManifestResourceUri(manifest, ExtensionGalleryResourceType.ContactSupportUri) : undefined;
 						const reportIssueMessage = reportIssueUri ? nls.localize('report issue', "If this issue persists, please report it at {0}", reportIssueUri.toString()) : '';
-						if (installOptions.version) {
-							const message = nls.localize('not found version', "The extension '{0}' cannot be installed because the requested version '{1}' was not found.", id, installOptions.version);
-							throw new ExtensionManagementError(reportIssueMessage ? `${message} ${reportIssueMessage}` : message, ExtensionManagementErrorCode.NotFound);
-						} else {
-							const message = nls.localize('not found', "The extension '{0}' cannot be installed because it was not found.", id);
-							throw new ExtensionManagementError(reportIssueMessage ? `${message} ${reportIssueMessage}` : message, ExtensionManagementErrorCode.NotFound);
-						}
+						const message = nls.localize('not found', "The extension '{0}' cannot be installed because it was not found.", id);
+						throw new ExtensionManagementError(reportIssueMessage ? `${message} ${reportIssueMessage}` : message, ExtensionManagementErrorCode.NotFound);
 					}
 					installable = gallery;
-				}
-				if (installOptions.version) {
-					installOptions.installGivenVersion = true;
 				}
 				if (extension?.isWorkspaceScoped) {
 					installOptions.isWorkspaceScoped = true;
