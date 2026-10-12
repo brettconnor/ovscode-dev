@@ -14,10 +14,8 @@ import { IRemoteUserDataProfilesService } from '../../userDataProfile/common/rem
 import { IWorkbenchEnvironmentService } from '../../environment/common/environmentService.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
 import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
-import { IActiveLanguagePackService } from '../../localization/common/locale.js';
 import { IWorkbenchExtensionManagementService } from '../../extensionManagement/common/extensionManagement.js';
 import { Mutable } from '../../../../base/common/types.js';
-import { InstallExtensionSummary } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 
 class RemoteExtensionsScannerService implements IRemoteExtensionsScannerService {
 
@@ -28,21 +26,19 @@ class RemoteExtensionsScannerService implements IRemoteExtensionsScannerService 
 		@IWorkbenchEnvironmentService private readonly environmentService: IWorkbenchEnvironmentService,
 		@IUserDataProfileService private readonly userDataProfileService: IUserDataProfileService,
 		@IRemoteUserDataProfilesService private readonly remoteUserDataProfilesService: IRemoteUserDataProfilesService,
-		@IActiveLanguagePackService private readonly activeLanguagePackService: IActiveLanguagePackService,
 		@IWorkbenchExtensionManagementService private readonly extensionManagementService: IWorkbenchExtensionManagementService,
 		@ILogService private readonly logService: ILogService,
 	) { }
 
-	whenExtensionsReady(): Promise<InstallExtensionSummary> {
+	whenExtensionsReady(): Promise<void> {
 		return this.withChannel(
-			channel => channel.call<InstallExtensionSummary>('whenExtensionsReady'),
-			{ failed: [] }
+			channel => channel.call<void>('whenExtensionsReady'),
+			undefined
 		);
 	}
 
 	async scanExtensions(): Promise<IExtensionDescription[]> {
 		try {
-			const languagePack = await this.activeLanguagePackService.getExtensionIdProvidingCurrentLocale();
 			return await this.withChannel(
 				async (channel) => {
 					const profileLocation = this.userDataProfileService.currentProfile.isDefault ? undefined : (await this.remoteUserDataProfilesService.getRemoteProfile(this.userDataProfileService.currentProfile)).extensionsResource;
@@ -50,8 +46,7 @@ class RemoteExtensionsScannerService implements IRemoteExtensionsScannerService 
 						platform.language,
 						profileLocation,
 						this.extensionManagementService.getInstalledWorkspaceExtensionLocations(),
-						this.environmentService.extensionDevelopmentLocationURI,
-						languagePack
+						this.environmentService.extensionDevelopmentLocationURI
 					]);
 					scannedExtensions.forEach((extension) => {
 						extension.extensionLocation = URI.revive(extension.extensionLocation);

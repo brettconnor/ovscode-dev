@@ -3,36 +3,29 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { CancellationToken } from '../../../base/common/cancellation.js';
 import { getErrorMessage, isCancellationError } from '../../../base/common/errors.js';
 import { Schemas } from '../../../base/common/network.js';
 import { basename } from '../../../base/common/resources.js';
 import { gt } from '../../../base/common/semver/semver.js';
 import { URI } from '../../../base/common/uri.js';
 import { localize } from '../../../nls.js';
-import { EXTENSION_IDENTIFIER_REGEX, IExtensionGalleryService, IExtensionInfo, IExtensionManagementService, IGalleryExtension, ILocalExtension, InstallOptions, InstallExtensionInfo } from './extensionManagement.js';
-import { areSameExtensions, getExtensionId, getGalleryExtensionId, getIdAndVersion } from './extensionManagementUtil.js';
+import { IExtensionManagementService, ILocalExtension, InstallOptions } from './extensionManagement.js';
+import { areSameExtensions, getExtensionId, getGalleryExtensionId } from './extensionManagementUtil.js';
 import { ExtensionType, EXTENSION_CATEGORIES, IExtensionManifest } from '../../extensions/common/extensions.js';
 import { ILogger } from '../../log/common/log.js';
 import { IProductService } from '../../product/common/productService.js';
 
 
-const notFound = (id: string) => localize('notFound', "Extension '{0}' not found.", id);
 const useId = localize('useId', "Make sure you use the full extension ID, including the publisher, e.g.: {0}", 'ms-dotnettools.csharp');
 
 type InstallVSIXInfo = { vsix: URI; installOptions: InstallOptions };
-type InstallGalleryExtensionInfo = { id: string; version?: string; installOptions: InstallOptions };
-
 export class ExtensionManagementCLI {
 
 	constructor(
-		private readonly extensionsForceVersionByQuality: readonly string[],
 		protected readonly logger: ILogger,
 		@IExtensionManagementService private readonly extensionManagementService: IExtensionManagementService,
-		@IExtensionGalleryService private readonly extensionGalleryService: IExtensionGalleryService,
 		@IProductService private readonly productService: IProductService,
 	) {
-		this.extensionsForceVersionByQuality = this.extensionsForceVersionByQuality.map(e => e.toLowerCase());
 	}
 
 	protected get location(): string | undefined {
@@ -77,6 +70,9 @@ export class ExtensionManagementCLI {
 
 	public async installExtensions(extensions: (string | URI)[], builtinExtensions: (string | URI)[], installOptions: InstallOptions, force: boolean): Promise<void> {
 		const failed: string[] = [];
+		if ([...extensions, ...builtinExtensions].some(extension => typeof extension === 'string')) {
+			throw new Error(localize('marketplaceInstallRemoved', "Installing extensions by Marketplace ID is no longer supported. Install a local VSIX file instead."));
+		}
 
 		try {
 			if (extensions.length) {
@@ -84,27 +80,14 @@ export class ExtensionManagementCLI {
 			}
 
 			const installVSIXInfos: InstallVSIXInfo[] = [];
-			const installExtensionInfos: InstallGalleryExtensionInfo[] = [];
-			const addInstallExtensionInfo = (id: string, version: string | undefined, isBuiltin: boolean) => {
-				if (this.extensionsForceVersionByQuality?.some(e => e === id.toLowerCase())) {
-					version = this.productService.quality !== 'stable' ? 'prerelease' : undefined;
-				}
-				installExtensionInfos.push({ id, version: version !== 'prerelease' ? version : undefined, installOptions: { ...installOptions, isBuiltin, installPreReleaseVersion: version === 'prerelease' || installOptions.installPreReleaseVersion } });
-			};
 			for (const extension of extensions) {
 				if (extension instanceof URI) {
 					installVSIXInfos.push({ vsix: extension, installOptions });
-				} else {
-					const [id, version] = getIdAndVersion(extension);
-					addInstallExtensionInfo(id, version, false);
 				}
 			}
 			for (const extension of builtinExtensions) {
 				if (extension instanceof URI) {
 					installVSIXInfos.push({ vsix: extension, installOptions: { ...installOptions, isBuiltin: true, donotIncludePackAndDependencies: true } });
-				} else {
-					const [id, version] = getIdAndVersion(extension);
-					addInstallExtensionInfo(id, version, true);
 				}
 			}
 
@@ -120,11 +103,6 @@ export class ExtensionManagementCLI {
 					}
 				}));
 			}
-
-			if (installExtensionInfos.length) {
-				const failedGalleryExtensions = await this.installGalleryExtensions(installExtensionInfos, installed, force);
-				failed.push(...failedGalleryExtensions);
-			}
 		} catch (error) {
 			this.logger.error(localize('error while installing extensions', "Error while installing extensions: {0}", getErrorMessage(error)));
 			throw error;
@@ -133,89 +111,6 @@ export class ExtensionManagementCLI {
 		if (failed.length) {
 			throw new Error(localize('installation failed', "Failed Installing Extensions: {0}", failed.join(', ')));
 		}
-	}
-
-	private async installGalleryExtensions(installExtensionInfos: InstallGalleryExtensionInfo[], installed: ILocalExtension[], force: boolean): Promise<string[]> {
-		installExtensionInfos = installExtensionInfos.filter(installExtensionInfo => {
-			const { id, version, installOptions } = installExtensionInfo;
-			const installedExtension = installed.find(i => areSameExtensions(i.identifier, { id }));
-			if (installedExtension) {
-				const builtinAutoUpdateMessage = this.validateBuiltinExtensionEnabledWithAutoUpdates(installedExtension);
-				if (builtinAutoUpdateMessage) {
-					this.logger.info(builtinAutoUpdateMessage);
-					return false;
-				}
-				if (!force && (!version || (version === 'prerelease' && installedExtension.preRelease))) {
-					this.logger.info(localize('alreadyInstalled-checkAndUpdate', "Extension '{0}' v{1} is already installed. Use '--force' option to update to latest version or provide '@<version>' to install a specific version, for example: '{2}@1.2.3'.", id, installedExtension.manifest.version, id));
-					return false;
-				}
-				if (version && installedExtension.manifest.version === version) {
-					this.logger.info(localize('alreadyInstalled', "Extension '{0}' is already installed.", `${id}@${version}`));
-					return false;
-				}
-				if (installedExtension.preRelease && version !== 'prerelease') {
-					installOptions.preRelease = false;
-				}
-			}
-			return true;
-		});
-
-		if (!installExtensionInfos.length) {
-			return [];
-		}
-
-		const failed: string[] = [];
-		const extensionsToInstall: InstallExtensionInfo[] = [];
-		const galleryExtensions = await this.getGalleryExtensions(installExtensionInfos);
-		await Promise.all(installExtensionInfos.map(async ({ id, version, installOptions }) => {
-			const gallery = galleryExtensions.get(id.toLowerCase());
-			if (!gallery) {
-				this.logger.error(`${notFound(version ? `${id}@${version}` : id)}\n${useId}`);
-				failed.push(id);
-				return;
-			}
-			try {
-				const manifest = await this.extensionGalleryService.getManifest(gallery, CancellationToken.None);
-				if (manifest && !this.validateExtensionKind(manifest)) {
-					return;
-				}
-			} catch (err) {
-				this.logger.error(err.message || err.stack || err);
-				failed.push(id);
-				return;
-			}
-			const installedExtension = installed.find(e => areSameExtensions(e.identifier, gallery.identifier));
-			if (installedExtension) {
-				if (gallery.version === installedExtension.manifest.version) {
-					this.logger.info(localize('alreadyInstalled', "Extension '{0}' is already installed.", version ? `${id}@${version}` : id));
-					return;
-				}
-				this.logger.info(localize('updateMessage', "Updating the extension '{0}' to the version {1}", id, gallery.version));
-			}
-			if (installOptions.isBuiltin) {
-				this.logger.info(version ? localize('installing builtin with version', "Installing builtin extension '{0}' v{1}...", id, version) : localize('installing builtin ', "Installing builtin extension '{0}'...", id));
-			} else {
-				this.logger.info(version ? localize('installing with version', "Installing extension '{0}' v{1}...", id, version) : localize('installing', "Installing extension '{0}'...", id));
-			}
-			extensionsToInstall.push({
-				extension: gallery,
-				options: { ...installOptions, installGivenVersion: !!version, isApplicationScoped: installOptions.isApplicationScoped || installedExtension?.isApplicationScoped },
-			});
-		}));
-
-		if (extensionsToInstall.length) {
-			const installationResult = await this.extensionManagementService.installGalleryExtensions(extensionsToInstall);
-			for (const extensionResult of installationResult) {
-				if (extensionResult.error) {
-					this.logger.error(localize('errorInstallingExtension', "Error while installing extension {0}: {1}", extensionResult.identifier.id, getErrorMessage(extensionResult.error)));
-					failed.push(extensionResult.identifier.id);
-				} else {
-					this.logger.info(localize('successInstall', "Extension '{0}' v{1} was successfully installed.", extensionResult.identifier.id, extensionResult.local?.manifest.version));
-				}
-			}
-		}
-
-		return failed;
 	}
 
 	private async installVSIX(vsix: URI, installOptions: InstallOptions, force: boolean, installedExtensions: ILocalExtension[]): Promise<void> {
@@ -238,25 +133,6 @@ export class ExtensionManagementCLI {
 				}
 			}
 		}
-	}
-
-	private async getGalleryExtensions(extensions: InstallGalleryExtensionInfo[]): Promise<Map<string, IGalleryExtension>> {
-		const galleryExtensions = new Map<string, IGalleryExtension>();
-		const preRelease = extensions.some(e => e.installOptions.installPreReleaseVersion);
-		const targetPlatform = await this.extensionManagementService.getTargetPlatform();
-		const extensionInfos: IExtensionInfo[] = [];
-		for (const extension of extensions) {
-			if (EXTENSION_IDENTIFIER_REGEX.test(extension.id)) {
-				extensionInfos.push({ ...extension, preRelease });
-			}
-		}
-		if (extensionInfos.length) {
-			const result = await this.extensionGalleryService.getExtensions(extensionInfos, { targetPlatform }, CancellationToken.None);
-			for (const extension of result) {
-				galleryExtensions.set(extension.identifier.id.toLowerCase(), extension);
-			}
-		}
-		return galleryExtensions;
 	}
 
 	protected validateExtensionKind(_manifest: IExtensionManifest): boolean {

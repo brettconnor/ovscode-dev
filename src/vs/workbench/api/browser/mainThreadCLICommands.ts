@@ -9,7 +9,7 @@ import { isString } from '../../../base/common/types.js';
 import { URI, UriComponents } from '../../../base/common/uri.js';
 import { localize } from '../../../nls.js';
 import { CommandsRegistry, ICommandService } from '../../../platform/commands/common/commands.js';
-import { IExtensionGalleryService, IExtensionManagementService } from '../../../platform/extensionManagement/common/extensionManagement.js';
+import { IExtensionManagementService } from '../../../platform/extensionManagement/common/extensionManagement.js';
 import { ExtensionManagementCLI } from '../../../platform/extensionManagement/common/extensionManagementCLI.js';
 import { getExtensionId } from '../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { IExtensionManifest } from '../../../platform/extensions/common/extensions.js';
@@ -103,13 +103,12 @@ class RemoteExtensionManagementCLI extends ExtensionManagementCLI {
 	constructor(
 		logger: ILogger,
 		@IExtensionManagementService extensionManagementService: IExtensionManagementService,
-		@IExtensionGalleryService extensionGalleryService: IExtensionGalleryService,
 		@ILabelService labelService: ILabelService,
 		@IWorkbenchEnvironmentService envService: IWorkbenchEnvironmentService,
 		@IExtensionManifestPropertiesService private readonly _extensionManifestPropertiesService: IExtensionManifestPropertiesService,
 		@IProductService productService: IProductService,
 	) {
-		super([], logger, extensionManagementService, extensionGalleryService, productService);
+		super(logger, extensionManagementService, productService);
 
 		const remoteAuthority = envService.remoteAuthority;
 		this._location = remoteAuthority ? labelService.getHostLabel(Schemas.vscodeRemote, remoteAuthority) : undefined;

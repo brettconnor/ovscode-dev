@@ -8,7 +8,7 @@ import { Codicon } from '../../../../base/common/codicons.js';
 import { DisposableStore } from '../../../../base/common/lifecycle.js';
 import { localize } from '../../../../nls.js';
 import { GlobalExtensionEnablementService } from '../../../../platform/extensionManagement/common/extensionEnablementService.js';
-import { EXTENSION_INSTALL_SKIP_PUBLISHER_TRUST_CONTEXT, EXTENSION_INSTALL_SKIP_WALKTHROUGH_CONTEXT, IExtensionGalleryService, IExtensionIdentifier, IExtensionManagementService, IGlobalExtensionEnablementService, ILocalExtension, InstallExtensionInfo } from '../../../../platform/extensionManagement/common/extensionManagement.js';
+import { IExtensionIdentifier, IExtensionManagementService, IGlobalExtensionEnablementService, ILocalExtension } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { areSameExtensions } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { ExtensionType } from '../../../../platform/extensions/common/extensions.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
@@ -35,7 +35,6 @@ export class ExtensionsResourceInitializer implements IProfileResourceInitialize
 	constructor(
 		@IUserDataProfileService private readonly userDataProfileService: IUserDataProfileService,
 		@IExtensionManagementService private readonly extensionManagementService: IExtensionManagementService,
-		@IExtensionGalleryService private readonly extensionGalleryService: IExtensionGalleryService,
 		@IGlobalExtensionEnablementService private readonly extensionEnablementService: IGlobalExtensionEnablementService,
 		@ILogService private readonly logService: ILogService,
 	) {
@@ -45,13 +44,8 @@ export class ExtensionsResourceInitializer implements IProfileResourceInitialize
 		const profileExtensions: IProfileExtension[] = JSON.parse(content);
 		const installedExtensions = await this.extensionManagementService.getInstalled(undefined, this.userDataProfileService.currentProfile.extensionsResource);
 		const extensionsToEnableOrDisable: { extension: IExtensionIdentifier; enable: boolean }[] = [];
-		const extensionsToInstall: IProfileExtension[] = [];
 		for (const e of profileExtensions) {
 			const isDisabled = this.extensionEnablementService.getDisabledExtensions().some(disabledExtension => areSameExtensions(disabledExtension, e.identifier));
-			const installedExtension = installedExtensions.find(installed => areSameExtensions(installed.identifier, e.identifier));
-			if (!installedExtension || (!installedExtension.isBuiltin && installedExtension.preRelease !== e.preRelease)) {
-				extensionsToInstall.push(e);
-			}
 			if (isDisabled !== !!e.disabled) {
 				extensionsToEnableOrDisable.push({ extension: e.identifier, enable: !e.disabled });
 			}
@@ -68,29 +62,6 @@ export class ExtensionsResourceInitializer implements IProfileResourceInitialize
 				this.logService.info(`Initializing Profile: Disabled extension...`, extension.id);
 			}
 		}
-		if (extensionsToInstall.length) {
-			const galleryExtensions = await this.extensionGalleryService.getExtensions(extensionsToInstall.map(e => ({ ...e.identifier, version: e.version, hasPreRelease: e.version ? undefined : e.preRelease })), CancellationToken.None);
-			await Promise.all(extensionsToInstall.map(async e => {
-				const extension = galleryExtensions.find(galleryExtension => areSameExtensions(galleryExtension.identifier, e.identifier));
-				if (!extension) {
-					return;
-				}
-				if (await this.extensionManagementService.canInstall(extension) === true) {
-					this.logService.trace(`Initializing Profile: Installing extension...`, extension.identifier.id, extension.version);
-					await this.extensionManagementService.installFromGallery(extension, {
-						isMachineScoped: false,/* set isMachineScoped value to prevent install and sync dialog in web */
-						donotIncludePackAndDependencies: true,
-						installGivenVersion: !!e.version,
-						installPreReleaseVersion: e.preRelease,
-						profileLocation: this.userDataProfileService.currentProfile.extensionsResource,
-						context: { [EXTENSION_INSTALL_SKIP_WALKTHROUGH_CONTEXT]: true, [EXTENSION_INSTALL_SKIP_PUBLISHER_TRUST_CONTEXT]: true }
-					});
-					this.logService.info(`Initializing Profile: Installed extension...`, extension.identifier.id, extension.version);
-				} else {
-					this.logService.info(`Initializing Profile: Skipped installing extension because it cannot be installed.`, extension.identifier.id);
-				}
-			}));
-		}
 		if (extensionsToUninstall.length) {
 			await Promise.all(extensionsToUninstall.map(e => this.extensionManagementService.uninstall(e)));
 		}
@@ -101,7 +72,6 @@ export class ExtensionsResource implements IProfileResource {
 
 	constructor(
 		@IWorkbenchExtensionManagementService private readonly extensionManagementService: IWorkbenchExtensionManagementService,
-		@IExtensionGalleryService private readonly extensionGalleryService: IExtensionGalleryService,
 		@IUserDataProfileStorageService private readonly userDataProfileStorageService: IUserDataProfileStorageService,
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
 		@ILogService private readonly logService: ILogService,
@@ -117,18 +87,13 @@ export class ExtensionsResource implements IProfileResource {
 		return JSON.stringify(exclude?.length ? extensions.filter(e => !exclude.includes(e.identifier.id.toLowerCase())) : extensions);
 	}
 
-	async apply(content: string, profile: IUserDataProfile, progress?: (message: string) => void, token?: CancellationToken): Promise<void> {
+	async apply(content: string, profile: IUserDataProfile, _progress?: (message: string) => void, _token?: CancellationToken): Promise<void> {
 		return this.withProfileScopedServices(profile, async (extensionEnablementService) => {
 			const profileExtensions: IProfileExtension[] = await this.getProfileExtensions(content);
 			const installedExtensions = await this.extensionManagementService.getInstalled(undefined, profile.extensionsResource);
 			const extensionsToEnableOrDisable: { extension: IExtensionIdentifier; enable: boolean }[] = [];
-			const extensionsToInstall: IProfileExtension[] = [];
 			for (const e of profileExtensions) {
 				const isDisabled = extensionEnablementService.getDisabledExtensions().some(disabledExtension => areSameExtensions(disabledExtension, e.identifier));
-				const installedExtension = installedExtensions.find(installed => areSameExtensions(installed.identifier, e.identifier));
-				if (!installedExtension || (!installedExtension.isBuiltin && installedExtension.preRelease !== e.preRelease)) {
-					extensionsToInstall.push(e);
-				}
 				if (isDisabled !== !!e.disabled) {
 					extensionsToEnableOrDisable.push({ extension: e.identifier, enable: !e.disabled });
 				}
@@ -144,47 +109,6 @@ export class ExtensionsResource implements IProfileResource {
 					await extensionEnablementService.disableExtension(extension);
 					this.logService.info(`Importing Profile (${profile.name}): Disabled extension...`, extension.id);
 				}
-			}
-			if (extensionsToInstall.length) {
-				this.logService.info(`Importing Profile (${profile.name}): Started installing extensions.`);
-				const galleryExtensions = await this.extensionGalleryService.getExtensions(extensionsToInstall.map(e => ({ ...e.identifier, version: e.version, hasPreRelease: e.version ? undefined : e.preRelease })), CancellationToken.None);
-				const installExtensionInfos: InstallExtensionInfo[] = [];
-				await Promise.all(extensionsToInstall.map(async e => {
-					const extension = galleryExtensions.find(galleryExtension => areSameExtensions(galleryExtension.identifier, e.identifier));
-					if (!extension) {
-						return;
-					}
-					if (await this.extensionManagementService.canInstall(extension) === true) {
-						installExtensionInfos.push({
-							extension,
-							options: {
-								isMachineScoped: false,/* set isMachineScoped value to prevent install and sync dialog in web */
-								donotIncludePackAndDependencies: true,
-								installGivenVersion: !!e.version,
-								installPreReleaseVersion: e.preRelease,
-								profileLocation: profile.extensionsResource,
-								context: { [EXTENSION_INSTALL_SKIP_WALKTHROUGH_CONTEXT]: true }
-							}
-						});
-					} else {
-						this.logService.info(`Importing Profile (${profile.name}): Skipped installing extension because it cannot be installed.`, extension.identifier.id);
-					}
-				}));
-				if (installExtensionInfos.length) {
-					if (token) {
-						await this.extensionManagementService.requestPublisherTrust(installExtensionInfos);
-						for (const installExtensionInfo of installExtensionInfos) {
-							if (token.isCancellationRequested) {
-								return;
-							}
-							progress?.(localize('installingExtension', "Installing extension {0}...", installExtensionInfo.extension.displayName ?? installExtensionInfo.extension.identifier.id));
-							await this.extensionManagementService.installFromGallery(installExtensionInfo.extension, installExtensionInfo.options);
-						}
-					} else {
-						await this.extensionManagementService.installGalleryExtensions(installExtensionInfos);
-					}
-				}
-				this.logService.info(`Importing Profile (${profile.name}): Finished installing extensions.`);
 			}
 			if (extensionsToUninstall.length) {
 				await Promise.all(extensionsToUninstall.map(e => this.extensionManagementService.uninstall(e)));
