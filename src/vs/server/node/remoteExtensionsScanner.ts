@@ -31,7 +31,7 @@ export class RemoteExtensionsScannerService implements IRemoteExtensionsScannerS
 	private readonly _whenExtensionsReady = Promise.resolve();
 
 	constructor(
-		private readonly _extensionManagementCLI: ExtensionManagementCLI,
+		_extensionManagementCLI: ExtensionManagementCLI,
 		environmentService: IServerEnvironmentService,
 		private readonly _userDataProfilesService: IUserDataProfilesService,
 		private readonly _extensionsScannerService: IExtensionsScannerService,
