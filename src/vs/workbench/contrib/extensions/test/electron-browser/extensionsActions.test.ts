@@ -2200,7 +2200,7 @@ function aMultiExtensionManagementServerService(instantiationService: TestInstan
 }
 
 function createExtensionManagementService(installed: ILocalExtension[] = []): IProfileAwareExtensionManagementService {
-	return <IProfileAwareExtensionManagementService>{
+	return <IProfileAwareExtensionManagementService><unknown>{
 		onInstallExtension: Event.None,
 		onDidInstallExtensions: Event.None,
 		onUninstallExtension: Event.None,
@@ -2209,8 +2209,6 @@ function createExtensionManagementService(installed: ILocalExtension[] = []): IP
 		onDidUpdateExtensionMetadata: Event.None,
 		onProfileAwareDidInstallExtensions: Event.None,
 		getInstalled: () => Promise.resolve<ILocalExtension[]>(installed),
-		canInstall: async (extension: IGalleryExtension) => { return true; },
-		installFromGallery: (extension: IGalleryExtension) => Promise.reject(new Error('not supported')),
 		updateMetadata: async (local: Mutable<ILocalExtension>, metadata: Partial<Metadata>, profileLocation: URI) => {
 			local.identifier.uuid = metadata.id;
 			local.publisherDisplayName = metadata.publisherDisplayName!;

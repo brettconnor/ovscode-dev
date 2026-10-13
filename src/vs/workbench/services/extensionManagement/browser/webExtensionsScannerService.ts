@@ -14,7 +14,7 @@ import { FileOperationError, FileOperationResult, IFileService } from '../../../
 import { Queue } from '../../../../base/common/async.js';
 import { VSBuffer } from '../../../../base/common/buffer.js';
 import { ILogService } from '../../../../platform/log/common/log.js';
-import { IGalleryExtension, IGalleryMetadata, Metadata } from '../../../../platform/extensionManagement/common/extensionManagement.js';
+import { IGalleryMetadata, Metadata } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { areSameExtensions, getGalleryExtensionId } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { Disposable } from '../../../../base/common/lifecycle.js';
 import { ITranslations, localizeManifest } from '../../../../platform/extensionManagement/common/extensionNls.js';
@@ -30,7 +30,6 @@ import { Categories } from '../../../../platform/action/common/actionCommonCateg
 import { IsWebContext } from '../../../../platform/contextkey/common/contextkeys.js';
 import { IEditorService } from '../../editor/common/editorService.js';
 import { ServicesAccessor } from '../../../../platform/instantiation/common/instantiation.js';
-import { basename } from '../../../../base/common/path.js';
 import { ILifecycleService, LifecyclePhase } from '../../lifecycle/common/lifecycle.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { validateExtensionManifest } from '../../../../platform/extensions/common/extensionValidator.js';
@@ -242,11 +241,6 @@ export class WebExtensionsScannerService extends Disposable implements IWebExten
 		}
 	}
 
-	async addExtensionFromGallery(galleryExtension: IGalleryExtension, metadata: Metadata, profileLocation: URI): Promise<IScannedExtension> {
-		const webExtension = await this.toWebExtensionFromGallery(galleryExtension, metadata);
-		return this.addWebExtension(webExtension, profileLocation);
-	}
-
 	async addExtension(location: URI, metadata: Metadata, profileLocation: URI): Promise<IScannedExtension> {
 		const webExtension = await this.toWebExtension(location, undefined, undefined, undefined, undefined, undefined, undefined, metadata);
 		const extension = await this.toScannedExtension(webExtension, false);
@@ -293,35 +287,6 @@ export class WebExtensionsScannerService extends Disposable implements IWebExten
 		}
 	}
 
-	private async addWebExtension(webExtension: IWebExtension, profileLocation: URI): Promise<IScannedExtension> {
-		const isSystem = !!(await this.scanSystemExtensions()).find(e => areSameExtensions(e.identifier, webExtension.identifier));
-		const isBuiltin = !!webExtension.metadata?.isBuiltin;
-		const extension = await this.toScannedExtension(webExtension, isBuiltin);
-
-		if (isSystem) {
-			await this.writeSystemExtensionsCache(systemExtensions => {
-				// Remove the existing extension to avoid duplicates
-				systemExtensions = systemExtensions.filter(extension => !areSameExtensions(extension.identifier, webExtension.identifier));
-				systemExtensions.push(webExtension);
-				return systemExtensions;
-			});
-			return extension;
-		}
-
-		if (isBuiltin) {
-			const installedExtensions = await this.readInstalledExtensions(profileLocation);
-			// Also add to installed extensions if it is installed to update its version
-			if (installedExtensions.some(e => areSameExtensions(e.identifier, webExtension.identifier))) {
-				await this.addToInstalledExtensions([webExtension], profileLocation);
-			}
-			return extension;
-		}
-
-		// Add to installed extensions
-		await this.addToInstalledExtensions([webExtension], profileLocation);
-		return extension;
-	}
-
 	private async addToInstalledExtensions(webExtensions: IWebExtension[], profileLocation: URI): Promise<void> {
 		await this.writeInstalledExtensions(profileLocation, installedExtensions => {
 			// Remove the existing extension to avoid duplicates
@@ -358,54 +323,6 @@ export class WebExtensionsScannerService extends Disposable implements IWebExten
 			}
 		}
 		return [...result.values()];
-	}
-
-	private async toWebExtensionFromGallery(galleryExtension: IGalleryExtension, metadata?: Metadata): Promise<IWebExtension> {
-		const extensionLocation = await this.extensionResourceLoaderService.getExtensionGalleryResourceURL({
-			publisher: galleryExtension.publisher,
-			name: galleryExtension.name,
-			version: galleryExtension.version,
-			targetPlatform: galleryExtension.properties.targetPlatform === TargetPlatform.WEB ? TargetPlatform.WEB : undefined
-		}, 'extension');
-
-		if (!extensionLocation) {
-			throw new Error('No extension gallery service configured.');
-		}
-
-		return this.toWebExtensionFromExtensionGalleryResource(extensionLocation,
-			galleryExtension.identifier,
-			galleryExtension.assets.readme ? URI.parse(galleryExtension.assets.readme.uri) : undefined,
-			galleryExtension.assets.changelog ? URI.parse(galleryExtension.assets.changelog.uri) : undefined,
-			metadata);
-	}
-
-	private async toWebExtensionFromExtensionGalleryResource(extensionLocation: URI, identifier?: IExtensionIdentifier, readmeUri?: URI, changelogUri?: URI, metadata?: Metadata): Promise<IWebExtension> {
-		const extensionResources = await this.listExtensionResources(extensionLocation);
-		const packageNLSResources = this.getPackageNLSResourceMapFromResources(extensionResources);
-
-		// The fallback, in English, will fill in any gaps missing in the localized file.
-		const fallbackPackageNLSResource = extensionResources.find(e => basename(e) === 'package.nls.json');
-		return this.toWebExtension(
-			extensionLocation,
-			identifier,
-			undefined,
-			packageNLSResources,
-			fallbackPackageNLSResource ? URI.parse(fallbackPackageNLSResource) : null,
-			readmeUri,
-			changelogUri,
-			metadata);
-	}
-
-	private getPackageNLSResourceMapFromResources(extensionResources: string[]): Map<string, URI> {
-		const packageNLSResources = new Map<string, URI>();
-		extensionResources.forEach(e => {
-			// Grab all package.nls.{language}.json files
-			const regexResult = /package\.nls\.([\w-]+)\.json/.exec(basename(e));
-			if (regexResult?.[1]) {
-				packageNLSResources.set(regexResult[1], URI.parse(e));
-			}
-		});
-		return packageNLSResources;
 	}
 
 	private async toWebExtension(extensionLocation: URI, identifier?: IExtensionIdentifier, manifest?: IExtensionManifest, packageNLSUris?: Map<string, URI>, fallbackPackageNLSUri?: URI | ITranslations | null, readmeUri?: URI, changelogUri?: URI, metadata?: Metadata): Promise<IWebExtension> {
@@ -505,16 +422,6 @@ export class WebExtensionsScannerService extends Disposable implements IWebExten
 			isValid,
 			preRelease: !!webExtension.metadata?.preRelease,
 		};
-	}
-
-	private async listExtensionResources(extensionLocation: URI): Promise<string[]> {
-		try {
-			const result = await this.extensionResourceLoaderService.readExtensionResource(extensionLocation);
-			return JSON.parse(result);
-		} catch (error) {
-			this.logService.warn('Error while fetching extension resources list', getErrorMessage(error));
-		}
-		return [];
 	}
 
 	private async translateManifest(manifest: IExtensionManifest, nlsURL: ITranslations | URI, fallbackNLS?: ITranslations | URI): Promise<IRelaxedExtensionManifest> {

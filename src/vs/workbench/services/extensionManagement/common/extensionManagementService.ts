@@ -90,6 +90,7 @@ export class ExtensionManagementService extends CommontExtensionManagementServic
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
 		@IExtensionsScannerService private readonly extensionsScannerService: IExtensionsScannerService,
 		@IAllowedExtensionsService allowedExtensionsService: IAllowedExtensionsService,
+		@ITelemetryService private readonly telemetryService: ITelemetryService,
 	) {
 		super(productService, allowedExtensionsService);
 

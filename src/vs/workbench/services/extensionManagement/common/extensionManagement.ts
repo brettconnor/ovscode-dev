@@ -189,7 +189,6 @@ export interface IWebExtensionsScannerService {
 	scanExistingExtension(extensionLocation: URI, extensionType: ExtensionType, profileLocation: URI): Promise<IScannedExtension | null>;
 
 	addExtension(location: URI, metadata: Metadata, profileLocation: URI): Promise<IScannedExtension>;
-	addExtensionFromGallery(galleryExtension: IGalleryExtension, metadata: Metadata, profileLocation: URI): Promise<IScannedExtension>;
 	removeExtension(extension: IScannedExtension, profileLocation: URI): Promise<void>;
 	copyExtensions(fromProfileLocation: URI, toProfileLocation: URI, filter: (extension: IScannedExtension) => boolean): Promise<void>;
 

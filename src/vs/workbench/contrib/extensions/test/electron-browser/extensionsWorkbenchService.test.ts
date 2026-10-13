@@ -268,7 +268,6 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 			manifest: { uri: 'uri:manifest', fallbackUri: 'fallback:manifest' },
 			readme: { uri: 'uri:readme', fallbackUri: 'fallback:readme' },
 			changelog: { uri: 'uri:changelog', fallbackUri: 'fallback:changlog' },
-			download: { uri: 'uri:download', fallbackUri: 'fallback:download' },
 			icon: { uri: 'uri:icon', fallbackUri: 'fallback:icon' },
 			license: { uri: 'uri:license', fallbackUri: 'fallback:license' },
 			repository: { uri: 'uri:repository', fallbackUri: 'fallback:repository' },
@@ -1341,7 +1340,6 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 
 	const noAssets: IGalleryExtensionAssets = {
 		changelog: null,
-		download: null!,
 		icon: null!,
 		license: null,
 		manifest: null,
@@ -1378,7 +1376,7 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 	}
 
 	function createExtensionManagementService(installed: ILocalExtension[] = []): IProfileAwareExtensionManagementService {
-		return <IProfileAwareExtensionManagementService>{
+		return <IProfileAwareExtensionManagementService><unknown>{
 			onInstallExtension: Event.None,
 			onDidInstallExtensions: Event.None,
 			onUninstallExtension: Event.None,
@@ -1387,7 +1385,6 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 			onDidUpdateExtensionMetadata: Event.None,
 			onProfileAwareDidInstallExtensions: Event.None,
 			getInstalled: () => Promise.resolve<ILocalExtension[]>(installed),
-			installFromGallery: (extension: IGalleryExtension) => Promise.reject(new Error('not supported')),
 			updateMetadata: async (local: Mutable<ILocalExtension>, metadata: Partial<Metadata>, profileLocation: URI) => {
 				local.identifier.uuid = metadata.id;
 				local.publisherDisplayName = metadata.publisherDisplayName!;
