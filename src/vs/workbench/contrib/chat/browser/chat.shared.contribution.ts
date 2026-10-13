@@ -165,7 +165,7 @@ import { ChatPasteTargetService } from './attachments/chatPasteTargetService.js'
 import { ChatVariablesService } from './attachments/chatVariables.js';
 import { ChatImageCarouselService, IChatImageCarouselService } from './chatImageCarouselService.js';
 import { ChatOutputRendererService, IChatOutputRendererService } from './chatOutputItemRenderer.js';
-import { ChatPetAchievementsAccessibilityHelp, ChatPetContextContribution, ChatPetCustomizationAchievementContribution, ChatPetEditingAchievementContribution } from './chatPetAchievements.contribution.js';
+import { ChatPetAchievementsAccessibilityHelp, ChatPetContextContribution, ChatPetEditingAchievementContribution } from './chatPetAchievements.contribution.js';
 import { ChatPetService, IChatPetService } from './chatPetService.js';
 import { ChatPetWidgetService, IChatPetWidgetService } from './widget/chatPetWidgetService.js';
 import { ChatPromoNotificationContribution } from './chatPromoNotification.js';
@@ -2550,24 +2550,6 @@ class ToolReferenceNamesContribution extends Disposable implements IWorkbenchCon
 	}
 }
 
-/**
- * Forces the eager {@link ChatSpeechToTextService} to instantiate at startup so
- * it can publish the `chatSpeechToTextConfigured` context key that gates the
- * dictation (mic) button. Registered singletons are created lazily on first
- * access, so without this the key would never be set and the button never shows.
- */
-class ChatSpeechToTextInitContribution implements IWorkbenchContribution {
-
-	static readonly ID = 'workbench.contrib.chatSpeechToTextInit';
-
-	constructor(
-		@IChatSpeechToTextService _chatSpeechToTextService: IChatSpeechToTextService,
-	) {
-		// Injecting the service is enough to construct it.
-	}
-}
-
-
 AccessibleViewRegistry.register(new ChatResponseAccessibleView());
 AccessibleViewRegistry.register(new PanelChatAccessibilityHelp());
 AccessibleViewRegistry.register(new QuickChatAccessibilityHelp());
@@ -2579,7 +2561,6 @@ AccessibleViewRegistry.register(new ChatPetAchievementsAccessibilityHelp());
 registerEditorFeature(ChatInputBoxContentProvider);
 Registry.as<IEditorFactoryRegistry>(EditorExtensions.EditorFactory).registerEditorSerializer(ChatEditorInput.TypeID, ChatEditorInputSerializer);
 
-registerWorkbenchContribution2(ChatSpeechToTextInitContribution.ID, ChatSpeechToTextInitContribution, WorkbenchPhase.BlockRestore);
 registerWorkbenchContribution2(ChatResolverContribution.ID, ChatResolverContribution, WorkbenchPhase.BlockStartup);
 registerWorkbenchContribution2(PromptsDebugContribution.ID, PromptsDebugContribution, WorkbenchPhase.BlockRestore);
 registerWorkbenchContribution2(ChatLanguageModelsDataContribution.ID, ChatLanguageModelsDataContribution, WorkbenchPhase.BlockRestore);
@@ -2627,7 +2608,6 @@ registerWorkbenchContribution2(AgentPluginCommandsContribution.ID, AgentPluginCo
 registerWorkbenchContribution2(PluginAutoUpdate.ID, PluginAutoUpdate, WorkbenchPhase.Eventually);
 registerWorkbenchContribution2(TranscriptContextAttachmentWidgetContribution.ID, TranscriptContextAttachmentWidgetContribution, WorkbenchPhase.AfterRestored);
 registerWorkbenchContribution2(ChatPetContextContribution.ID, ChatPetContextContribution, WorkbenchPhase.BlockRestore);
-registerWorkbenchContribution2(ChatPetCustomizationAchievementContribution.ID, ChatPetCustomizationAchievementContribution, WorkbenchPhase.AfterRestored);
 registerWorkbenchContribution2(ChatPetEditingAchievementContribution.ID, ChatPetEditingAchievementContribution, WorkbenchPhase.AfterRestored);
 
 registerChatAccessibilityActions();
@@ -2660,7 +2640,7 @@ agentPluginDiscoveryRegistry.register(new SyncDescriptor(MarketplaceAgentPluginD
 agentPluginDiscoveryRegistry.register(new SyncDescriptor(ExtensionAgentPluginDiscovery), AgentPluginDiscoveryPriority.Extension);
 
 registerSingleton(IChatResponseResourceFileSystemProvider, ChatResponseResourceFileSystemProvider, InstantiationType.Delayed);
-registerSingleton(IChatSpeechToTextService, ChatSpeechToTextService, InstantiationType.Eager);
+registerSingleton(IChatSpeechToTextService, ChatSpeechToTextService, InstantiationType.Delayed);
 registerSingleton(IVoiceCodeTranscriptionClient, VoiceCodeTranscriptionClient, InstantiationType.Delayed);
 registerSingleton(IChatService, ChatService, InstantiationType.Delayed);
 registerSingleton(IChatWidgetService, ChatWidgetService, InstantiationType.Delayed);

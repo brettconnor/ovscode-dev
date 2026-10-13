@@ -42,6 +42,7 @@
 			"vscode.github-authentication"
 		]
 	},
+	"builtInExtensionsEnabledWithAutoUpdates": [],
 	"onboardingThemes": [
 		{
 			"id": "dark-2026",
