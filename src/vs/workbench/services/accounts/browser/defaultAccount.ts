@@ -147,14 +147,21 @@ export class DefaultAccountService extends Disposable implements IDefaultAccount
 	private readonly _onDidChangeManagedSettingsFreshness = this._register(new Emitter<IManagedSettingsFreshness>());
 	readonly onDidChangeManagedSettingsFreshness = this._onDidChangeManagedSettingsFreshness.event;
 
-	private readonly defaultAccountConfig: IDefaultAccountConfig;
+	private readonly defaultAccountConfig: IDefaultAccountConfig | undefined;
 	private defaultAccountProvider: IDefaultAccountProvider | null = null;
 
 	constructor(
 		@IProductService productService: IProductService,
 	) {
 		super();
-		this.defaultAccountConfig = toDefaultAccountConfig(productService.defaultChatAgent);
+		if (productService.defaultChatAgent) {
+			this.defaultAccountConfig = toDefaultAccountConfig(productService.defaultChatAgent);
+		} else {
+			// Products without a default chat agent have no default-account provider.
+			// Open the barrier so consumers observe the signed-out state instead of
+			// waiting for a provider that will never be registered.
+			this.initBarrier.open();
+		}
 	}
 
 	async getDefaultAccount(): Promise<IDefaultAccount | null> {
@@ -165,6 +172,9 @@ export class DefaultAccountService extends Disposable implements IDefaultAccount
 	getDefaultAccountAuthenticationProvider(): IDefaultAccountAuthenticationProvider {
 		if (this.defaultAccountProvider) {
 			return this.defaultAccountProvider.getDefaultAccountAuthenticationProvider();
+		}
+		if (!this.defaultAccountConfig) {
+			return { id: '', name: '', enterprise: false };
 		}
 		return {
 			...this.defaultAccountConfig.authenticationProvider.default,
@@ -1643,6 +1653,9 @@ class DefaultAccountProviderContribution extends Disposable implements IWorkbenc
 		@IDefaultAccountService defaultAccountService: IDefaultAccountService,
 	) {
 		super();
+		if (!productService.defaultChatAgent) {
+			return;
+		}
 		const defaultAccountProvider = this._register(instantiationService.createInstance(DefaultAccountProvider, toDefaultAccountConfig(productService.defaultChatAgent)));
 		defaultAccountService.setDefaultAccountProvider(defaultAccountProvider);
 	}
