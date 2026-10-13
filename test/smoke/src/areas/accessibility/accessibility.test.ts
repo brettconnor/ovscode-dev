@@ -6,7 +6,7 @@
 import { Application, Logger, Quality } from '../../../../automation';
 import { installAllHandlers } from '../../utils';
 
-export function setup(logger: Logger, _opts: { web?: boolean }, _quality: Quality) {
+export function setup(logger: Logger, opts: { web?: boolean }, _quality: Quality) {
 	describe('Accessibility', function () {
 
 		// Increase timeout for accessibility scans
