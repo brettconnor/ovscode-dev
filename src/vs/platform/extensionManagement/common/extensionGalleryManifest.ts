@@ -62,8 +62,6 @@ export interface IExtensionGalleryManifest {
 
 export const enum ExtensionGalleryManifestStatus {
 	Available = 'available',
-	RequiresSignIn = 'requiresSignIn',
-	AccessDenied = 'accessDenied',
 	Unavailable = 'unavailable'
 }
 
@@ -92,7 +90,3 @@ export function getExtensionGalleryManifestResourceUri(manifest: IExtensionGalle
 	}
 	return undefined;
 }
-
-export const ExtensionGalleryServiceUrlConfigKey = 'extensions.gallery.serviceUrl';
-
-export const ExtensionGalleryAuthProviderConfigKey = 'extensions.gallery.authProvider';

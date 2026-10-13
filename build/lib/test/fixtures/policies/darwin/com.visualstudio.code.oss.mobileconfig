@@ -29,7 +29,6 @@
 				<string></string>
 				<key>AllowedExtensions</key>
 				<string></string>
-				<key>ExtensionGalleryServiceUrl</key>
 				<string></string>
 				<key>ChatToolsTerminalEnableAutoApprove</key>
 				<false/>

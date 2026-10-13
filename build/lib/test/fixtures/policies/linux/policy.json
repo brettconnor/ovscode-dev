@@ -6,7 +6,6 @@
     "ChatToolsAutoApprove": false,
     "McpGalleryServiceUrl": "",
     "AllowedExtensions": "",
-    "ExtensionGalleryServiceUrl": "",
     "ChatToolsTerminalEnableAutoApprove": false,
     "EnableFeedback": false,
     "TelemetryLevel": "all",

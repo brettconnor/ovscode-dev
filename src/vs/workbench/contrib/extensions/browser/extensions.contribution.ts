@@ -8,7 +8,6 @@ import { onUnexpectedError } from '../../../../base/common/errors.js';
 import { KeyCode, KeyMod } from '../../../../base/common/keyCodes.js';
 import { Disposable, DisposableStore, IDisposable, isDisposable } from '../../../../base/common/lifecycle.js';
 import { isWeb } from '../../../../base/common/platform.js';
-import { PolicyCategory } from '../../../../base/common/policy.js';
 import { MultiCommand } from '../../../../editor/browser/editorExtensions.js';
 import { CopyAction, CutAction, PasteAction } from '../../../../editor/contrib/clipboard/browser/clipboard.js';
 import { localize, localize2 } from '../../../../nls.js';
@@ -17,7 +16,6 @@ import { IClipboardService } from '../../../../platform/clipboard/common/clipboa
 import { CommandsRegistry, ICommandService } from '../../../../platform/commands/common/commands.js';
 import { Extensions as ConfigurationExtensions, ConfigurationScope, IConfigurationRegistry } from '../../../../platform/configuration/common/configurationRegistry.js';
 import { ContextKeyExpr, IContextKeyService, RawContextKey } from '../../../../platform/contextkey/common/contextkey.js';
-import { ExtensionGalleryAuthProviderConfigKey, ExtensionGalleryServiceUrlConfigKey } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
 import { ExtensionRequestsTimeoutConfigKey, ExtensionsLocalizedLabel, IExtensionManagementService } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { areSameExtensions } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { ExtensionStorageService } from '../../../../platform/extensionManagement/common/extensionStorage.js';
@@ -230,58 +228,6 @@ Registry.as<IConfigurationRegistry>(ConfigurationExtensions.Configuration)
 				description: localize('autoRestart', "If activated, extensions will automatically restart following an update if the window is not in focus. There can be a data loss if you have open Notebooks or Custom Editors."),
 				default: false,
 				included: product.quality !== 'stable'
-			},
-			[ExtensionGalleryServiceUrlConfigKey]: {
-				type: 'string',
-				description: localize('extensions.gallery.serviceUrl', "Configure the Marketplace service URL to connect to"),
-				default: '',
-				scope: ConfigurationScope.APPLICATION,
-				tags: ['usesOnlineServices'],
-				included: false,
-				policy: {
-					name: 'ExtensionGalleryServiceUrl',
-					category: PolicyCategory.Extensions,
-					minimumVersion: '1.99',
-					localization: {
-						description: {
-							key: 'extensions.gallery.serviceUrl',
-							value: localize('extensions.gallery.serviceUrl', "Configure the Marketplace service URL to connect to"),
-						}
-					}
-				},
-			},
-			[ExtensionGalleryAuthProviderConfigKey]: {
-				type: 'string',
-				enum: ['github', 'microsoft'],
-				enumDescriptions: [
-					localize('extensions.gallery.authProvider.github', "Authenticate to the Extensions Marketplace using GitHub."),
-					localize('extensions.gallery.authProvider.microsoft', "Authenticate to the Extensions Marketplace using a Microsoft (Entra ID) account."),
-				],
-				description: localize('extensions.gallery.authProvider', "Configure the authentication provider for the Extensions Marketplace"),
-				default: 'github',
-				scope: ConfigurationScope.APPLICATION,
-				included: false,
-				policy: {
-					name: 'ExtensionGalleryAuthProvider',
-					category: PolicyCategory.Extensions,
-					minimumVersion: '1.137',
-					localization: {
-						description: {
-							key: 'extensions.gallery.authProvider',
-							value: localize('extensions.gallery.authProvider', "Configure the authentication provider for the Extensions Marketplace"),
-						},
-						enumDescriptions: [
-							{
-								key: 'extensions.gallery.authProvider.github',
-								value: localize('extensions.gallery.authProvider.github', "Authenticate to the Extensions Marketplace using GitHub."),
-							},
-							{
-								key: 'extensions.gallery.authProvider.microsoft',
-								value: localize('extensions.gallery.authProvider.microsoft', "Authenticate to the Extensions Marketplace using a Microsoft (Entra ID) account."),
-							},
-						]
-					}
-				},
 			},
 			'extensions.supportNodeGlobalNavigator': {
 				type: 'boolean',

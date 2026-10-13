@@ -83,13 +83,6 @@
 		<multiText id="AllowedExtensions" valueName="AllowedExtensions" required="true" />
 			</elements>
 		</policy>
-		<policy name="ExtensionGalleryServiceUrl" class="Both" displayName="$(string.ExtensionGalleryServiceUrl)" explainText="$(string.ExtensionGalleryServiceUrl_extensions_gallery_serviceUrl)" key="Software\Policies\Microsoft\CodeOSS" presentation="$(presentation.ExtensionGalleryServiceUrl)">
-			<parentCategory ref="extensionsConfigurationTitle" />
-			<supportedOn ref="Supported_1_99" />
-			<elements>
-		<text id="ExtensionGalleryServiceUrl" valueName="ExtensionGalleryServiceUrl" required="true" />
-			</elements>
-		</policy>
 		<policy name="ChatToolsTerminalEnableAutoApprove" class="Both" displayName="$(string.ChatToolsTerminalEnableAutoApprove)" explainText="$(string.ChatToolsTerminalEnableAutoApprove_autoApproveMode_description)" key="Software\Policies\Microsoft\CodeOSS" presentation="$(presentation.ChatToolsTerminalEnableAutoApprove)">
 			<parentCategory ref="terminalIntegratedConfigurationTitle" />
 			<supportedOn ref="Supported_1_104" />
