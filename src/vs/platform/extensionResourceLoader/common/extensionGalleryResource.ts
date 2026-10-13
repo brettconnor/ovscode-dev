@@ -11,6 +11,11 @@ import { ExtensionGalleryResourceType, getExtensionGalleryManifestResourceUri, I
 
 const WEB_EXTENSION_RESOURCE_END_POINT_SEGMENT = '/web-extension-resource/';
 
+export function isWebExtensionResourceEndPoint(uri: URI): boolean {
+	const serverRootPath = RemoteAuthorities.getServerRootPath();
+	return uri.path.startsWith(serverRootPath) && uri.path.startsWith(WEB_EXTENSION_RESOURCE_END_POINT_SEGMENT, serverRootPath.length);
+}
+
 /** Resolve an extension's resource base URL independently from local extension-resource reading. */
 export function getExtensionGalleryResourceURL(manifest: IExtensionGalleryManifest | null, { publisher, name, version, targetPlatform }: { publisher: string; name: string; version: string; targetPlatform?: TargetPlatform }): URI | undefined {
 	const resourceUrlTemplate = manifest && getExtensionGalleryManifestResourceUri(manifest, ExtensionGalleryResourceType.ExtensionResourceUri);
@@ -30,8 +35,7 @@ export function getExtensionGalleryResourceURL(manifest: IExtensionGalleryManife
 		path: 'extension'
 	}));
 
-	const serverRootPath = RemoteAuthorities.getServerRootPath();
-	return uri.path.startsWith(serverRootPath) && uri.path.startsWith(WEB_EXTENSION_RESOURCE_END_POINT_SEGMENT, serverRootPath.length)
+	return isWebExtensionResourceEndPoint(uri)
 		? uri.with({ scheme: RemoteAuthorities.getPreferredWebSchema() })
 		: uri;
 }

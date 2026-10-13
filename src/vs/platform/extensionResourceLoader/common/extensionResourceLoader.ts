@@ -18,6 +18,7 @@ import { TargetPlatform } from '../../extensions/common/extensions.js';
 import { ExtensionGalleryResourceType, getExtensionGalleryManifestResourceUri, IExtensionGalleryManifest, IExtensionGalleryManifestService } from '../../extensionManagement/common/extensionGalleryManifest.js';
 import { ILogService } from '../../log/common/log.js';
 import { Disposable } from '../../../base/common/lifecycle.js';
+import { isWebExtensionResourceEndPoint } from './extensionGalleryResource.js';
 
 export const IExtensionResourceLoaderService = createDecorator<IExtensionResourceLoaderService>('extensionResourceLoaderService');
 
@@ -113,7 +114,7 @@ export abstract class AbstractExtensionResourceLoaderService extends Disposable 
 	}
 
 	private _getExtensionGalleryAuthority(uri: URI): string | undefined {
-		if (this._isWebExtensionResourceEndPoint(uri)) {
+		if (isWebExtensionResourceEndPoint(uri)) {
 			return uri.authority;
 		}
 		const index = uri.authority.indexOf('.');
