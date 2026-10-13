@@ -219,9 +219,6 @@ export class ExtensionGalleryManifestService extends Disposable implements IExte
 					sorting,
 					flags,
 				},
-				signing: {
-					allPublicRepositorySigned: true,
-				}
 			}
 		};
 	}

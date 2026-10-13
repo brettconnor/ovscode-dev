@@ -15,7 +15,6 @@ import { ITelemetryService } from '../../platform/telemetry/common/telemetry.js'
 import { IAllowedExtensionsService, IExtensionGalleryService, InstallOptions } from '../../platform/extensionManagement/common/extensionManagement.js';
 import { ExtensionGalleryServiceWithNoStorageService } from '../../platform/extensionManagement/common/extensionGalleryService.js';
 import { ExtensionManagementService, INativeServerExtensionManagementService } from '../../platform/extensionManagement/node/extensionManagementService.js';
-import { ExtensionSignatureVerificationService, IExtensionSignatureVerificationService } from '../../platform/extensionManagement/node/extensionSignatureVerificationService.js';
 import { InstantiationService } from '../../platform/instantiation/common/instantiationService.js';
 import { IInstantiationService } from '../../platform/instantiation/common/instantiation.js';
 import product from '../../platform/product/common/product.js';
@@ -137,7 +136,6 @@ class CliMain extends Disposable {
 		services.set(IExtensionGalleryService, new SyncDescriptor(ExtensionGalleryServiceWithNoStorageService));
 		services.set(IExtensionsProfileScannerService, new SyncDescriptor(ExtensionsProfileScannerService));
 		services.set(IExtensionsScannerService, new SyncDescriptor(ExtensionsScannerService));
-		services.set(IExtensionSignatureVerificationService, new SyncDescriptor(ExtensionSignatureVerificationService));
 		services.set(IAllowedExtensionsService, new SyncDescriptor(AllowedExtensionsService));
 		services.set(INativeServerExtensionManagementService, new SyncDescriptor(ExtensionManagementService));
 		services.set(ILanguagePackService, new SyncDescriptor(NativeLanguagePackService));
@@ -154,7 +152,7 @@ class CliMain extends Disposable {
 
 		// Install Extension
 		else if (this.args['install-extension'] || this.args['install-builtin-extension']) {
-			const installOptions: InstallOptions = { isMachineScoped: !!this.args['do-not-sync'], installPreReleaseVersion: !!this.args['pre-release'], donotIncludePackAndDependencies: !!this.args['do-not-include-pack-dependencies'] };
+			const installOptions: InstallOptions = { isMachineScoped: !!this.args['do-not-sync'], installPreReleaseVersion: !!this.args['pre-release'] };
 			return extensionManagementCLI.installExtensions(this.asExtensionIdOrVSIX(this.args['install-extension'] || []), this.asExtensionIdOrVSIX(this.args['install-builtin-extension'] || []), installOptions, !!this.args['force']);
 		}
 

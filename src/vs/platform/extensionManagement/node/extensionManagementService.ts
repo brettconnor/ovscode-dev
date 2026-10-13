@@ -27,20 +27,15 @@ import { IDownloadService } from '../../download/common/download.js';
 import { IEnvironmentService, INativeEnvironmentService } from '../../environment/common/environment.js';
 import { AbstractExtensionManagementService, AbstractExtensionTask, IInstallExtensionTask, InstallExtensionTaskOptions, IUninstallExtensionTask, toExtensionManagementError, UninstallExtensionTaskOptions } from '../common/abstractExtensionManagementService.js';
 import {
-	ExtensionManagementError, ExtensionManagementErrorCode, IExtensionGalleryService, IExtensionIdentifier, IExtensionManagementService, IGalleryExtension, ILocalExtension, InstallOperation,
+	ExtensionManagementError, ExtensionManagementErrorCode, IExtensionGalleryService, IExtensionIdentifier, IExtensionManagementService, ILocalExtension, InstallOperation,
 	Metadata, InstallOptions,
 	IProductVersion,
-	EXTENSION_INSTALL_CLIENT_TARGET_PLATFORM_CONTEXT,
-	ExtensionSignatureVerificationCode,
 	computeSize,
 	IAllowedExtensionsService,
-	VerifyExtensionSignatureConfigKey,
-	shouldRequireRepositorySignatureFor,
 } from '../common/extensionManagement.js';
 import { areSameExtensions, computeTargetPlatform, ExtensionKey, getGalleryExtensionId, groupByExtension } from '../common/extensionManagementUtil.js';
 import { IExtensionsProfileScannerService, IScannedProfileExtension } from '../common/extensionsProfileScannerService.js';
 import { IExtensionsScannerService, IScannedExtension, ManifestMetadata, UserExtensionsScanOptions } from '../common/extensionsScannerService.js';
-import { ExtensionsDownloader } from './extensionDownloader.js';
 import { ExtensionsLifecycle } from './extensionLifecycle.js';
 import { fromExtractError, getManifest } from './extensionManagementUtil.js';
 import { ExtensionsManifestCache } from './extensionsManifestCache.js';
@@ -54,8 +49,6 @@ import { IProductService } from '../../product/common/productService.js';
 import { ITelemetryService } from '../../telemetry/common/telemetry.js';
 import { IUriIdentityService } from '../../uriIdentity/common/uriIdentity.js';
 import { IUserDataProfilesService } from '../../userDataProfile/common/userDataProfile.js';
-import { IConfigurationService } from '../../configuration/common/configuration.js';
-import { IExtensionGalleryManifestService } from '../common/extensionGalleryManifest.js';
 
 export const INativeServerExtensionManagementService = refineServiceDecorator<IExtensionManagementService, INativeServerExtensionManagementService>(IExtensionManagementService);
 export interface INativeServerExtensionManagementService extends IExtensionManagementService {
@@ -65,7 +58,7 @@ export interface INativeServerExtensionManagementService extends IExtensionManag
 	deleteExtensions(...extensions: IExtension[]): Promise<void>;
 }
 
-type ExtractExtensionResult = { readonly local: ILocalExtension; readonly verificationStatus?: ExtensionSignatureVerificationCode };
+type ExtractExtensionResult = { readonly local: ILocalExtension };
 
 const DELETED_FOLDER_POSTFIX = '.vsctmp';
 
@@ -73,9 +66,6 @@ export class ExtensionManagementService extends AbstractExtensionManagementServi
 
 	private readonly extensionsScanner: ExtensionsScanner;
 	private readonly manifestCache: ExtensionsManifestCache;
-	private readonly extensionsDownloader: ExtensionsDownloader;
-
-	private readonly extractingGalleryExtensions = new Map<string, Promise<ExtractExtensionResult>>();
 
 	constructor(
 		@IExtensionGalleryService galleryService: IExtensionGalleryService,
@@ -87,8 +77,6 @@ export class ExtensionManagementService extends AbstractExtensionManagementServi
 		@IDownloadService private downloadService: IDownloadService,
 		@IInstantiationService private readonly instantiationService: IInstantiationService,
 		@IFileService private readonly fileService: IFileService,
-		@IConfigurationService private readonly configurationService: IConfigurationService,
-		@IExtensionGalleryManifestService protected readonly extensionGalleryManifestService: IExtensionGalleryManifestService,
 		@IProductService productService: IProductService,
 		@IAllowedExtensionsService allowedExtensionsService: IAllowedExtensionsService,
 		@IUriIdentityService uriIdentityService: IUriIdentityService,
@@ -98,7 +86,6 @@ export class ExtensionManagementService extends AbstractExtensionManagementServi
 		const extensionLifecycle = this._register(instantiationService.createInstance(ExtensionsLifecycle));
 		this.extensionsScanner = this._register(instantiationService.createInstance(ExtensionsScanner, extension => extensionLifecycle.postUninstall(extension)));
 		this.manifestCache = this._register(new ExtensionsManifestCache(userDataProfilesService, fileService, uriIdentityService, this, this.logService));
-		this.extensionsDownloader = this._register(instantiationService.createInstance(ExtensionsDownloader));
 
 		const extensionsWatcher = this._register(new ExtensionsWatcher(this, this.extensionsScannerService, userDataProfilesService, extensionsProfileScannerService, uriIdentityService, fileService, logService));
 		this._register(extensionsWatcher.onDidChangeExtensionsByAnotherSource(e => this.onDidChangeExtensionsFromAnotherSource(e)));
@@ -116,7 +103,7 @@ export class ExtensionManagementService extends AbstractExtensionManagementServi
 	async zip(extension: ILocalExtension): Promise<URI> {
 		this.logService.trace('ExtensionManagementService#zip', extension.identifier.id);
 		const files = await this.collectFiles(extension);
-		const location = await zip(joinPath(this.extensionsDownloader.extensionsDownloadDir, generateUuid()).fsPath, files);
+		const location = await zip(joinPath(this.environmentService.extensionsDownloadLocation, generateUuid()).fsPath, files);
 		return URI.file(location);
 	}
 
@@ -250,17 +237,12 @@ export class ExtensionManagementService extends AbstractExtensionManagementServi
 		}
 	}
 
-	async download(extension: IGalleryExtension, operation: InstallOperation, donotVerifySignature: boolean): Promise<URI> {
-		const { location } = await this.downloadExtension(extension, operation, !donotVerifySignature);
-		return location;
-	}
-
 	private async downloadVsix(vsix: URI): Promise<{ location: URI; cleanup: () => Promise<void> }> {
 		if (vsix.scheme === Schemas.file) {
 			return { location: vsix, async cleanup() { } };
 		}
 		this.logService.trace('Downloading extension from', vsix.toString());
-		const location = joinPath(this.extensionsDownloader.extensionsDownloadDir, generateUuid());
+		const location = joinPath(this.environmentService.extensionsDownloadLocation, generateUuid());
 		await this.downloadService.download(vsix, location, 'extensionManagement.downloadVsix');
 		this.logService.info('Downloaded extension to', location.toString());
 		const cleanup = async () => {
@@ -277,111 +259,13 @@ export class ExtensionManagementService extends AbstractExtensionManagementServi
 		return this.userDataProfilesService.defaultProfile.extensionsResource;
 	}
 
-	protected createInstallExtensionTask(manifest: IExtensionManifest, extension: URI | IGalleryExtension, options: InstallExtensionTaskOptions): IInstallExtensionTask {
-		const extensionKey = extension instanceof URI ? new ExtensionKey({ id: getGalleryExtensionId(manifest.publisher, manifest.name) }, manifest.version) : ExtensionKey.create(extension);
-		return this.instantiationService.createInstance(InstallExtensionInProfileTask, extensionKey, manifest, extension, options, (operation, token) => {
-			if (extension instanceof URI) {
-				return this.extractVSIX(extensionKey, extension, options, token);
-			}
-			let promise = this.extractingGalleryExtensions.get(extensionKey.toString());
-			if (!promise) {
-				this.extractingGalleryExtensions.set(extensionKey.toString(), promise = this.downloadAndExtractGalleryExtension(extensionKey, extension, operation, options, token));
-				promise.finally(() => this.extractingGalleryExtensions.delete(extensionKey.toString()));
-			}
-			return promise;
-		}, this.extensionsScanner);
+	protected createInstallExtensionTask(manifest: IExtensionManifest, extension: URI, options: InstallExtensionTaskOptions): IInstallExtensionTask {
+		const extensionKey = new ExtensionKey({ id: getGalleryExtensionId(manifest.publisher, manifest.name) }, manifest.version);
+		return this.instantiationService.createInstance(InstallExtensionInProfileTask, extensionKey, manifest, extension, options, (_operation, token) => this.extractVSIX(extensionKey, extension, options, token), this.extensionsScanner);
 	}
 
 	protected createUninstallExtensionTask(extension: ILocalExtension, options: UninstallExtensionTaskOptions): IUninstallExtensionTask {
 		return new UninstallExtensionInProfileTask(extension, options, this.extensionsProfileScannerService);
-	}
-
-	private async downloadAndExtractGalleryExtension(extensionKey: ExtensionKey, gallery: IGalleryExtension, operation: InstallOperation, options: InstallExtensionTaskOptions, token: CancellationToken): Promise<ExtractExtensionResult> {
-		const { verificationStatus, location } = await this.downloadExtension(gallery, operation, !options.donotVerifySignature, options.context?.[EXTENSION_INSTALL_CLIENT_TARGET_PLATFORM_CONTEXT] as TargetPlatform | undefined);
-		try {
-
-			if (token.isCancellationRequested) {
-				throw new CancellationError();
-			}
-
-			// validate manifest
-			const manifest = await getManifest(location.fsPath);
-			if (!new ExtensionKey(gallery.identifier, gallery.version).equals(new ExtensionKey({ id: getGalleryExtensionId(manifest.publisher, manifest.name) }, manifest.version))) {
-				throw new ExtensionManagementError(nls.localize('invalidManifest', "Cannot install '{0}' extension because of manifest mismatch with Marketplace", gallery.identifier.id), ExtensionManagementErrorCode.Invalid);
-			}
-
-			const local = await this.extensionsScanner.extractUserExtension(
-				extensionKey,
-				location.fsPath,
-				false,
-				token);
-
-			if (verificationStatus !== ExtensionSignatureVerificationCode.Success && this.environmentService.isBuilt) {
-				try {
-					await this.extensionsDownloader.delete(location);
-				} catch (e) {
-					/* Ignore */
-					this.logService.warn(`Error while deleting the downloaded file`, location.toString(), getErrorMessage(e));
-				}
-			}
-
-			return { local, verificationStatus };
-		} catch (error) {
-			try {
-				await this.extensionsDownloader.delete(location);
-			} catch (e) {
-				/* Ignore */
-				this.logService.warn(`Error while deleting the downloaded file`, location.toString(), getErrorMessage(e));
-			}
-			throw toExtensionManagementError(error);
-		}
-	}
-
-	private async downloadExtension(extension: IGalleryExtension, operation: InstallOperation, verifySignature: boolean, clientTargetPlatform?: TargetPlatform): Promise<{ readonly location: URI; readonly verificationStatus: ExtensionSignatureVerificationCode | undefined }> {
-		if (verifySignature) {
-			const value = this.configurationService.getValue(VerifyExtensionSignatureConfigKey);
-			verifySignature = isBoolean(value) ? value : true;
-		}
-		const { location, verificationStatus } = await this.extensionsDownloader.download(extension, operation, verifySignature, clientTargetPlatform);
-		const shouldRequireSignature = shouldRequireRepositorySignatureFor(extension.private, await this.extensionGalleryManifestService.getExtensionGalleryManifest());
-
-		if (
-			verificationStatus !== ExtensionSignatureVerificationCode.Success
-			&& !(verificationStatus === ExtensionSignatureVerificationCode.NotSigned && !shouldRequireSignature)
-			&& verifySignature
-			&& this.environmentService.isBuilt
-			&& (await this.getTargetPlatform()) !== TargetPlatform.LINUX_ARMHF
-		) {
-			try {
-				await this.extensionsDownloader.delete(location);
-			} catch (e) {
-				/* Ignore */
-				this.logService.warn(`Error while deleting the downloaded file`, location.toString(), getErrorMessage(e));
-			}
-
-			if (!verificationStatus) {
-				throw new ExtensionManagementError(nls.localize('signature verification not executed', "Signature verification was not executed."), ExtensionManagementErrorCode.SignatureVerificationInternal);
-			}
-
-			switch (verificationStatus) {
-				case ExtensionSignatureVerificationCode.PackageIntegrityCheckFailed:
-				case ExtensionSignatureVerificationCode.SignatureIsInvalid:
-				case ExtensionSignatureVerificationCode.SignatureManifestIsInvalid:
-				case ExtensionSignatureVerificationCode.SignatureIntegrityCheckFailed:
-				case ExtensionSignatureVerificationCode.EntryIsMissing:
-				case ExtensionSignatureVerificationCode.EntryIsTampered:
-				case ExtensionSignatureVerificationCode.Untrusted:
-				case ExtensionSignatureVerificationCode.CertificateRevoked:
-				case ExtensionSignatureVerificationCode.SignatureIsNotValid:
-				case ExtensionSignatureVerificationCode.SignatureArchiveHasTooManyEntries:
-				case ExtensionSignatureVerificationCode.NotSigned:
-					throw new ExtensionManagementError(nls.localize('signature verification failed', "Signature verification failed with '{0}' error.", verificationStatus), ExtensionManagementErrorCode.SignatureVerificationFailed);
-			}
-
-			throw new ExtensionManagementError(nls.localize('signature verification failed', "Signature verification failed with '{0}' error.", verificationStatus), ExtensionManagementErrorCode.SignatureVerificationInternal);
-		}
-
-		return { location, verificationStatus };
 	}
 
 	private async extractVSIX(extensionKey: ExtensionKey, location: URI, options: InstallExtensionTaskOptions, token: CancellationToken): Promise<ExtractExtensionResult> {
@@ -1039,20 +923,16 @@ class InstallExtensionInProfileTask extends AbstractExtensionTask<ILocalExtensio
 	private _operation = InstallOperation.Install;
 	get operation() { return this.options.operation ?? this._operation; }
 
-	private _verificationStatus: ExtensionSignatureVerificationCode | undefined;
-	get verificationStatus() { return this._verificationStatus; }
-
 	readonly identifier: IExtensionIdentifier;
 
 	constructor(
 		private readonly extensionKey: ExtensionKey,
 		readonly manifest: IExtensionManifest,
-		readonly source: IGalleryExtension | URI,
+		readonly source: URI,
 		readonly options: InstallExtensionTaskOptions,
 		private readonly extractExtensionFn: (operation: InstallOperation, token: CancellationToken) => Promise<ExtractExtensionResult>,
 		private readonly extensionsScanner: ExtensionsScanner,
 		@IUriIdentityService private readonly uriIdentityService: IUriIdentityService,
-		@IExtensionGalleryService private readonly galleryService: IExtensionGalleryService,
 		@IUserDataProfilesService private readonly userDataProfilesService: IUserDataProfilesService,
 		@IExtensionsScannerService private readonly extensionsScannerService: IExtensionsScannerService,
 		@IExtensionsProfileScannerService private readonly extensionsProfileScannerService: IExtensionsProfileScannerService,
@@ -1088,56 +968,30 @@ class InstallExtensionInProfileTask extends AbstractExtensionTask<ILocalExtensio
 			isSystem: existingExtension?.type === ExtensionType.System ? true : undefined,
 			installedTimestamp: Date.now(),
 			pinned: this.options.installGivenVersion ? true : (this.options.pinned ?? existingExtension?.pinned),
-			source: this.source instanceof URI ? 'vsix' : 'gallery',
+			source: 'vsix',
 		};
 
 		let local: ILocalExtension | undefined;
 
-		// VSIX
-		if (this.source instanceof URI) {
-			if (existingExtension) {
-				if (this.extensionKey.equals(new ExtensionKey(existingExtension.identifier, existingExtension.manifest.version))) {
-					try {
-						await this.extensionsScanner.deleteExtension(existingExtension, 'existing');
-					} catch (e) {
-						throw new Error(nls.localize('restartCode', "Please restart VS Code before reinstalling {0}.", this.manifest.displayName || this.manifest.name));
-					}
-				}
-			}
-
-			// Remove the extension with same version if it is already uninstalled.
-			// Installing a VSIX extension shall replace the existing extension always.
-			const existingWithSameVersion = await this.unsetIfRemoved(this.extensionKey);
-			if (existingWithSameVersion) {
+		if (existingExtension) {
+			if (this.extensionKey.equals(new ExtensionKey(existingExtension.identifier, existingExtension.manifest.version))) {
 				try {
-					await this.extensionsScanner.deleteExtension(existingWithSameVersion, 'existing');
+					await this.extensionsScanner.deleteExtension(existingExtension, 'existing');
 				} catch (e) {
 					throw new Error(nls.localize('restartCode', "Please restart VS Code before reinstalling {0}.", this.manifest.displayName || this.manifest.name));
 				}
 			}
-
 		}
 
-		// Gallery
-		else {
-			metadata.id = this.source.identifier.uuid;
-			metadata.publisherId = this.source.publisherId;
-			metadata.publisherDisplayName = this.source.publisherDisplayName;
-			metadata.targetPlatform = this.source.properties.targetPlatform;
-			metadata.updated = !!existingExtension;
-			metadata.private = this.source.private;
-			metadata.isPreReleaseVersion = this.source.properties.isPreReleaseVersion;
-			metadata.hasPreReleaseVersion = existingExtension?.hasPreReleaseVersion || this.source.properties.isPreReleaseVersion;
-			metadata.preRelease = isBoolean(this.options.preRelease)
-				? this.options.preRelease
-				: this.options.installPreReleaseVersion || this.source.properties.isPreReleaseVersion || existingExtension?.preRelease;
-
-			if (existingExtension && existingExtension.type !== ExtensionType.System && existingExtension.manifest.version === this.source.version) {
-				return this.extensionsScanner.updateMetadata(existingExtension, metadata, this.options.profileLocation);
+		// Remove the extension with same version if it is already uninstalled.
+		// Installing a VSIX extension shall replace the existing extension always.
+		const existingWithSameVersion = await this.unsetIfRemoved(this.extensionKey);
+		if (existingWithSameVersion) {
+			try {
+				await this.extensionsScanner.deleteExtension(existingWithSameVersion, 'existing');
+			} catch (e) {
+				throw new Error(nls.localize('restartCode', "Please restart VS Code before reinstalling {0}.", this.manifest.displayName || this.manifest.name));
 			}
-
-			// Unset if the extension is uninstalled and return the unset extension.
-			local = await this.unsetIfRemoved(this.extensionKey);
 		}
 
 		if (token.isCancellationRequested) {
@@ -1147,7 +1001,6 @@ class InstallExtensionInProfileTask extends AbstractExtensionTask<ILocalExtensio
 		if (!local) {
 			const result = await this.extractExtensionFn(this.operation, token);
 			local = result.local;
-			this._verificationStatus = result.verificationStatus;
 		}
 
 		if (this.uriIdentityService.extUri.isEqual(this.userDataProfilesService.defaultProfile.extensionsResource, this.options.profileLocation)) {
@@ -1173,9 +1026,6 @@ class InstallExtensionInProfileTask extends AbstractExtensionTask<ILocalExtensio
 			throw new ExtensionManagementError('Cannot find the installed extension', ExtensionManagementErrorCode.InstalledExtensionNotFound);
 		}
 
-		if (this.source instanceof URI) {
-			this.updateMetadata(local, token);
-		}
 
 		return result;
 	}
@@ -1191,27 +1041,6 @@ class InstallExtensionInProfileTask extends AbstractExtensionTask<ILocalExtensio
 		return undefined;
 	}
 
-	private async updateMetadata(extension: ILocalExtension, token: CancellationToken): Promise<void> {
-		try {
-			let [galleryExtension] = await this.galleryService.getExtensions([{ id: extension.identifier.id, version: extension.manifest.version }], token);
-			if (!galleryExtension) {
-				[galleryExtension] = await this.galleryService.getExtensions([{ id: extension.identifier.id }], token);
-			}
-			if (galleryExtension) {
-				const metadata = {
-					id: galleryExtension.identifier.uuid,
-					publisherDisplayName: galleryExtension.publisherDisplayName,
-					publisherId: galleryExtension.publisherId,
-					isPreReleaseVersion: galleryExtension.properties.isPreReleaseVersion,
-					hasPreReleaseVersion: extension.hasPreReleaseVersion || galleryExtension.properties.isPreReleaseVersion,
-					preRelease: galleryExtension.properties.isPreReleaseVersion || this.options.installPreReleaseVersion
-				};
-				await this.extensionsScanner.updateMetadata(extension, metadata, this.options.profileLocation);
-			}
-		} catch (error) {
-			/* Ignore Error */
-		}
-	}
 }
 
 class UninstallExtensionInProfileTask extends AbstractExtensionTask<void> implements IUninstallExtensionTask {

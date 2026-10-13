@@ -9,9 +9,9 @@ import { URI, UriComponents } from '../../../base/common/uri.js';
 import { DefaultURITransformer, IURITransformer, transformAndReviveIncomingURIs } from '../../../base/common/uriIpc.js';
 import { IChannel, IServerChannel } from '../../../base/parts/ipc/common/ipc.js';
 import {
-	IExtensionIdentifier, IGalleryExtension, ILocalExtension, IExtensionsControlManifest, InstallOptions,
+	IExtensionIdentifier, ILocalExtension, IExtensionsControlManifest, InstallOptions,
 	UninstallOptions, Metadata, IExtensionManagementService, DidUninstallExtensionEvent, InstallExtensionEvent, InstallExtensionResult,
-	UninstallExtensionEvent, InstallOperation, InstallExtensionInfo, IProductVersion, DidUpdateExtensionMetadata, UninstallExtensionInfo,
+	UninstallExtensionEvent, IProductVersion, DidUpdateExtensionMetadata, UninstallExtensionInfo,
 	IAllowedExtensionsService
 } from './extensionManagement.js';
 import { ExtensionType, IExtensionManifest, TargetPlatform } from '../../extensions/common/extensions.js';
@@ -134,13 +134,6 @@ export class ExtensionManagementChannel<TContext = RemoteAgentConnectionContext 
 			case 'getTargetPlatform': {
 				return this.service.getTargetPlatform();
 			}
-			case 'installFromGallery': {
-				return this.service.installFromGallery(args[0], transformIncomingOptions(args[1], uriTransformer));
-			}
-			case 'installGalleryExtensions': {
-				const arg: InstallExtensionInfo[] = args[0];
-				return this.service.installGalleryExtensions(arg.map(({ extension, options }) => ({ extension, options: transformIncomingOptions(options, uriTransformer) ?? {} })));
-			}
 			case 'uninstall': {
 				return this.service.uninstall(transformIncomingExtension(args[0], uriTransformer), transformIncomingOptions(args[1], uriTransformer));
 			}
@@ -168,9 +161,6 @@ export class ExtensionManagementChannel<TContext = RemoteAgentConnectionContext 
 			}
 			case 'getExtensionsControlManifest': {
 				return this.service.getExtensionsControlManifest();
-			}
-			case 'download': {
-				return this.service.download(args[0], args[1], args[2]);
 			}
 			case 'cleanUp': {
 				return this.service.cleanUp();
@@ -277,15 +267,6 @@ export class ExtensionManagementChannelClient extends CommontExtensionManagement
 		return Promise.resolve(this.channel.call<IExtensionManifest>('getManifest', [vsix]));
 	}
 
-	installFromGallery(extension: IGalleryExtension, installOptions?: InstallOptions): Promise<ILocalExtension> {
-		return Promise.resolve(this.channel.call<ILocalExtension>('installFromGallery', [extension, installOptions])).then(local => transformIncomingExtension(local, null));
-	}
-
-	async installGalleryExtensions(extensions: InstallExtensionInfo[]): Promise<InstallExtensionResult[]> {
-		const results = await this.channel.call<InstallExtensionResult[]>('installGalleryExtensions', [extensions]);
-		return results.map(e => ({ ...e, local: e.local ? transformIncomingExtension(e.local, null) : e.local, source: this.isUriComponents(e.source) ? URI.revive(e.source) : e.source, profileLocation: URI.revive(e.profileLocation) }));
-	}
-
 	uninstall(extension: ILocalExtension, options?: UninstallOptions): Promise<void> {
 		if (extension.isWorkspaceScoped) {
 			throw new Error('Cannot uninstall a workspace extension');
@@ -326,11 +307,6 @@ export class ExtensionManagementChannelClient extends CommontExtensionManagement
 
 	getExtensionsControlManifest(): Promise<IExtensionsControlManifest> {
 		return Promise.resolve(this.channel.call<IExtensionsControlManifest>('getExtensionsControlManifest'));
-	}
-
-	async download(extension: IGalleryExtension, operation: InstallOperation, donotVerifySignature: boolean): Promise<URI> {
-		const result = await this.channel.call<UriComponents>('download', [extension, operation, donotVerifySignature]);
-		return URI.revive(result);
 	}
 
 	async cleanUp(): Promise<void> {

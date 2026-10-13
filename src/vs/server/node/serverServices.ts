@@ -21,7 +21,6 @@ import { DownloadServiceChannelClient } from '../../platform/download/common/dow
 import { IEnvironmentService, INativeEnvironmentService } from '../../platform/environment/common/environment.js';
 import { ExtensionGalleryServiceWithNoStorageService } from '../../platform/extensionManagement/common/extensionGalleryService.js';
 import { IAllowedExtensionsService, IExtensionGalleryService } from '../../platform/extensionManagement/common/extensionManagement.js';
-import { ExtensionSignatureVerificationService, IExtensionSignatureVerificationService } from '../../platform/extensionManagement/node/extensionSignatureVerificationService.js';
 import { ExtensionManagementCLI } from '../../platform/extensionManagement/common/extensionManagementCLI.js';
 import { ExtensionManagementChannel } from '../../platform/extensionManagement/common/extensionManagementIpc.js';
 import { ExtensionManagementService, INativeServerExtensionManagementService } from '../../platform/extensionManagement/node/extensionManagementService.js';
@@ -211,7 +210,6 @@ export async function setupServerServices(connectionToken: ServerConnectionToken
 
 	services.set(IExtensionsProfileScannerService, new SyncDescriptor(ExtensionsProfileScannerService));
 	services.set(IExtensionsScannerService, new SyncDescriptor(ExtensionsScannerService));
-	services.set(IExtensionSignatureVerificationService, new SyncDescriptor(ExtensionSignatureVerificationService));
 	services.set(IAllowedExtensionsService, new SyncDescriptor(AllowedExtensionsService));
 	services.set(INativeServerExtensionManagementService, new SyncDescriptor(ExtensionManagementService));
 	services.set(INativeMcpDiscoveryHelperService, new SyncDescriptor(NativeMcpDiscoveryHelperService));

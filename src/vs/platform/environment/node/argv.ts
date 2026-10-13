@@ -199,7 +199,6 @@ export const OPTIONS: OptionDescriptions<Required<NativeParsedArgs>> = {
 	'install-builtin-extension': { type: 'string[]' },
 	'force': { type: 'boolean' },
 	'do-not-sync': { type: 'boolean' },
-	'do-not-include-pack-dependencies': { type: 'boolean' },
 	'trace': { type: 'boolean' },
 	'trace-memory-infra': { type: 'boolean' },
 	'trace-category-filter': { type: 'string' },

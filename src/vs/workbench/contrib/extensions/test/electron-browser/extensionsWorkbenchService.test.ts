@@ -272,7 +272,6 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 			icon: { uri: 'uri:icon', fallbackUri: 'fallback:icon' },
 			license: { uri: 'uri:license', fallbackUri: 'fallback:license' },
 			repository: { uri: 'uri:repository', fallbackUri: 'fallback:repository' },
-			signature: { uri: 'uri:signature', fallbackUri: 'fallback:signature' },
 			coreTranslations: []
 		});
 		instantiationService.stubPromise(IExtensionManagementService, 'getInstalled', [local1, local2]);
@@ -1348,13 +1347,12 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 		manifest: null,
 		readme: null,
 		repository: null,
-		signature: null,
 		coreTranslations: []
 	};
 
 	function aGalleryExtension(name: string, properties: any = {}, galleryExtensionProperties: any = {}, assets: IGalleryExtensionAssets = noAssets): IGalleryExtension {
 		const targetPlatform = getTargetPlatform(platform, arch);
-		const galleryExtension = <IGalleryExtension>Object.create({ name, publisher: 'pub', version: '1.0.0', allTargetPlatforms: [targetPlatform], properties: {}, assets: {}, isSigned: true, ...properties });
+		const galleryExtension = <IGalleryExtension>Object.create({ name, publisher: 'pub', version: '1.0.0', allTargetPlatforms: [targetPlatform], properties: {}, assets: {}, ...properties });
 		galleryExtension.properties = { ...galleryExtension.properties, dependencies: [], targetPlatform, ...galleryExtensionProperties };
 		galleryExtension.assets = { ...galleryExtension.assets, ...assets };
 		galleryExtension.identifier = { id: getGalleryExtensionId(galleryExtension.publisher, galleryExtension.name), uuid: generateUuid() };

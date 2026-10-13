@@ -3,9 +3,9 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { ILocalExtension, IGalleryExtension, InstallOptions, UninstallOptions, Metadata, InstallExtensionResult, InstallExtensionInfo, IProductVersion, UninstallExtensionInfo, DidUninstallExtensionEvent, DidUpdateExtensionMetadata, InstallExtensionEvent, UninstallExtensionEvent, IAllowedExtensionsService } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { URI } from '../../../../base/common/uri.js';
 import { ExtensionIdentifier, ExtensionType, IExtensionIdentifier } from '../../../../platform/extensions/common/extensions.js';
+import { ILocalExtension, InstallOptions, UninstallOptions, Metadata, InstallExtensionResult, IProductVersion, UninstallExtensionInfo, DidUninstallExtensionEvent, DidUpdateExtensionMetadata, InstallExtensionEvent, UninstallExtensionEvent, IAllowedExtensionsService } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { ExtensionManagementChannelClient as BaseExtensionManagementChannelClient } from '../../../../platform/extensionManagement/common/extensionManagementIpc.js';
 import { IChannel } from '../../../../base/parts/ipc/common/ipc.js';
 import { DidChangeUserDataProfileEvent, IUserDataProfileService } from '../../userDataProfile/common/userDataProfile.js';
@@ -95,19 +95,6 @@ export abstract class ProfileAwareExtensionManagementChannelClient extends BaseE
 
 	override async installFromLocation(location: URI, profileLocation: URI): Promise<ILocalExtension> {
 		return super.installFromLocation(location, await this.getProfileLocation(profileLocation));
-	}
-
-	override async installFromGallery(extension: IGalleryExtension, installOptions?: InstallOptions): Promise<ILocalExtension> {
-		installOptions = { ...installOptions, profileLocation: await this.getProfileLocation(installOptions?.profileLocation) };
-		return super.installFromGallery(extension, installOptions);
-	}
-
-	override async installGalleryExtensions(extensions: InstallExtensionInfo[]): Promise<InstallExtensionResult[]> {
-		const infos: InstallExtensionInfo[] = [];
-		for (const extension of extensions) {
-			infos.push({ ...extension, options: { ...extension.options, profileLocation: await this.getProfileLocation(extension.options?.profileLocation) } });
-		}
-		return super.installGalleryExtensions(infos);
 	}
 
 	override async uninstall(extension: ILocalExtension, options?: UninstallOptions): Promise<void> {

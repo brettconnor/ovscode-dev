@@ -16,7 +16,7 @@ import { IExtensionDescription } from '../../../../platform/extensions/common/ex
 import { URI } from '../../../../base/common/uri.js';
 import { joinPath } from '../../../../base/common/resources.js';
 import { FileAccess } from '../../../../base/common/network.js';
-import { EXTENSION_INSTALL_DEP_PACK_CONTEXT, EXTENSION_INSTALL_SKIP_WALKTHROUGH_CONTEXT, IExtensionManagementService } from '../../../../platform/extensionManagement/common/extensionManagement.js';
+import { EXTENSION_INSTALL_SKIP_WALKTHROUGH_CONTEXT, IExtensionManagementService } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { ThemeIcon } from '../../../../base/common/themables.js';
 import { walkthroughs } from '../common/gettingStartedContent.js';
 import { IWorkbenchAssignmentService } from '../../../services/assignment/common/assignmentService.js';
@@ -245,7 +245,7 @@ export class WalkthroughsService extends Disposable implements IWalkthroughsServ
 		this._register(this.extensionManagementService.onDidInstallExtensions((result) => {
 
 			for (const e of result) {
-				const skipWalkthrough = e?.context?.[EXTENSION_INSTALL_SKIP_WALKTHROUGH_CONTEXT] || e?.context?.[EXTENSION_INSTALL_DEP_PACK_CONTEXT];
+				const skipWalkthrough = e?.context?.[EXTENSION_INSTALL_SKIP_WALKTHROUGH_CONTEXT];
 				// If the window had last focus and the install didn't specify to skip the walkthrough
 				// Then add it to the sessionInstallExtensions to be opened
 				if (!skipWalkthrough) {

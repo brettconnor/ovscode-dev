@@ -10,7 +10,7 @@ import { IRemoteAgentService } from '../../remote/common/remoteAgentService.js';
 import { IChannel } from '../../../../base/parts/ipc/common/ipc.js';
 import { ISharedProcessService } from '../../../../platform/ipc/electron-browser/services.js';
 import { InstantiationType, registerSingleton } from '../../../../platform/instantiation/common/extensions.js';
-import { NativeRemoteExtensionManagementService } from './remoteExtensionManagementService.js';
+import { RemoteExtensionManagementService } from '../common/remoteExtensionManagementService.js';
 import { ILabelService } from '../../../../platform/label/common/label.js';
 import { IExtension } from '../../../../platform/extensions/common/extensions.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
@@ -36,7 +36,7 @@ export class ExtensionManagementServerService extends Disposable implements IExt
 		this.localExtensionManagementServer = { extensionManagementService: localExtensionManagementService, id: 'local', label: localize('local', "Local") };
 		const remoteAgentConnection = remoteAgentService.getConnection();
 		if (remoteAgentConnection) {
-			const extensionManagementService = instantiationService.createInstance(NativeRemoteExtensionManagementService, remoteAgentConnection.getChannel<IChannel>('extensions'), this.localExtensionManagementServer);
+			const extensionManagementService = instantiationService.createInstance(RemoteExtensionManagementService, remoteAgentConnection.getChannel<IChannel>('extensions'));
 			this.remoteExtensionManagementServer = {
 				id: 'remote',
 				extensionManagementService,

@@ -34,7 +34,6 @@ import { INativeEnvironmentService } from '../../../platform/environment/common/
 import { GlobalExtensionEnablementService } from '../../../platform/extensionManagement/common/extensionEnablementService.js';
 import { ExtensionGalleryService } from '../../../platform/extensionManagement/common/extensionGalleryService.js';
 import { IAllowedExtensionsService, IExtensionGalleryService, IExtensionManagementService, IGlobalExtensionEnablementService } from '../../../platform/extensionManagement/common/extensionManagement.js';
-import { ExtensionSignatureVerificationService, IExtensionSignatureVerificationService } from '../../../platform/extensionManagement/node/extensionSignatureVerificationService.js';
 import { ExtensionManagementChannel } from '../../../platform/extensionManagement/common/extensionManagementIpc.js';
 import { ExtensionManagementService, INativeServerExtensionManagementService } from '../../../platform/extensionManagement/node/extensionManagementService.js';
 import { IFileService } from '../../../platform/files/common/files.js';
@@ -345,7 +344,6 @@ class SharedProcessMain extends Disposable implements IClientConnectionFilter {
 		// Extension Management
 		services.set(IExtensionsProfileScannerService, new SyncDescriptor(ExtensionsProfileScannerService, undefined, true));
 		services.set(IExtensionsScannerService, new SyncDescriptor(ExtensionsScannerService, undefined, true));
-		services.set(IExtensionSignatureVerificationService, new SyncDescriptor(ExtensionSignatureVerificationService, undefined, true));
 		services.set(IAllowedExtensionsService, new SyncDescriptor(AllowedExtensionsService, undefined, true));
 		services.set(INativeServerExtensionManagementService, new SyncDescriptor(ExtensionManagementService, undefined, true));
 

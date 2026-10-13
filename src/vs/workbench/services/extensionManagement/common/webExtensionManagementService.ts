@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { ExtensionIdentifier, ExtensionType, IExtension, IExtensionIdentifier, IExtensionManifest, TargetPlatform } from '../../../../platform/extensions/common/extensions.js';
-import { ILocalExtension, IGalleryExtension, InstallOperation, IExtensionGalleryService, Metadata, InstallOptions, IProductVersion, IAllowedExtensionsService } from '../../../../platform/extensionManagement/common/extensionManagement.js';
+import { ILocalExtension, InstallOperation, IExtensionGalleryService, Metadata, InstallOptions, IAllowedExtensionsService } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { URI } from '../../../../base/common/uri.js';
 import { Emitter, Event } from '../../../../base/common/event.js';
 import { areSameExtensions, getGalleryExtensionId } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
@@ -13,9 +13,8 @@ import { ILogService } from '../../../../platform/log/common/log.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { AbstractExtensionManagementService, AbstractExtensionTask, IInstallExtensionTask, InstallExtensionTaskOptions, IUninstallExtensionTask, toExtensionManagementError, UninstallExtensionTaskOptions } from '../../../../platform/extensionManagement/common/abstractExtensionManagementService.js';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
-import { IExtensionManifestPropertiesService } from '../../extensions/common/extensionManifestPropertiesService.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
-import { isBoolean, isUndefined } from '../../../../base/common/types.js';
+import { isUndefined } from '../../../../base/common/types.js';
 import { DidChangeUserDataProfileEvent, IUserDataProfileService } from '../../userDataProfile/common/userDataProfile.js';
 import { delta } from '../../../../base/common/arrays.js';
 import { compare } from '../../../../base/common/strings.js';
@@ -55,7 +54,6 @@ export class WebExtensionManagementService extends AbstractExtensionManagementSe
 		@ITelemetryService telemetryService: ITelemetryService,
 		@ILogService logService: ILogService,
 		@IWebExtensionsScannerService private readonly webExtensionsScannerService: IWebExtensionsScannerService,
-		@IExtensionManifestPropertiesService private readonly extensionManifestPropertiesService: IExtensionManifestPropertiesService,
 		@IUserDataProfileService private readonly userDataProfileService: IUserDataProfileService,
 		@IProductService productService: IProductService,
 		@IAllowedExtensionsService allowedExtensionsService: IAllowedExtensionsService,
@@ -77,13 +75,6 @@ export class WebExtensionManagementService extends AbstractExtensionManagementSe
 
 	async getTargetPlatform(): Promise<TargetPlatform> {
 		return TargetPlatform.WEB;
-	}
-
-	protected override async isExtensionPlatformCompatible(extension: IGalleryExtension): Promise<boolean> {
-		if (this.isConfiguredToExecuteOnWeb(extension)) {
-			return true;
-		}
-		return super.isExtensionPlatformCompatible(extension);
 	}
 
 	async getInstalled(type?: ExtensionType, profileLocation?: URI): Promise<ILocalExtension[]> {
@@ -198,27 +189,11 @@ export class WebExtensionManagementService extends AbstractExtensionManagementSe
 		await this.webExtensionsScannerService.copyExtensions(fromProfileLocation, toProfileLocation, e => !e.metadata?.isApplicationScoped);
 	}
 
-	protected override async getCompatibleVersion(extension: IGalleryExtension, sameVersion: boolean, includePreRelease: boolean, productVersion: IProductVersion): Promise<IGalleryExtension | null> {
-		const compatibleExtension = await super.getCompatibleVersion(extension, sameVersion, includePreRelease, productVersion);
-		if (compatibleExtension) {
-			return compatibleExtension;
-		}
-		if (this.isConfiguredToExecuteOnWeb(extension)) {
-			return extension;
-		}
-		return null;
-	}
-
-	private isConfiguredToExecuteOnWeb(gallery: IGalleryExtension): boolean {
-		const configuredExtensionKind = this.extensionManifestPropertiesService.getUserConfiguredExtensionKind(gallery.identifier);
-		return !!configuredExtensionKind && configuredExtensionKind.includes('web');
-	}
-
 	protected getCurrentExtensionsManifestLocation(): URI {
 		return this.userDataProfileService.currentProfile.extensionsResource;
 	}
 
-	protected createInstallExtensionTask(manifest: IExtensionManifest, extension: URI | IGalleryExtension, options: InstallExtensionTaskOptions): IInstallExtensionTask {
+	protected createInstallExtensionTask(manifest: IExtensionManifest, extension: URI, options: InstallExtensionTaskOptions): IInstallExtensionTask {
 		return new InstallExtensionTask(manifest, extension, options, this.webExtensionsScannerService, this.userDataProfilesService);
 	}
 
@@ -228,7 +203,6 @@ export class WebExtensionManagementService extends AbstractExtensionManagementSe
 
 	zip(extension: ILocalExtension): Promise<URI> { throw new Error('unsupported'); }
 	getManifest(vsix: URI): Promise<IExtensionManifest> { throw new Error('unsupported'); }
-	download(): Promise<URI> { throw new Error('unsupported'); }
 
 	async cleanUp(): Promise<void> { }
 
@@ -278,7 +252,7 @@ function getMetadata(options?: InstallOptions, existingExtension?: IExtension): 
 class InstallExtensionTask extends AbstractExtensionTask<ILocalExtension> implements IInstallExtensionTask {
 
 	readonly identifier: IExtensionIdentifier;
-	readonly source: URI | IGalleryExtension;
+	readonly source: URI;
 
 	private _profileLocation: URI;
 	get profileLocation() { return this._profileLocation; }
@@ -288,14 +262,14 @@ class InstallExtensionTask extends AbstractExtensionTask<ILocalExtension> implem
 
 	constructor(
 		readonly manifest: IExtensionManifest,
-		private readonly extension: URI | IGalleryExtension,
+		private readonly extension: URI,
 		readonly options: InstallExtensionTaskOptions,
 		private readonly webExtensionsScannerService: IWebExtensionsScannerService,
 		private readonly userDataProfilesService: IUserDataProfilesService,
 	) {
 		super();
 		this._profileLocation = options.profileLocation;
-		this.identifier = URI.isUri(extension) ? { id: getGalleryExtensionId(manifest.publisher, manifest.name) } : extension.identifier;
+		this.identifier = { id: getGalleryExtensionId(manifest.publisher, manifest.name) };
 		this.source = extension;
 	}
 
@@ -307,28 +281,11 @@ class InstallExtensionTask extends AbstractExtensionTask<ILocalExtension> implem
 		}
 
 		const metadata = getMetadata(this.options, existingExtension);
-		if (!URI.isUri(this.extension)) {
-			metadata.id = this.extension.identifier.uuid;
-			metadata.publisherDisplayName = this.extension.publisherDisplayName;
-			metadata.publisherId = this.extension.publisherId;
-			metadata.installedTimestamp = Date.now();
-			metadata.isPreReleaseVersion = this.extension.properties.isPreReleaseVersion;
-			metadata.hasPreReleaseVersion = metadata.hasPreReleaseVersion || this.extension.properties.isPreReleaseVersion;
-			metadata.isBuiltin = this.options.isBuiltin || existingExtension?.isBuiltin;
-			metadata.isSystem = existingExtension?.type === ExtensionType.System ? true : undefined;
-			metadata.updated = !!existingExtension;
-			metadata.isApplicationScoped = this.options.isApplicationScoped || metadata.isApplicationScoped;
-			metadata.private = this.extension.private;
-			metadata.preRelease = isBoolean(this.options.preRelease)
-				? this.options.preRelease
-				: this.options.installPreReleaseVersion || this.extension.properties.isPreReleaseVersion || metadata.preRelease;
-			metadata.source = URI.isUri(this.extension) ? 'resource' : 'gallery';
-		}
+		metadata.source = 'resource';
 		metadata.pinned = this.options.installGivenVersion ? true : (this.options.pinned ?? metadata.pinned);
 
 		this._profileLocation = metadata.isApplicationScoped ? this.userDataProfilesService.defaultProfile.extensionsResource : this.options.profileLocation;
-		const scannedExtension = URI.isUri(this.extension) ? await this.webExtensionsScannerService.addExtension(this.extension, metadata, this.profileLocation)
-			: await this.webExtensionsScannerService.addExtensionFromGallery(this.extension, metadata, this.profileLocation);
+		const scannedExtension = await this.webExtensionsScannerService.addExtension(this.extension, metadata, this.profileLocation);
 		return toLocalExtension(scannedExtension);
 	}
 }

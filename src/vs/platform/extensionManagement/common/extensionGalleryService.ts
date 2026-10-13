@@ -16,8 +16,8 @@ import { URI } from '../../../base/common/uri.js';
 import { IHeaders, IRequestContext, IRequestOptions, isOfflineError } from '../../../base/parts/request/common/request.js';
 import { IConfigurationService } from '../../configuration/common/configuration.js';
 import { IEnvironmentService } from '../../environment/common/environment.js';
-import { getTargetPlatform, IExtensionGalleryService, IExtensionIdentifier, IExtensionInfo, IGalleryExtension, IGalleryExtensionAsset, IGalleryExtensionAssets, IGalleryExtensionVersion, InstallOperation, IQueryOptions, IExtensionsControlManifest, isNotWebExtensionInWebTargetPlatform, isTargetPlatformCompatible, ITranslation, SortOrder, StatisticType, toTargetPlatform, WEB_EXTENSION_TAG, IExtensionQueryOptions, IDeprecationInfo, ISearchPrefferedResults, ExtensionGalleryError, ExtensionGalleryErrorCode, IProductVersion, IAllowedExtensionsService, EXTENSION_IDENTIFIER_REGEX, SortBy, FilterType, MaliciousExtensionInfo, ExtensionRequestsTimeoutConfigKey } from './extensionManagement.js';
-import { adoptToGalleryExtensionId, areSameExtensions, getGalleryExtensionId, getGalleryExtensionTelemetryData } from './extensionManagementUtil.js';
+import { getTargetPlatform, IExtensionGalleryService, IExtensionIdentifier, IExtensionInfo, IGalleryExtension, IGalleryExtensionAsset, IGalleryExtensionAssets, IGalleryExtensionVersion, IQueryOptions, IExtensionsControlManifest, isNotWebExtensionInWebTargetPlatform, isTargetPlatformCompatible, ITranslation, SortOrder, StatisticType, toTargetPlatform, WEB_EXTENSION_TAG, IExtensionQueryOptions, IDeprecationInfo, ISearchPrefferedResults, ExtensionGalleryError, ExtensionGalleryErrorCode, IProductVersion, IAllowedExtensionsService, EXTENSION_IDENTIFIER_REGEX, SortBy, FilterType, MaliciousExtensionInfo, ExtensionRequestsTimeoutConfigKey } from './extensionManagement.js';
+import { adoptToGalleryExtensionId, areSameExtensions, getGalleryExtensionId } from './extensionManagementUtil.js';
 import { IExtensionManifest, TargetPlatform } from '../../extensions/common/extensions.js';
 import { isEngineValid } from '../../extensions/common/extensionValidator.js';
 import { IFileService } from '../../files/common/files.js';
@@ -114,10 +114,8 @@ const AssetType = {
 	Details: 'Microsoft.VisualStudio.Services.Content.Details',
 	Changelog: 'Microsoft.VisualStudio.Services.Content.Changelog',
 	Manifest: 'Microsoft.VisualStudio.Code.Manifest',
-	VSIX: 'Microsoft.VisualStudio.Services.VSIXPackage',
 	License: 'Microsoft.VisualStudio.Services.Content.License',
 	Repository: 'Microsoft.VisualStudio.Services.Links.Source',
-	Signature: 'Microsoft.VisualStudio.Services.VsixSignature'
 };
 
 const PropertyType = {
@@ -321,13 +319,6 @@ function getRepositoryAsset(version: IRawGalleryExtensionVersion): IGalleryExten
 	return getVersionAsset(version, AssetType.Repository);
 }
 
-function getDownloadAsset(version: IRawGalleryExtensionVersion): IGalleryExtensionAsset {
-	return {
-		// always use fallbackAssetUri for download asset to hit the Marketplace API so that downloads are counted
-		uri: `${version.fallbackAssetUri}/${AssetType.VSIX}?redirect=true${version.targetPlatform ? `&targetPlatform=${version.targetPlatform}` : ''}`,
-		fallbackUri: `${version.fallbackAssetUri}/${AssetType.VSIX}${version.targetPlatform ? `?targetPlatform=${version.targetPlatform}` : ''}`
-	};
-}
 
 function getVersionAsset(version: IRawGalleryExtensionVersion, type: string): IGalleryExtensionAsset | null {
 	const result = version.files.filter(f => f.assetType === type)[0];
@@ -521,9 +512,7 @@ function toExtension(galleryExtension: IRawGalleryExtension, version: IRawGaller
 		changelog: getVersionAsset(version, AssetType.Changelog),
 		license: getVersionAsset(version, AssetType.License),
 		repository: getRepositoryAsset(version),
-		download: getDownloadAsset(version),
 		icon: getVersionAsset(version, AssetType.Icon),
-		signature: getVersionAsset(version, AssetType.Signature),
 		coreTranslations: getCoreTranslationAssets(version)
 	};
 
@@ -570,7 +559,6 @@ function toExtension(galleryExtension: IRawGalleryExtension, version: IRawGaller
 		hasReleaseVersion: true,
 		private: isPrivateExtension(latestVersion),
 		preview: getIsPreview(galleryExtension.flags),
-		isSigned: !!assets.signature,
 		queryContext,
 		supportLink: getSupportLink(latestVersion),
 		detailsLink: detailsViewUri ? format2(detailsViewUri, { publisher: galleryExtension.publisher.publisherName, name: galleryExtension.extensionName }) : undefined,
@@ -1156,22 +1144,12 @@ export abstract class AbstractExtensionGalleryService implements IExtensionGalle
 		const runQuery = async (query: Query, token: CancellationToken) => {
 			const { extensions, total } = await this.queryGalleryExtensions(query, { targetPlatform: CURRENT_TARGET_PLATFORM, compatible: false, includePreRelease: !!options.includePreRelease, productVersion: options.productVersion ?? { version: this.productService.version, date: this.productService.date } }, extensionGalleryManifest, token);
 
-			const result: IGalleryExtension[] = [];
-			let defaultChatAgentExtension: IGalleryExtension | undefined;
 			for (let index = 0; index < extensions.length; index++) {
 				const extension = extensions[index];
 				setTelemetry(extension, ((query.pageNumber - 1) * query.pageSize) + index, options.source);
-				if (areSameExtensions(extension.identifier, { id: this.productService.defaultChatAgent.extensionId, })) {
-					defaultChatAgentExtension = extension;
-				} else {
-					result.push(extension);
-				}
-			}
-			if (defaultChatAgentExtension) {
-				result.push(defaultChatAgentExtension);
 			}
 
-			return { extensions: result, total };
+			return { extensions, total };
 		};
 		const { extensions, total } = await runQuery(query, token);
 		const getPage = async (pageIndex: number, ct: CancellationToken) => {
@@ -1676,67 +1654,6 @@ export abstract class AbstractExtensionGalleryService implements IExtensionGalle
 		} catch (error) { /* Ignore */ }
 	}
 
-	async download(extension: IGalleryExtension, location: URI, operation: InstallOperation): Promise<void> {
-		this.logService.trace('ExtensionGalleryService#download', extension.identifier.id);
-		const data = getGalleryExtensionTelemetryData(extension);
-		const startTime = new Date().getTime();
-
-		const operationParam = operation === InstallOperation.Install ? 'install' : operation === InstallOperation.Update ? 'update' : '';
-		const downloadAsset = operationParam ? {
-			uri: `${extension.assets.download.uri}${URI.parse(extension.assets.download.uri).query ? '&' : '?'}${operationParam}=true`,
-			fallbackUri: `${extension.assets.download.fallbackUri}${URI.parse(extension.assets.download.fallbackUri).query ? '&' : '?'}${operationParam}=true`
-		} : extension.assets.download;
-
-		const activityId = extension.queryContext?.[SEARCH_ACTIVITY_HEADER_NAME];
-		const headers: IHeaders | undefined = activityId && typeof activityId === 'string' ? { [SEARCH_ACTIVITY_HEADER_NAME]: activityId } : undefined;
-		const context = await this.getAsset(extension.identifier.id, downloadAsset, AssetType.VSIX, extension.version, 'extensionGalleryService.download', headers ? { headers } : undefined);
-
-		try {
-			await this.fileService.writeFile(location, context.stream);
-		} catch (error) {
-			try {
-				await this.fileService.del(location);
-			} catch (e) {
-				/* ignore */
-				this.logService.warn(`Error while deleting the file ${location.toString()}`, getErrorMessage(e));
-			}
-			throw new ExtensionGalleryError(getErrorMessage(error), ExtensionGalleryErrorCode.DownloadFailedWriting);
-		}
-
-		/* __GDPR__
-			"galleryService:downloadVSIX" : {
-				"owner": "sandy081",
-				"duration": { "classification": "SystemMetaData", "purpose": "PerformanceAndHealth", "isMeasurement": true },
-				"${include}": [
-					"${GalleryExtensionTelemetryData}"
-				]
-			}
-		*/
-		this.telemetryService.publicLog('galleryService:downloadVSIX', { ...data, duration: new Date().getTime() - startTime });
-	}
-
-	async downloadSignatureArchive(extension: IGalleryExtension, location: URI): Promise<void> {
-		if (!extension.assets.signature) {
-			throw new Error('No signature asset found');
-		}
-
-		this.logService.trace('ExtensionGalleryService#downloadSignatureArchive', extension.identifier.id);
-
-		const context = await this.getAsset(extension.identifier.id, extension.assets.signature, AssetType.Signature, extension.version, 'extensionGalleryService.signature');
-		try {
-			await this.fileService.writeFile(location, context.stream);
-		} catch (error) {
-			try {
-				await this.fileService.del(location);
-			} catch (e) {
-				/* ignore */
-				this.logService.warn(`Error while deleting the file ${location.toString()}`, getErrorMessage(e));
-			}
-			throw new ExtensionGalleryError(getErrorMessage(error), ExtensionGalleryErrorCode.DownloadFailedWriting);
-		}
-
-	}
-
 	async getReadme(extension: IGalleryExtension, token: CancellationToken): Promise<string> {
 		if (extension.assets.readme) {
 			const context = await this.getAsset(extension.identifier.id, extension.assets.readme, AssetType.Details, extension.version, 'extensionGalleryService.readme', {}, token);
@@ -1976,16 +1893,6 @@ export abstract class AbstractExtensionGalleryService implements IExtensionGalle
 				}
 			}
 		}
-
-		deprecated[this.productService.defaultChatAgent.extensionId.toLowerCase()] = {
-			disallowInstall: true,
-			extension: {
-				id: this.productService.defaultChatAgent.chatExtensionId,
-				displayName: 'GitHub Copilot Chat',
-				autoMigrate: { storage: false, donotDisable: true },
-				preRelease: this.productService.quality !== 'stable'
-			}
-		};
 
 		return { malicious, deprecated, search, autoUpdate };
 	}

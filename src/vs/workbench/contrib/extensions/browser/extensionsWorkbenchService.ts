@@ -13,7 +13,7 @@ import { Disposable, MutableDisposable } from '../../../../base/common/lifecycle
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
 import {
 	ILocalExtension, IGalleryExtension,
-	InstallExtensionEvent, DidUninstallExtensionEvent, InstallOperation, InstallExtensionResult,
+	DidUninstallExtensionEvent, InstallOperation, InstallExtensionResult,
 	IExtensionsControlManifest, IDeprecationInfo, isTargetPlatformCompatible,
 	InstallOptions, IProductVersion,
 	UninstallExtensionInfo,
@@ -507,7 +507,6 @@ class Extensions extends Disposable {
 	private readonly _onReset = this._register(new Emitter<void>());
 	get onReset() { return this._onReset.event; }
 
-	private installing: Extension[] = [];
 	private uninstalling: Extension[] = [];
 	private installed: Extension[] = [];
 
@@ -521,7 +520,6 @@ class Extensions extends Disposable {
 		@IInstantiationService private readonly instantiationService: IInstantiationService
 	) {
 		super();
-		this._register(server.extensionManagementService.onInstallExtension(e => this.onInstallExtension(e)));
 		this._register(server.extensionManagementService.onDidInstallExtensions(e => this.onDidInstallExtensions(e)));
 		this._register(server.extensionManagementService.onUninstallExtension(e => this.onUninstallExtension(e.identifier)));
 		this._register(server.extensionManagementService.onDidUninstallExtension(e => this.onDidUninstallExtension(e)));
@@ -530,11 +528,6 @@ class Extensions extends Disposable {
 		this._register(extensionEnablementService.onEnablementChanged(e => this.onEnablementChanged(e)));
 		this._register(Event.any(this.onChange, this.onReset)(() => this._local = undefined));
 		if (this.isWorkspaceServer) {
-			this._register(this.workbenchExtensionManagementService.onInstallExtension(e => {
-				if (e.workspaceScoped) {
-					this.onInstallExtension(e);
-				}
-			}));
 			this._register(this.workbenchExtensionManagementService.onDidInstallExtensions(e => {
 				const result = e.filter(e => e.workspaceScoped);
 				if (result.length) {
@@ -561,11 +554,7 @@ class Extensions extends Disposable {
 			for (const extension of this.installed) {
 				this._local.push(extension);
 			}
-			for (const extension of this.installing) {
-				if (!this.installed.some(installed => areSameExtensions(installed.identifier, extension.identifier))) {
-					this._local.push(extension);
-				}
-			}
+
 		}
 		return this._local;
 	}
@@ -576,16 +565,6 @@ class Extensions extends Disposable {
 		return this.local;
 	}
 
-
-	private onInstallExtension(event: InstallExtensionEvent): void {
-		const { source } = event;
-		if (source && !URI.isUri(source)) {
-			const extension = this.installed.find(e => areSameExtensions(e.identifier, source.identifier))
-				?? this.instantiationService.createInstance(Extension, this.stateProvider, this.runtimeStateProvider, this.server, undefined, source, undefined);
-			this.installing.push(extension);
-			this._onChange.fire({ extension });
-		}
-	}
 
 	private async fetchInstalledExtensions(productVersion?: IProductVersion): Promise<void> {
 		const extensionsControlManifest = await this.server.extensionManagementService.getExtensionsControlManifest();
@@ -631,7 +610,6 @@ class Extensions extends Disposable {
 
 	private async reset(): Promise<void> {
 		this.installed = [];
-		this.installing = [];
 		this.uninstalling = [];
 		await this.fetchInstalledExtensions();
 		this._onReset.fire();
@@ -640,34 +618,21 @@ class Extensions extends Disposable {
 	private async onDidInstallExtensions(results: readonly InstallExtensionResult[]): Promise<void> {
 		const extensions: Extension[] = [];
 		for (const event of results) {
-			const { local, source } = event;
-			const gallery = source && !URI.isUri(source) ? source : undefined;
-			const location = source && URI.isUri(source) ? source : undefined;
-			const installingExtension = gallery ? this.installing.filter(e => areSameExtensions(e.identifier, gallery.identifier))[0] : null;
-			this.installing = installingExtension ? this.installing.filter(e => e !== installingExtension) : this.installing;
-
-			let extension: Extension | undefined = installingExtension ? installingExtension
-				: (location || local) ? this.instantiationService.createInstance(Extension, this.stateProvider, this.runtimeStateProvider, this.server, local, undefined, undefined)
-					: undefined;
-			if (extension) {
-				if (local) {
-					const installed = this.installed.filter(e => areSameExtensions(e.identifier, extension!.identifier))[0];
-					if (installed) {
-						extension = installed;
-					} else {
-						this.installed.push(extension);
-					}
-					extension.local = local;
-					if (!extension.gallery) {
-						extension.gallery = gallery;
-					}
-					extension.enablementState = this.extensionEnablementService.getEnablementState(local);
+			const { local } = event;
+			const extension = local
+				? this.installed.find(e => areSameExtensions(e.identifier, local.identifier))
+					?? this.instantiationService.createInstance(Extension, this.stateProvider, this.runtimeStateProvider, this.server, local, undefined, undefined)
+				: undefined;
+			if (local && extension) {
+				if (!this.installed.includes(extension)) {
+					this.installed.push(extension);
 				}
+				extension.local = local;
+				extension.enablementState = this.extensionEnablementService.getEnablementState(local);
 				extensions.push(extension);
 			}
 			this._onChange.fire(!local || !extension ? undefined : { extension, operation: event.operation });
 		}
-
 		if (extensions.length) {
 			const manifest = await this.server.extensionManagementService.getExtensionsControlManifest();
 			for (const extension of extensions) {
@@ -718,13 +683,10 @@ class Extensions extends Disposable {
 	}
 
 	getExtensionState(extension: Extension): ExtensionState {
-		if (extension.gallery && this.installing.some(e => !!e.gallery && areSameExtensions(e.gallery.identifier, extension.gallery!.identifier))) {
-			return ExtensionState.Installing;
-		}
 		if (this.uninstalling.some(e => areSameExtensions(e.identifier, extension.identifier))) {
 			return ExtensionState.Uninstalling;
 		}
-		const local = this.installed.filter(e => e === extension || (e.gallery && extension.gallery && areSameExtensions(e.gallery.identifier, extension.gallery.identifier)))[0];
+		const local = this.installed.find(e => e === extension || areSameExtensions(e.identifier, extension.identifier));
 		return local ? ExtensionState.Installed : ExtensionState.Uninstalled;
 	}
 }
@@ -926,7 +888,6 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 			task.cancel();
 		}
 		this.tasksInProgress = [];
-		this.installing = [];
 		this.onDidChangeExtensions();
 		this._onReset.fire();
 	}

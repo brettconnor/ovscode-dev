@@ -62,7 +62,7 @@ export class DefaultExtensionsInitializer extends Disposable {
 		await Promise.all(vsixs.map(async vsix => {
 			this.logService.info('Installing default extension', vsix.resource.toString());
 			try {
-				await this.extensionManagementService.install(vsix.resource, { donotIncludePackAndDependencies: true, keepExisting: false });
+				await this.extensionManagementService.install(vsix.resource, { keepExisting: false });
 				this.logService.info('Default extension installed', vsix.resource.toString());
 			} catch (error) {
 				this.logService.error('Error installing default extension', vsix.resource.toString(), getErrorMessage(error));

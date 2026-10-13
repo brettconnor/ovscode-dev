@@ -11,7 +11,7 @@ import { Emitter, Event } from '../../../../base/common/event.js';
 import { IContextMenuService } from '../../../../platform/contextview/browser/contextView.js';
 import { disposeIfDisposable } from '../../../../base/common/lifecycle.js';
 import { IExtension, ExtensionState, IExtensionsWorkbenchService, IExtensionContainer, THEME_ACTIONS_GROUP, INSTALL_ACTIONS_GROUP, UPDATE_ACTIONS_GROUP, ExtensionEditorTab, ExtensionRuntimeActionType, IExtensionArg } from '../common/extensions.js';
-import { IAllowedExtensionsService, shouldRequireRepositorySignatureFor } from '../../../../platform/extensionManagement/common/extensionManagement.js';
+import { IAllowedExtensionsService } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IWorkbenchExtensionEnablementService, EnablementState, IExtensionManagementServerService, IExtensionManagementServer } from '../../../services/extensionManagement/common/extensionManagement.js';
 import { areSameExtensions, getExtensionId } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { ExtensionType, ExtensionIdentifier, isLanguagePackExtension, getWorkspaceSupportTypeMessage, isApplicationScopedExtension } from '../../../../platform/extensions/common/extensions.js';
@@ -53,7 +53,6 @@ import { Registry } from '../../../../platform/registry/common/platform.js';
 import { IUpdateService } from '../../../../platform/update/common/update.js';
 import { ActionWithDropdownActionViewItem, IActionWithDropdownActionViewItemOptions } from '../../../../base/browser/ui/dropdown/dropdownActionViewItem.js';
 import { IAuthenticationUsageService } from '../../../services/authentication/browser/authenticationUsageService.js';
-import { IExtensionGalleryManifestService } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
 import { IUserDataProfilesService } from '../../../../platform/userDataProfile/common/userDataProfile.js';
 import { getWorkbenchMenuMotionContextMenuOptions } from '../../../browser/actions/menuMotion.js';
 
@@ -544,7 +543,6 @@ async function getContextMenuActionsGroups(extension: IExtension | undefined | n
 			cksOverlay.push(['extensionDisallowInstall', extension.isMalicious || extension.deprecationInfo?.disallowInstall]);
 			cksOverlay.push(['isExtensionAllowed', allowedExtensionsService.isAllowed({ id: extension.identifier.id, publisherDisplayName: extension.publisherDisplayName }) === true]);
 			cksOverlay.push(['isPreReleaseExtensionAllowed', allowedExtensionsService.isAllowed({ id: extension.identifier.id, publisherDisplayName: extension.publisherDisplayName, prerelease: true }) === true]);
-			cksOverlay.push(['extensionIsUnsigned', extension.gallery && !extension.gallery.isSigned]);
 			cksOverlay.push(['extensionIsPrivate', extension.gallery?.private]);
 
 			const [colorThemes, fileIconThemes, productIconThemes, extensionUsesAuth] = await Promise.all([workbenchThemeService.getColorThemes(), workbenchThemeService.getFileIconThemes(), workbenchThemeService.getProductIconThemes(), authenticationUsageService.extensionUsesAuth(extension.identifier.id.toLowerCase())]);
@@ -1493,7 +1491,6 @@ export class ExtensionStatusAction extends ExtensionAction {
 		@IAllowedExtensionsService private readonly allowedExtensionsService: IAllowedExtensionsService,
 		@IWorkbenchExtensionEnablementService private readonly workbenchExtensionEnablementService: IWorkbenchExtensionEnablementService,
 		@IExtensionFeaturesManagementService private readonly extensionFeaturesManagementService: IExtensionFeaturesManagementService,
-		@IExtensionGalleryManifestService private readonly extensionGalleryManifestService: IExtensionGalleryManifestService,
 	) {
 		super('extensions.status', '', `${ExtensionStatusAction.CLASS} hide`, false);
 		this._register(this.labelService.onDidChangeFormatters(() => this.update(), this));
@@ -1526,11 +1523,6 @@ export class ExtensionStatusAction extends ExtensionAction {
 
 		if (this.extension.isMalicious) {
 			this.updateStatus({ icon: warningIcon, message: new MarkdownString(localize('malicious tooltip', "This extension was reported to be problematic.")) }, true);
-			return;
-		}
-
-		if (this.extension.state === ExtensionState.Uninstalled && this.extension.gallery && !this.extension.gallery.isSigned && shouldRequireRepositorySignatureFor(this.extension.private, await this.extensionGalleryManifestService.getExtensionGalleryManifest())) {
-			this.updateStatus({ icon: warningIcon, message: new MarkdownString(localize('not signed tooltip', "This extension is not signed by the Extension Marketplace.")) }, true);
 			return;
 		}
 

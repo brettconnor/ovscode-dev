@@ -210,7 +210,7 @@ suite('AllowedExtensionsService', () => {
 	}
 
 	function aGalleryExtension(name: string, properties: Partial<IGalleryExtension> = {}, galleryExtensionProperties: IStringDictionary<unknown> = {}): IGalleryExtension {
-		const galleryExtension = <IGalleryExtension>Object.create({ type: 'gallery', name, publisher: 'pub', publisherDisplayName: 'Pub', version: '1.0.0', allTargetPlatforms: [TargetPlatform.UNIVERSAL], properties: {}, assets: {}, isSigned: true, ...properties });
+		const galleryExtension = <IGalleryExtension>Object.create({ type: 'gallery', name, publisher: 'pub', publisherDisplayName: 'Pub', version: '1.0.0', allTargetPlatforms: [TargetPlatform.UNIVERSAL], properties: {}, assets: {}, ...properties });
 		galleryExtension.properties = { ...galleryExtension.properties, dependencies: [], ...galleryExtensionProperties };
 		galleryExtension.identifier = { id: getGalleryExtensionId(galleryExtension.publisher, galleryExtension.name), uuid: generateUuid() };
 		return <IGalleryExtension>galleryExtension;

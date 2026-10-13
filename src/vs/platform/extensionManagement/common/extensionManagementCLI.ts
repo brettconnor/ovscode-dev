@@ -87,7 +87,7 @@ export class ExtensionManagementCLI {
 			}
 			for (const extension of builtinExtensions) {
 				if (extension instanceof URI) {
-					installVSIXInfos.push({ vsix: extension, installOptions: { ...installOptions, isBuiltin: true, donotIncludePackAndDependencies: true } });
+					installVSIXInfos.push({ vsix: extension, installOptions: { ...installOptions, isBuiltin: true } });
 				}
 			}
 

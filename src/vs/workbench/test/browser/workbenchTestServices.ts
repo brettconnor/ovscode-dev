@@ -67,7 +67,7 @@ import { ConfirmResult, IDialogService, IFileDialogService, IOpenDialogOptions, 
 import { TestDialogService } from '../../../platform/dialogs/test/common/testDialogService.js';
 import { IEditorOptions, IResourceEditorInput, IResourceEditorInputIdentifier, ITextEditorOptions, ITextResourceEditorInput } from '../../../platform/editor/common/editor.js';
 import { IEnvironmentService } from '../../../platform/environment/common/environment.js';
-import { IExtensionManagementParticipant, IExtensionsControlManifest, IGalleryExtension, IGalleryMetadata, ILocalExtension, InstallExtensionInfo, InstallExtensionResult, InstallOptions, Metadata, UninstallExtensionInfo, UninstallOptions } from '../../../platform/extensionManagement/common/extensionManagement.js';
+import { IExtensionManagementParticipant, IExtensionsControlManifest, IGalleryExtension, IGalleryMetadata, ILocalExtension, InstallExtensionResult, InstallOptions, Metadata, UninstallExtensionInfo, UninstallOptions } from '../../../platform/extensionManagement/common/extensionManagement.js';
 import { ExtensionType, IExtension, IExtensionDescription, IRelaxedExtensionManifest, TargetPlatform } from '../../../platform/extensions/common/extensions.js';
 import { FileOperationError, FileSystemProviderCapabilities, FileType, IFileChange, IFileDeleteOptions, IFileOpenOptions, IFileOverwriteOptions, IFileReadStreamOptions, IFileService, IFileStatWithMetadata, IFileSystemProvider, IFileSystemProviderWithFileReadStreamCapability, IFileWriteOptions, IStat, IWatchOptions } from '../../../platform/files/common/files.js';
 import { FileService } from '../../../platform/files/common/fileService.js';
@@ -157,7 +157,7 @@ import { IEditorResolverService } from '../../services/editor/common/editorResol
 import { IEditorsChangeEvent, IEditorService, IRevertAllEditorsOptions, ISaveEditorsOptions, ISaveEditorsResult, IVisibleEditorsChangeEvent, PreferredGroup } from '../../services/editor/common/editorService.js';
 import { BrowserWorkbenchEnvironmentService } from '../../services/environment/browser/environmentService.js';
 import { IWorkbenchEnvironmentService } from '../../services/environment/common/environmentService.js';
-import { EnablementState, IExtensionManagementServer, IResourceExtension, IScannedExtension, IWebExtensionsScannerService, IWorkbenchExtensionEnablementService, IWorkbenchExtensionManagementService } from '../../services/extensionManagement/common/extensionManagement.js';
+import { EnablementState, IResourceExtension, IScannedExtension, IWebExtensionsScannerService, IWorkbenchExtensionEnablementService, IWorkbenchExtensionManagementService } from '../../services/extensionManagement/common/extensionManagement.js';
 import { IExtensionService } from '../../services/extensions/common/extensions.js';
 import { BrowserElevatedFileService } from '../../services/files/browser/elevatedFileService.js';
 import { IElevatedFileService } from '../../services/files/common/elevatedFileService.js';
@@ -2041,10 +2041,6 @@ export class TestWorkbenchExtensionManagementService implements IWorkbenchExtens
 	installFromLocation(location: URI): Promise<ILocalExtension> {
 		throw new Error('Method not implemented.');
 	}
-	installGalleryExtensions(extensions: InstallExtensionInfo[]): Promise<InstallExtensionResult[]> {
-		throw new Error('Method not implemented.');
-	}
-	async updateFromGallery(gallery: IGalleryExtension, extension: ILocalExtension, installOptions?: InstallOptions | undefined): Promise<ILocalExtension> { return extension; }
 	zip(extension: ILocalExtension): Promise<URI> {
 		throw new Error('Method not implemented.');
 	}
@@ -2055,10 +2051,6 @@ export class TestWorkbenchExtensionManagementService implements IWorkbenchExtens
 		throw new Error('Method not implemented.');
 	}
 	isAllowed(): true | IMarkdownString { return true; }
-	async canInstall(extension: IGalleryExtension): Promise<true> { return true; }
-	installFromGallery(extension: IGalleryExtension, options?: InstallOptions | undefined): Promise<ILocalExtension> {
-		throw new Error('Method not implemented.');
-	}
 	uninstall(extension: ILocalExtension, options?: UninstallOptions | undefined): Promise<void> {
 		throw new Error('Method not implemented.');
 	}
@@ -2073,24 +2065,16 @@ export class TestWorkbenchExtensionManagementService implements IWorkbenchExtens
 	registerParticipant(pariticipant: IExtensionManagementParticipant): void { }
 	async getTargetPlatform(): Promise<TargetPlatform> { return TargetPlatform.UNDEFINED; }
 	async cleanUp(): Promise<void> { }
-	download(): Promise<URI> {
-		throw new Error('Method not implemented.');
-	}
 	copyExtensions(): Promise<void> { throw new Error('Not Supported'); }
 	toggleApplicationScope(): Promise<ILocalExtension> { throw new Error('Not Supported'); }
 	installExtensionsFromProfile(): Promise<ILocalExtension[]> { throw new Error('Not Supported'); }
 	whenProfileChanged(from: IUserDataProfile, to: IUserDataProfile): Promise<void> { throw new Error('Not Supported'); }
 	getInstalledWorkspaceExtensionLocations(): URI[] { throw new Error('Method not implemented.'); }
 	getInstalledWorkspaceExtensions(): Promise<ILocalExtension[]> { throw new Error('Method not implemented.'); }
+	async canInstall(): Promise<true> { return true; }
 	installResourceExtension(): Promise<ILocalExtension> { throw new Error('Method not implemented.'); }
 	getExtensions(): Promise<IResourceExtension[]> { throw new Error('Method not implemented.'); }
 	resetPinnedStateForAllUserExtensions(pinned: boolean): Promise<void> { throw new Error('Method not implemented.'); }
-	getInstallableServers(extension: IGalleryExtension): Promise<IExtensionManagementServer[]> { throw new Error('Method not implemented.'); }
-	isPublisherTrusted(extension: IGalleryExtension): boolean { return false; }
-	getTrustedPublishers() { return []; }
-	trustPublishers(): void { }
-	untrustPublishers(): void { }
-	async requestPublisherTrust(extensions: InstallExtensionInfo[]): Promise<void> { }
 }
 
 

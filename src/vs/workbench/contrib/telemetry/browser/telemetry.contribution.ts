@@ -39,7 +39,6 @@ import { localize2 } from '../../../../nls.js';
 import { Categories } from '../../../../platform/action/common/actionCommonCategories.js';
 import { IOutputService } from '../../../services/output/common/output.js';
 import { ILoggerResource, ILoggerService, LogLevel } from '../../../../platform/log/common/log.js';
-import { VerifyExtensionSignatureConfigKey } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { TerminalContribSettingId } from '../../terminal/terminalContribExports.js';
 
 type TelemetryData = {
@@ -400,15 +399,6 @@ class ConfigurationTelemetryContribution extends Disposable implements IWorkbenc
 					settingValue: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'value of the setting' };
 					source: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'source of the setting' };
 				}>('workbench.secondarySideBar.defaultVisibility', { settingValue: this.getValueToReport(key, target), source });
-				return;
-
-			case VerifyExtensionSignatureConfigKey:
-				this.telemetryService.publicLog2<UpdatedSettingEvent, {
-					owner: 'sandy081';
-					comment: 'This is used to know if extensions signature verification is enabled or not';
-					settingValue: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'value of the setting' };
-					source: { classification: 'SystemMetaData'; purpose: 'FeatureInsight'; comment: 'source of the setting' };
-				}>('extensions.verifySignature', { settingValue: this.getValueToReport(key, target), source });
 				return;
 
 			case 'window.newWindowProfile':

@@ -53,10 +53,6 @@ export interface IExtensionGalleryManifest {
 			readonly sorting?: readonly ExtensionQueryCapabilityValue[];
 			readonly flags?: readonly ExtensionQueryCapabilityValue[];
 		};
-		readonly signing?: {
-			readonly allPublicRepositorySigned: boolean;
-			readonly allPrivateRepositorySigned?: boolean;
-		};
 		readonly extensions?: {
 			readonly includePublicExtensions?: boolean;
 			readonly includePrivateExtensions?: boolean;

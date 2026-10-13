@@ -66,7 +66,6 @@ pub struct CodeServerArgs {
 	pub show_versions: bool,
 	pub category: Option<String>,
 	pub pre_release: bool,
-	pub donot_include_pack_and_dependencies: bool,
 	pub force: bool,
 	pub start_server: bool,
 	// connection tokens

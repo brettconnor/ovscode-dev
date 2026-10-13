@@ -10,7 +10,6 @@ import { format, compare, splitLines } from '../../../../base/common/strings.js'
 import { extname, basename, isEqual } from '../../../../base/common/resources.js';
 import { areFunctions, assertReturnsDefined } from '../../../../base/common/types.js';
 import { URI } from '../../../../base/common/uri.js';
-import { IAction, toAction } from '../../../../base/common/actions.js';
 import { Language } from '../../../../base/common/platform.js';
 import { UntitledTextEditorInput } from '../../../services/untitled/common/untitledTextEditorInput.js';
 import { IFileEditorInput, EditorResourceAccessor, IEditorPane, SideBySideEditor } from '../../../common/editor.js';
@@ -28,8 +27,7 @@ import { IInstantiationService } from '../../../../platform/instantiation/common
 import { ILanguageService, ILanguageSelection } from '../../../../editor/common/languages/language.js';
 import { Range } from '../../../../editor/common/core/range.js';
 import { Selection } from '../../../../editor/common/core/selection.js';
-import { ICommandService, CommandsRegistry } from '../../../../platform/commands/common/commands.js';
-import { IExtensionGalleryService } from '../../../../platform/extensionManagement/common/extensionManagement.js';
+import { CommandsRegistry } from '../../../../platform/commands/common/commands.js';
 import { EncodingMode, IEncodingSupport, ILanguageSupport, ITextFileService } from '../../../services/textfile/common/textfiles.js';
 import { SUPPORTED_ENCODINGS } from '../../../services/textfile/common/encoding.js';
 import { ConfigurationChangedEvent, EditorOption } from '../../../../editor/common/config/editorOptions.js';
@@ -1142,8 +1140,6 @@ export class ChangeLanguageAction extends Action2 {
 		const preferencesService = accessor.get(IPreferencesService);
 		const configurationService = accessor.get(IConfigurationService);
 		const telemetryService = accessor.get(ITelemetryService);
-		const commandService = accessor.get(ICommandService);
-		const galleryService = accessor.get(IExtensionGalleryService);
 
 		const activeTextEditorControl = getCodeEditor(editorService.activeTextEditorControl);
 		if (!activeTextEditorControl) {
@@ -1193,18 +1189,8 @@ export class ChangeLanguageAction extends Action2 {
 		// Offer action to configure via settings
 		let configureLanguageAssociations: IQuickPickItem | undefined;
 		let configureLanguageSettings: IQuickPickItem | undefined;
-		let galleryAction: IAction | undefined;
 		if (hasLanguageSupport && resource) {
 			const ext = extname(resource) || basename(resource);
-
-			if (galleryService.isEnabled()) {
-				galleryAction = toAction({
-					id: 'workbench.action.showLanguageExtensions',
-					label: localize('showLanguageExtensions', "Search Marketplace Extensions for '{0}'...", ext),
-					run: () => commandService.executeCommand('workbench.extensions.action.showExtensionsForLanguage', ext)
-				});
-				picks.unshift(galleryAction);
-			}
 
 			configureLanguageSettings = { label: localize('configureModeSettings', "Configure '{0}' language based settings...", currentLanguageName) };
 			picks.unshift(configureLanguageSettings);
@@ -1220,11 +1206,6 @@ export class ChangeLanguageAction extends Action2 {
 
 		const pick = typeof languageMode === 'string' ? { label: languageMode } : await quickInputService.pick(picks, { placeHolder: localize('pickLanguage', "Select Language Mode"), matchOnDescription: true });
 		if (!pick) {
-			return;
-		}
-
-		if (pick === galleryAction) {
-			galleryAction.run();
 			return;
 		}
 
