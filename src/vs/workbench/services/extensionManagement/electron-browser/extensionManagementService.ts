@@ -15,7 +15,6 @@ import { IDownloadService } from '../../../../platform/download/common/download.
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { INativeWorkbenchEnvironmentService } from '../../environment/electron-browser/environmentService.js';
 import { joinPath } from '../../../../base/common/resources.js';
-import { IDialogService } from '../../../../platform/dialogs/common/dialogs.js';
 import { IWorkspaceTrustRequestService } from '../../../../platform/workspace/common/workspaceTrust.js';
 import { IExtensionManifestPropertiesService } from '../../extensions/common/extensionManifestPropertiesService.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
@@ -37,7 +36,6 @@ export class ExtensionManagementService extends BaseExtensionManagementService {
 		@IConfigurationService configurationService: IConfigurationService,
 		@IProductService productService: IProductService,
 		@IDownloadService downloadService: IDownloadService,
-		@IDialogService dialogService: IDialogService,
 		@IWorkspaceTrustRequestService workspaceTrustRequestService: IWorkspaceTrustRequestService,
 		@IExtensionManifestPropertiesService extensionManifestPropertiesService: IExtensionManifestPropertiesService,
 		@IFileService fileService: IFileService,
@@ -55,7 +53,6 @@ export class ExtensionManagementService extends BaseExtensionManagementService {
 			configurationService,
 			productService,
 			downloadService,
-			dialogService,
 			workspaceTrustRequestService,
 			extensionManifestPropertiesService,
 			fileService,
