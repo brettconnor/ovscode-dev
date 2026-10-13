@@ -295,12 +295,4 @@ export class ThemeRegistry<T extends IThemeData> implements IDisposable {
 		return this.extensionThemes;
 	}
 
-	public getMarketplaceThemes(manifest: any, extensionLocation: URI, extensionData: ExtensionData): T[] {
-		const themes = manifest?.contributes?.[this.themesExtPoint.name];
-		if (Array.isArray(themes)) {
-			return this.onThemes(extensionData, extensionLocation, themes);
-		}
-		return [];
-	}
-
 }

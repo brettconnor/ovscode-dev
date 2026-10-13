@@ -473,19 +473,6 @@ export class WorkbenchThemeService extends Disposable implements IWorkbenchTheme
 		return this.settings.getPreferredColorScheme();
 	}
 
-	public async getMarketplaceColorThemes(publisher: string, name: string, version: string): Promise<IWorkbenchColorTheme[]> {
-		const extensionLocation = await this.extensionResourceLoaderService.getExtensionGalleryResourceURL({ publisher, name, version }, 'extension');
-		if (extensionLocation) {
-			try {
-				const manifestContent = await this.extensionResourceLoaderService.readExtensionResource(resources.joinPath(extensionLocation, 'package.json'));
-				return this.colorThemeRegistry.getMarketplaceThemes(JSON.parse(manifestContent), extensionLocation, ExtensionData.fromName(publisher, name));
-			} catch (e) {
-				this.logService.error('Problem loading themes from marketplace', e);
-			}
-		}
-		return [];
-	}
-
 	public get onDidColorThemeChange(): Event<IWorkbenchColorTheme> {
 		return this.onColorThemeChange.event;
 	}
@@ -718,19 +705,6 @@ export class WorkbenchThemeService extends Disposable implements IWorkbenchTheme
 		return themeData;
 	}
 
-	public async getMarketplaceFileIconThemes(publisher: string, name: string, version: string): Promise<IWorkbenchFileIconTheme[]> {
-		const extensionLocation = await this.extensionResourceLoaderService.getExtensionGalleryResourceURL({ publisher, name, version }, 'extension');
-		if (extensionLocation) {
-			try {
-				const manifestContent = await this.extensionResourceLoaderService.readExtensionResource(resources.joinPath(extensionLocation, 'package.json'));
-				return this.fileIconThemeRegistry.getMarketplaceThemes(JSON.parse(manifestContent), extensionLocation, ExtensionData.fromName(publisher, name));
-			} catch (e) {
-				this.logService.error('Problem loading themes from marketplace', e);
-			}
-		}
-		return [];
-	}
-
 	private async reloadCurrentFileIconTheme() {
 		return this.fileIconThemeSequencer.queue(async () => {
 			await this.currentFileIconTheme.reload(this.fileIconThemeLoader);
@@ -822,19 +796,6 @@ export class WorkbenchThemeService extends Disposable implements IWorkbenchTheme
 
 		return themeData;
 
-	}
-
-	public async getMarketplaceProductIconThemes(publisher: string, name: string, version: string): Promise<IWorkbenchProductIconTheme[]> {
-		const extensionLocation = await this.extensionResourceLoaderService.getExtensionGalleryResourceURL({ publisher, name, version }, 'extension');
-		if (extensionLocation) {
-			try {
-				const manifestContent = await this.extensionResourceLoaderService.readExtensionResource(resources.joinPath(extensionLocation, 'package.json'));
-				return this.productIconThemeRegistry.getMarketplaceThemes(JSON.parse(manifestContent), extensionLocation, ExtensionData.fromName(publisher, name));
-			} catch (e) {
-				this.logService.error('Problem loading themes from marketplace', e);
-			}
-		}
-		return [];
 	}
 
 	private async reloadCurrentProductIconTheme() {

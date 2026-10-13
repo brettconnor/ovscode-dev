@@ -4,7 +4,6 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { isWeb } from '../../../base/common/platform.js';
-import { format2 } from '../../../base/common/strings.js';
 import { URI } from '../../../base/common/uri.js';
 import { IConfigurationService } from '../../configuration/common/configuration.js';
 import { IEnvironmentService } from '../../environment/common/environment.js';
@@ -15,13 +14,10 @@ import { getServiceMachineId } from '../../externalServices/common/serviceMachin
 import { IStorageService } from '../../storage/common/storage.js';
 import { TelemetryLevel } from '../../telemetry/common/telemetry.js';
 import { getTelemetryLevel, supportsTelemetry } from '../../telemetry/common/telemetryUtils.js';
-import { RemoteAuthorities } from '../../../base/common/network.js';
 import { TargetPlatform } from '../../extensions/common/extensions.js';
 import { ExtensionGalleryResourceType, getExtensionGalleryManifestResourceUri, IExtensionGalleryManifest, IExtensionGalleryManifestService } from '../../extensionManagement/common/extensionGalleryManifest.js';
 import { ILogService } from '../../log/common/log.js';
 import { Disposable } from '../../../base/common/lifecycle.js';
-
-const WEB_EXTENSION_RESOURCE_END_POINT_SEGMENT = '/web-extension-resource/';
 
 export const IExtensionResourceLoaderService = createDecorator<IExtensionResourceLoaderService>('extensionResourceLoaderService');
 
@@ -36,20 +32,6 @@ export interface IExtensionResourceLoaderService {
 	 */
 	readExtensionResource(uri: URI): Promise<string>;
 
-	/**
-	 * Returns whether the gallery provides extension resources.
-	 */
-	supportsExtensionGalleryResources(): Promise<boolean>;
-
-	/**
-	 * Return true if the given URI is a extension gallery resource.
-	 */
-	isExtensionGalleryResource(uri: URI): Promise<boolean>;
-
-	/**
-	 * Computes the URL of a extension gallery resource. Returns `undefined` if gallery does not provide extension resources.
-	 */
-	getExtensionGalleryResourceURL(galleryExtension: { publisher: string; name: string; version: string; targetPlatform?: TargetPlatform }, path?: string): Promise<URI | undefined>;
 }
 
 export function migratePlatformSpecificExtensionGalleryResourceURL(resource: URI, targetPlatform: TargetPlatform): URI | undefined {
@@ -101,33 +83,9 @@ export abstract class AbstractExtensionResourceLoaderService extends Disposable 
 		this._extensionGalleryAuthority = this._extensionGalleryResourceUrlTemplate ? this._getExtensionGalleryAuthority(URI.parse(this._extensionGalleryResourceUrlTemplate)) : undefined;
 	}
 
-	public async supportsExtensionGalleryResources(): Promise<boolean> {
-		await this._initPromise;
-		return this._extensionGalleryResourceUrlTemplate !== undefined;
-	}
-
-	public async getExtensionGalleryResourceURL({ publisher, name, version, targetPlatform }: { publisher: string; name: string; version: string; targetPlatform?: TargetPlatform }, path?: string): Promise<URI | undefined> {
-		await this._initPromise;
-		if (this._extensionGalleryResourceUrlTemplate) {
-			const uri = URI.parse(format2(this._extensionGalleryResourceUrlTemplate, {
-				publisher,
-				name,
-				version: targetPlatform !== undefined
-					&& targetPlatform !== TargetPlatform.UNDEFINED
-					&& targetPlatform !== TargetPlatform.UNKNOWN
-					&& targetPlatform !== TargetPlatform.UNIVERSAL
-					? `${version}+${targetPlatform}`
-					: version,
-				path: 'extension'
-			}));
-			return this._isWebExtensionResourceEndPoint(uri) ? uri.with({ scheme: RemoteAuthorities.getPreferredWebSchema() }) : uri;
-		}
-		return undefined;
-	}
-
 	public abstract readExtensionResource(uri: URI): Promise<string>;
 
-	async isExtensionGalleryResource(uri: URI): Promise<boolean> {
+	protected async isExtensionGalleryResource(uri: URI): Promise<boolean> {
 		await this._initPromise;
 		return !!this._extensionGalleryAuthority && this._extensionGalleryAuthority === this._getExtensionGalleryAuthority(uri);
 	}
@@ -160,12 +118,6 @@ export abstract class AbstractExtensionResourceLoaderService extends Disposable 
 		}
 		const index = uri.authority.indexOf('.');
 		return index !== -1 ? uri.authority.substring(index + 1) : undefined;
-	}
-
-	protected _isWebExtensionResourceEndPoint(uri: URI): boolean {
-		const uriPath = uri.path, serverRootPath = RemoteAuthorities.getServerRootPath();
-		// test if the path starts with the server root path followed by the web extension resource end point segment
-		return uriPath.startsWith(serverRootPath) && uriPath.startsWith(WEB_EXTENSION_RESOURCE_END_POINT_SEGMENT, serverRootPath.length);
 	}
 
 }

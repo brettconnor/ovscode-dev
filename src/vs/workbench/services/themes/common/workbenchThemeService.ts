@@ -400,7 +400,6 @@ export interface IWorkbenchThemeService extends IThemeService {
 	/** Returns the selected theme and user customizations without window-local overlays. */
 	getBaseColorTheme(): IWorkbenchColorTheme;
 	getColorThemes(): Promise<IWorkbenchColorTheme[]>;
-	getMarketplaceColorThemes(publisher: string, name: string, version: string): Promise<IWorkbenchColorTheme[]>;
 	readonly onDidColorThemeChange: Event<IWorkbenchColorTheme>;
 
 	/** Applies window-local colors computed from the base theme, without persisting them or changing the selected theme. */
@@ -411,13 +410,11 @@ export interface IWorkbenchThemeService extends IThemeService {
 	setFileIconTheme(iconThemeId: string | undefined | IWorkbenchFileIconTheme, settingsTarget: ThemeSettingTarget): Promise<IWorkbenchFileIconTheme>;
 	getFileIconTheme(): IWorkbenchFileIconTheme;
 	getFileIconThemes(): Promise<IWorkbenchFileIconTheme[]>;
-	getMarketplaceFileIconThemes(publisher: string, name: string, version: string): Promise<IWorkbenchFileIconTheme[]>;
 	readonly onDidFileIconThemeChange: Event<IWorkbenchFileIconTheme>;
 
 	setProductIconTheme(iconThemeId: string | undefined | IWorkbenchProductIconTheme, settingsTarget: ThemeSettingTarget): Promise<IWorkbenchProductIconTheme>;
 	getProductIconTheme(): IWorkbenchProductIconTheme;
 	getProductIconThemes(): Promise<IWorkbenchProductIconTheme[]>;
-	getMarketplaceProductIconThemes(publisher: string, name: string, version: string): Promise<IWorkbenchProductIconTheme[]>;
 	readonly onDidProductIconThemeChange: Event<IWorkbenchProductIconTheme>;
 }
 

@@ -32,9 +32,6 @@ suite('Component fixture TextMate syntax highlighting', () => {
 	const themeLoader = new class implements IExtensionResourceLoaderService {
 		declare readonly _serviceBrand: undefined;
 		readExtensionResource(uri: URI): Promise<string> { return readFixtureTextResource(uri); }
-		supportsExtensionGalleryResources(): Promise<boolean> { return Promise.resolve(false); }
-		isExtensionGalleryResource(): Promise<boolean> { return Promise.resolve(false); }
-		getExtensionGalleryResourceURL(): Promise<undefined> { return Promise.resolve(undefined); }
 	}();
 	let themeLoaded: Promise<void> | undefined;
 

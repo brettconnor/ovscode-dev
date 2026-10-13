@@ -6,14 +6,15 @@
 import { CancellationTokenSource } from '../../../base/common/cancellation.js';
 import { URI } from '../../../base/common/uri.js';
 import { IExtensionGalleryService } from '../../extensionManagement/common/extensionManagement.js';
-import { IExtensionResourceLoaderService } from '../../extensionResourceLoader/common/extensionResourceLoader.js';
+import { IExtensionGalleryManifest, IExtensionGalleryManifestService } from '../../extensionManagement/common/extensionGalleryManifest.js';
+import { getExtensionGalleryResourceURL } from '../../extensionResourceLoader/common/extensionGalleryResource.js';
 import { ILanguagePackItem, LanguagePackBaseService } from '../common/languagePacks.js';
 import { ILogService } from '../../log/common/log.js';
 
 export class WebLanguagePacksService extends LanguagePackBaseService {
 	constructor(
-		@IExtensionResourceLoaderService private readonly extensionResourceLoaderService: IExtensionResourceLoaderService,
 		@IExtensionGalleryService private readonly extensionGalleryService: IExtensionGalleryService,
+		@IExtensionGalleryManifestService private readonly extensionGalleryManifestService: IExtensionGalleryManifestService,
 		@ILogService private readonly logService: ILogService
 	) {
 		super();
@@ -56,7 +57,14 @@ export class WebLanguagePacksService extends LanguagePackBaseService {
 		}
 
 		// get the resource uri and return it
-		const uri = await this.extensionResourceLoaderService.getExtensionGalleryResourceURL({
+		let galleryManifest: IExtensionGalleryManifest | null;
+		try {
+			galleryManifest = await this.extensionGalleryManifestService.getExtensionGalleryManifest();
+		} catch (err) {
+			this.logService.error(err);
+			return undefined;
+		}
+		const uri = getExtensionGalleryResourceURL(galleryManifest, {
 			// If translation is defined then manifest should have been defined.
 			name: manifest!.name,
 			publisher: manifest!.publisher,

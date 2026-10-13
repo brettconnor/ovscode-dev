@@ -324,9 +324,6 @@ const fixtureExtensionResourceLoaderService = new class implements IExtensionRes
 
 		throw new Error(`Fixture extension resource not found: ${uri.toString()}`);
 	}
-	supportsExtensionGalleryResources(): Promise<boolean> { return Promise.resolve(false); }
-	isExtensionGalleryResource(): Promise<boolean> { return Promise.resolve(false); }
-	getExtensionGalleryResourceURL(): Promise<URI | undefined> { return Promise.resolve(undefined); }
 };
 
 function createBuiltInTheme(themePath: string, uiTheme: ThemeTypeSelector, extensionName = 'theme-defaults'): ColorThemeData {
