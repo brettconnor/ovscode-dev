@@ -13,7 +13,7 @@ import { RequestService } from '../../platform/request/node/requestService.js';
 import { NullTelemetryService } from '../../platform/telemetry/common/telemetryUtils.js';
 import { ITelemetryService } from '../../platform/telemetry/common/telemetry.js';
 import { IAllowedExtensionsService, IExtensionGalleryService, InstallOptions } from '../../platform/extensionManagement/common/extensionManagement.js';
-import { ExtensionGalleryServiceWithNoStorageService } from '../../platform/extensionManagement/common/extensionGalleryService.js';
+import { ExtensionGalleryService } from '../../platform/extensionManagement/common/extensionGalleryService.js';
 import { ExtensionManagementService, INativeServerExtensionManagementService } from '../../platform/extensionManagement/node/extensionManagementService.js';
 import { InstantiationService } from '../../platform/instantiation/common/instantiationService.js';
 import { IInstantiationService } from '../../platform/instantiation/common/instantiation.js';
@@ -133,7 +133,7 @@ class CliMain extends Disposable {
 		services.set(IDownloadService, new SyncDescriptor(DownloadService));
 		services.set(ITelemetryService, NullTelemetryService);
 		services.set(IExtensionGalleryManifestService, new SyncDescriptor(ExtensionGalleryManifestService));
-		services.set(IExtensionGalleryService, new SyncDescriptor(ExtensionGalleryServiceWithNoStorageService));
+		services.set(IExtensionGalleryService, new SyncDescriptor(ExtensionGalleryService));
 		services.set(IExtensionsProfileScannerService, new SyncDescriptor(ExtensionsProfileScannerService));
 		services.set(IExtensionsScannerService, new SyncDescriptor(ExtensionsScannerService));
 		services.set(IAllowedExtensionsService, new SyncDescriptor(AllowedExtensionsService));

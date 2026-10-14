@@ -27,7 +27,6 @@ import { ILifecycleMainService } from '../../lifecycle/electron-main/lifecycleMa
 import { ILogService } from '../../log/common/log.js';
 import { IProductService } from '../../product/common/productService.js';
 import { IIPCObjectUrl, IProtocolMainService } from '../../protocol/electron-main/protocol.js';
-import { resolveMarketplaceHeaders } from '../../externalServices/common/marketplace.js';
 import { IApplicationStorageMainService, IStorageMainService } from '../../storage/electron-main/storageMainService.js';
 import { ITelemetryService } from '../../telemetry/common/telemetry.js';
 import { ThemeIcon } from '../../../base/common/themables.js';
@@ -930,33 +929,6 @@ export class CodeWindow extends BaseWindow implements ICodeWindow {
 		// Handle Workspace events
 		this._register(this.workspacesManagementMainService.onDidDeleteUntitledWorkspace(e => this.onDidDeleteUntitledWorkspace(e)));
 
-		// Inject headers when requests are incoming
-		const urls = ['https://*.vsassets.io/*'];
-		if (this.productService.extensionsGallery?.serviceUrl) {
-			const serviceUrl = URI.parse(this.productService.extensionsGallery.serviceUrl);
-			urls.push(`${serviceUrl.scheme}://${serviceUrl.authority}/*`);
-		}
-		this._win.webContents.session.webRequest.onBeforeSendHeaders({ urls }, async (details, cb) => {
-			const headers = await this.getMarketplaceHeaders();
-
-			cb({ cancel: false, requestHeaders: Object.assign(details.requestHeaders, headers) });
-		});
-	}
-
-	private marketplaceHeadersPromise: Promise<object> | undefined;
-	private getMarketplaceHeaders(): Promise<object> {
-		if (!this.marketplaceHeadersPromise) {
-			this.marketplaceHeadersPromise = resolveMarketplaceHeaders(
-				this.productService.version,
-				this.productService,
-				this.environmentMainService,
-				this.configurationService,
-				this.fileService,
-				this.applicationStorageMainService,
-				this.telemetryService);
-		}
-
-		return this.marketplaceHeadersPromise;
 	}
 
 	private async onWindowError(error: WindowError.UNRESPONSIVE): Promise<void>;

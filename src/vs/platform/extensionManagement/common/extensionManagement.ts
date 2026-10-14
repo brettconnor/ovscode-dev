@@ -7,7 +7,6 @@ import { CancellationToken } from '../../../base/common/cancellation.js';
 import { IStringDictionary } from '../../../base/common/collections.js';
 import { Event } from '../../../base/common/event.js';
 import { IMarkdownString } from '../../../base/common/htmlContent.js';
-import { IPager } from '../../../base/common/paging.js';
 import { Platform } from '../../../base/common/platform.js';
 import { PolicyCategory } from '../../../base/common/policy.js';
 import { URI } from '../../../base/common/uri.js';
@@ -173,12 +172,9 @@ export interface IGalleryExtensionAsset {
 
 export interface IGalleryExtensionAssets {
 	manifest: IGalleryExtensionAsset | null;
-	readme: IGalleryExtensionAsset | null;
-	changelog: IGalleryExtensionAsset | null;
 	license: IGalleryExtensionAsset | null;
 	repository: IGalleryExtensionAsset | null;
 	icon: IGalleryExtensionAsset | null;
-	coreTranslations: [string, IGalleryExtensionAsset][];
 }
 
 export function isIExtensionIdentifier(obj: unknown): obj is IExtensionIdentifier {
@@ -196,13 +192,6 @@ export interface IExtensionIdentifier {
 
 export interface IGalleryExtensionIdentifier extends IExtensionIdentifier {
 	uuid: string;
-}
-
-export interface IGalleryExtensionVersion {
-	version: string;
-	date: string;
-	isPreReleaseVersion: boolean;
-	targetPlatforms: TargetPlatform[];
 }
 
 export interface IGalleryExtension {
@@ -281,50 +270,6 @@ export interface ILocalExtension extends IExtension {
 	size: number;
 }
 
-export const enum SortBy {
-	NoneOrRelevance = 'NoneOrRelevance',
-	LastUpdatedDate = 'LastUpdatedDate',
-	Title = 'Title',
-	PublisherName = 'PublisherName',
-	InstallCount = 'InstallCount',
-	PublishedDate = 'PublishedDate',
-	AverageRating = 'AverageRating',
-	WeightedRating = 'WeightedRating'
-}
-
-export const enum SortOrder {
-	Default = 0,
-	Ascending = 1,
-	Descending = 2
-}
-
-export const enum FilterType {
-	Category = 'Category',
-	ExtensionId = 'ExtensionId',
-	ExtensionName = 'ExtensionName',
-	ExcludeWithFlags = 'ExcludeWithFlags',
-	Featured = 'Featured',
-	SearchText = 'SearchText',
-	Tag = 'Tag',
-	Target = 'Target',
-}
-
-export interface IQueryOptions {
-	text?: string;
-	exclude?: string[];
-	pageSize?: number;
-	sortBy?: SortBy;
-	sortOrder?: SortOrder;
-	source?: string;
-	includePreRelease?: boolean;
-	productVersion?: IProductVersion;
-}
-
-export const enum StatisticType {
-	Install = 'install',
-	Uninstall = 'uninstall'
-}
-
 export interface IDeprecationInfo {
 	readonly disallowInstall?: boolean;
 	readonly extension?: {
@@ -340,11 +285,6 @@ export interface IDeprecationInfo {
 	readonly additionalInfo?: string;
 }
 
-export interface ISearchPrefferedResults {
-	readonly query?: string;
-	readonly preferredResults?: string[];
-}
-
 export type MaliciousExtensionInfo = {
 	readonly extensionOrPublisher: IExtensionIdentifier | string;
 	readonly learnMoreLink?: string;
@@ -353,8 +293,6 @@ export type MaliciousExtensionInfo = {
 export interface IExtensionsControlManifest {
 	readonly malicious: ReadonlyArray<MaliciousExtensionInfo>;
 	readonly deprecated: IStringDictionary<IDeprecationInfo>;
-	readonly search: ISearchPrefferedResults[];
-	readonly autoUpdate?: IStringDictionary<string>;
 }
 
 export const enum InstallOperation {
@@ -364,54 +302,13 @@ export const enum InstallOperation {
 	Migrate,
 }
 
-export interface ITranslation {
-	contents: { [key: string]: {} };
-}
-
-export interface IExtensionInfo extends IExtensionIdentifier {
-	version?: string;
-	preRelease?: boolean;
-	hasPreRelease?: boolean;
-	currentVersion?: string;
-}
-
-export interface IExtensionQueryOptions {
-	targetPlatform?: TargetPlatform;
-	productVersion?: IProductVersion;
-	compatible?: boolean;
-	queryAllVersions?: boolean;
-	source?: string;
-}
-
-export interface IExtensionGalleryCapabilities {
-	readonly query: {
-		readonly sortBy: readonly SortBy[];
-		readonly filters: readonly FilterType[];
-	};
-	readonly allRepositorySigned: boolean;
-}
-
 export const IExtensionGalleryService = createDecorator<IExtensionGalleryService>('extensionGalleryService');
 
 /**
- * Service to interact with the Visual Studio Code Marketplace to get extensions.
- * @throws Error if the Marketplace is not enabled or not reachable.
+ * Service for the product-provided Gallery control manifest.
  */
 export interface IExtensionGalleryService {
 	readonly _serviceBrand: undefined;
-	isEnabled(): boolean;
-	query(options: IQueryOptions, token: CancellationToken): Promise<IPager<IGalleryExtension>>;
-	getExtensions(extensionInfos: ReadonlyArray<IExtensionInfo>, token: CancellationToken): Promise<IGalleryExtension[]>;
-	getExtensions(extensionInfos: ReadonlyArray<IExtensionInfo>, options: IExtensionQueryOptions, token: CancellationToken): Promise<IGalleryExtension[]>;
-	isExtensionCompatible(extension: IGalleryExtension, includePreRelease: boolean, targetPlatform: TargetPlatform, productVersion?: IProductVersion): Promise<boolean>;
-	getCompatibleExtension(extension: IGalleryExtension, includePreRelease: boolean, targetPlatform: TargetPlatform, productVersion?: IProductVersion): Promise<IGalleryExtension | null>;
-	getAllCompatibleVersions(extensionIdentifier: IExtensionIdentifier, includePreRelease: boolean, targetPlatform: TargetPlatform): Promise<IGalleryExtensionVersion[]>;
-	getAllVersions(extensionIdentifier: IExtensionIdentifier): Promise<IGalleryExtensionVersion[]>;
-	reportStatistic(publisher: string, name: string, version: string, type: StatisticType): Promise<void>;
-	getReadme(extension: IGalleryExtension, token: CancellationToken): Promise<string>;
-	getManifest(extension: IGalleryExtension, token: CancellationToken): Promise<IExtensionManifest | null>;
-	getChangelog(extension: IGalleryExtension, token: CancellationToken): Promise<string>;
-	getCoreTranslation(extension: IGalleryExtension, languageId: string): Promise<ITranslation | null>;
 	getExtensionsControlManifest(): Promise<IExtensionsControlManifest>;
 }
 

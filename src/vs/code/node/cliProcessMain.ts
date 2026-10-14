@@ -20,7 +20,7 @@ import { DownloadService } from '../../platform/download/common/downloadService.
 import { NativeParsedArgs } from '../../platform/environment/common/argv.js';
 import { INativeEnvironmentService } from '../../platform/environment/common/environment.js';
 import { NativeEnvironmentService } from '../../platform/environment/node/environmentService.js';
-import { ExtensionGalleryServiceWithNoStorageService } from '../../platform/extensionManagement/common/extensionGalleryService.js';
+import { ExtensionGalleryService } from '../../platform/extensionManagement/common/extensionGalleryService.js';
 import { IAllowedExtensionsService, IExtensionGalleryService } from '../../platform/extensionManagement/common/extensionManagement.js';
 import { IExtensionsProfileScannerService } from '../../platform/extensionManagement/common/extensionsProfileScannerService.js';
 import { IExtensionsScannerService } from '../../platform/extensionManagement/common/extensionsScannerService.js';
@@ -229,7 +229,7 @@ class CliMain extends Disposable {
 		services.set(IAllowedExtensionsService, new SyncDescriptor(AllowedExtensionsService, undefined, true));
 		services.set(INativeServerExtensionManagementService, new SyncDescriptor(ExtensionManagementService, undefined, true));
 		services.set(IExtensionGalleryManifestService, new SyncDescriptor(ExtensionGalleryManifestService));
-		services.set(IExtensionGalleryService, new SyncDescriptor(ExtensionGalleryServiceWithNoStorageService, undefined, true));
+		services.set(IExtensionGalleryService, new SyncDescriptor(ExtensionGalleryService, undefined, true));
 
 		// Localizations
 		services.set(ILanguagePackService, new SyncDescriptor(NativeLanguagePackService, undefined, false));

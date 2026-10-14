@@ -128,7 +128,6 @@ export class UserDataSyncClient extends Disposable {
 		this.instantiationService.stub(IExtensionStorageService, this._register(this.instantiationService.createInstance(ExtensionStorageService)));
 		this.instantiationService.stub(IExtensionGalleryService, {
 			isEnabled() { return true; },
-			async getCompatibleExtension() { return null; }
 		});
 
 		this.instantiationService.stub(IUserDataSyncService, this._register(this.instantiationService.createInstance(UserDataSyncService)));

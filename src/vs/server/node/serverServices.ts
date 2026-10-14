@@ -19,7 +19,7 @@ import { ExtensionHostDebugBroadcastChannel } from '../../platform/debug/common/
 import { IDownloadService } from '../../platform/download/common/download.js';
 import { DownloadServiceChannelClient } from '../../platform/download/common/downloadIpc.js';
 import { IEnvironmentService, INativeEnvironmentService } from '../../platform/environment/common/environment.js';
-import { ExtensionGalleryServiceWithNoStorageService } from '../../platform/extensionManagement/common/extensionGalleryService.js';
+import { ExtensionGalleryService } from '../../platform/extensionManagement/common/extensionGalleryService.js';
 import { IAllowedExtensionsService, IExtensionGalleryService } from '../../platform/extensionManagement/common/extensionManagement.js';
 import { ExtensionManagementCLI } from '../../platform/extensionManagement/common/extensionManagementCLI.js';
 import { ExtensionManagementChannel } from '../../platform/extensionManagement/common/extensionManagementIpc.js';
@@ -203,7 +203,7 @@ export async function setupServerServices(connectionToken: ServerConnectionToken
 
 	services.set(IExtensionGalleryManifestService, new ExtensionGalleryManifestIPCService(socketServer, logService, productService));
 	services.set(IMcpGalleryManifestService, new McpGalleryManifestIPCService(socketServer));
-	services.set(IExtensionGalleryService, new SyncDescriptor(ExtensionGalleryServiceWithNoStorageService));
+	services.set(IExtensionGalleryService, new SyncDescriptor(ExtensionGalleryService));
 
 	const downloadChannel = socketServer.getChannel('download', router);
 	services.set(IDownloadService, new DownloadServiceChannelClient(downloadChannel, () => getUriTransformer('renderer') /* TODO: @Sandy @Joao need dynamic context based router */));

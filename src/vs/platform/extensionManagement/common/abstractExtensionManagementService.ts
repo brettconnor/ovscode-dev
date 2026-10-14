@@ -9,12 +9,11 @@ import { CancellationError, getErrorMessage, isCancellationError } from '../../.
 import { Emitter, Event } from '../../../base/common/event.js';
 import { Disposable, toDisposable } from '../../../base/common/lifecycle.js';
 import { ResourceMap } from '../../../base/common/map.js';
-import { isWeb } from '../../../base/common/platform.js';
 import { URI } from '../../../base/common/uri.js';
 import * as nls from '../../../nls.js';
 import {
 	ExtensionManagementError, IExtensionGalleryService, IExtensionIdentifier, IExtensionManagementParticipant, ILocalExtension, InstallOperation,
-	IExtensionsControlManifest, StatisticType, ExtensionManagementErrorCode,
+	IExtensionsControlManifest, ExtensionManagementErrorCode,
 	InstallOptions, UninstallOptions, Metadata, InstallExtensionEvent, DidUninstallExtensionEvent, InstallExtensionResult, UninstallExtensionEvent, IExtensionManagementService, ExtensionGalleryError,
 	IProductVersion,
 	DidUpdateExtensionMetadata,
@@ -432,12 +431,6 @@ export abstract class AbstractExtensionManagementService extends CommontExtensio
 
 					await task.run();
 					await this.joinAllSettled(this.participants.map(participant => participant.postUninstall(task.extension, task.options, CancellationToken.None)));
-					// only report if extension has a mapped gallery extension and not in web. UUID identifies the gallery extension.
-					if (task.extension.identifier.uuid && !isWeb) {
-						try {
-							await this.galleryService.reportStatistic(task.extension.manifest.publisher, task.extension.manifest.name, task.extension.manifest.version, StatisticType.Uninstall);
-						} catch (error) { /* ignore */ }
-					}
 				} catch (e) {
 					const error = toExtensionManagementError(e);
 					postUninstallExtension(task.extension, task.options, error);

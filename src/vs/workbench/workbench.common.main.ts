@@ -91,7 +91,7 @@ import './services/commands/common/commandService.js';
 import './services/themes/browser/workbenchThemeService.js';
 import './services/label/common/labelService.js';
 import './services/extensions/common/extensionManifestPropertiesService.js';
-import './services/extensionManagement/common/extensionGalleryService.js';
+import '../platform/extensionManagement/common/extensionGalleryService.js';
 import './services/extensionManagement/browser/extensionEnablementService.js';
 import './services/extensionManagement/browser/builtinExtensionsScannerService.js';
 import './services/extensionManagement/common/extensionFeaturesManagemetService.js';

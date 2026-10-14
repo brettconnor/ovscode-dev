@@ -275,7 +275,6 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 		});
 		instantiationService.stubPromise(IExtensionManagementService, 'getInstalled', [local1, local2]);
 		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions(gallery1));
-		instantiationService.stubPromise(IExtensionGalleryService, 'getCompatibleExtension', gallery1);
 		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', [gallery1]);
 		testObject = await aWorkbenchService();
 		await testObject.queryLocal();
