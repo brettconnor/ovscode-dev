@@ -10,6 +10,7 @@ import { IEnvironmentService } from '../../environment/common/environment.js';
 import { IFileService } from '../../files/common/files.js';
 import { createDecorator } from '../../instantiation/common/instantiation.js';
 import { IProductService } from '../../product/common/productService.js';
+import { TargetPlatform } from '../../extensions/common/extensions.js';
 import { getServiceMachineId } from '../../externalServices/common/serviceMachineId.js';
 import { IStorageService } from '../../storage/common/storage.js';
 import { TelemetryLevel } from '../../telemetry/common/telemetry.js';
