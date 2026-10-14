@@ -47,7 +47,6 @@ import { IUriIdentityService } from '../../../../platform/uriIdentity/common/uri
 import { IExplorerService } from '../../files/browser/files.js';
 import { IViewsService } from '../../../services/views/common/viewsService.js';
 import { VIEW_ID as EXPLORER_VIEW_ID } from '../../files/common/files.js';
-import { IExtensionGalleryManifest, IExtensionGalleryManifestService } from '../../../../platform/extensionManagement/common/extensionGalleryManifest.js';
 import { IMarkdownRendererService } from '../../../../platform/markdown/browser/markdownRenderer.js';
 import { FileAccess } from '../../../../base/common/network.js';
 
@@ -554,7 +553,6 @@ export class ExtensionPackCountWidget extends ExtensionWidget {
 export class ExtensionKindIndicatorWidget extends ExtensionWidget {
 
 	private element: HTMLElement | undefined;
-	private extensionGalleryManifest: IExtensionGalleryManifest | null = null;
 
 	private readonly disposables = this._register(new DisposableStore());
 
@@ -566,18 +564,10 @@ export class ExtensionKindIndicatorWidget extends ExtensionWidget {
 		@IUriIdentityService private readonly uriIdentityService: IUriIdentityService,
 		@IExplorerService private readonly explorerService: IExplorerService,
 		@IViewsService private readonly viewsService: IViewsService,
-		@IExtensionGalleryManifestService extensionGalleryManifestService: IExtensionGalleryManifestService,
 	) {
 		super();
 		this.render();
 		this._register(toDisposable(() => this.clear()));
-		extensionGalleryManifestService.getExtensionGalleryManifest().then(manifest => {
-			if (this._store.isDisposed) {
-				return;
-			}
-			this.extensionGalleryManifest = manifest;
-			this.render();
-		});
 	}
 
 	private clear(): void {
@@ -594,7 +584,7 @@ export class ExtensionKindIndicatorWidget extends ExtensionWidget {
 
 		if (this.extension?.private) {
 			this.element = append(this.container, $('.extension-kind-indicator'));
-			if (!this.small || (this.extensionGalleryManifest?.capabilities?.extensions?.includePublicExtensions && this.extensionGalleryManifest?.capabilities?.extensions?.includePrivateExtensions)) {
+			if (!this.small) {
 				append(this.element, $('span' + ThemeIcon.asCSSSelector(privateExtensionIcon)));
 			}
 			if (!this.small) {

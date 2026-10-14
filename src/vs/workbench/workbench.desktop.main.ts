@@ -68,7 +68,6 @@ import '../platform/extensionResourceLoader/common/extensionResourceLoaderServic
 import './services/localization/electron-browser/localeService.js';
 import './services/extensions/electron-browser/extensionsScannerService.js';
 import './services/extensionManagement/electron-browser/extensionManagementServerService.js';
-import './services/extensionManagement/electron-browser/extensionGalleryManifestService.js';
 import './services/userDataSync/electron-browser/userDataSyncService.js';
 import './services/userDataSync/electron-browser/userDataAutoSyncService.js';
 import './services/timer/electron-browser/timerService.js';

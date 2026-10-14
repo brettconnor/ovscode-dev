@@ -13,7 +13,6 @@ import { IEnvironmentService } from '../../environment/common/environment.js';
 import { IConfigurationService } from '../../configuration/common/configuration.js';
 import { CancellationToken } from '../../../base/common/cancellation.js';
 import { AbstractExtensionResourceLoaderService, IExtensionResourceLoaderService } from './extensionResourceLoader.js';
-import { IExtensionGalleryManifestService } from '../../extensionManagement/common/extensionGalleryManifest.js';
 import { ILogService } from '../../log/common/log.js';
 
 export class ExtensionResourceLoaderService extends AbstractExtensionResourceLoaderService {
@@ -24,11 +23,10 @@ export class ExtensionResourceLoaderService extends AbstractExtensionResourceLoa
 		@IProductService productService: IProductService,
 		@IEnvironmentService environmentService: IEnvironmentService,
 		@IConfigurationService configurationService: IConfigurationService,
-		@IExtensionGalleryManifestService extensionGalleryManifestService: IExtensionGalleryManifestService,
 		@IRequestService private readonly _requestService: IRequestService,
 		@ILogService logService: ILogService,
 	) {
-		super(fileService, storageService, productService, environmentService, configurationService, extensionGalleryManifestService, logService);
+		super(fileService, storageService, productService, environmentService, configurationService, logService);
 	}
 
 	async readExtensionResource(uri: URI): Promise<string> {

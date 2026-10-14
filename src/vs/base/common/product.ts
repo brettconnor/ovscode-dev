@@ -137,7 +137,6 @@ export interface IProductConfiguration {
 	};
 
 	readonly extensionsGallery?: {
-		readonly serviceUrl: string;
 		readonly controlUrl: string;
 		readonly resourceUrlTemplate: string;
 		readonly nlsBaseUrl: string;

@@ -12,7 +12,6 @@ import { IProductService } from '../../product/common/productService.js';
 import { asJson, IRequestService } from '../../request/common/request.js';
 import { InstantiationType, registerSingleton } from '../../instantiation/common/extensions.js';
 import { ExtensionRequestsTimeoutConfigKey, EXTENSION_IDENTIFIER_REGEX, IExtensionGalleryService, IExtensionsControlManifest, IDeprecationInfo, MaliciousExtensionInfo } from './extensionManagement.js';
-import { IExtensionGalleryManifestService } from './extensionGalleryManifest.js';
 
 interface IRawExtensionsControlManifest {
 	malicious: string[];
@@ -44,17 +43,11 @@ export abstract class AbstractExtensionGalleryService implements IExtensionGalle
 		@IRequestService private readonly requestService: IRequestService,
 		@IProductService private readonly productService: IProductService,
 		@IConfigurationService private readonly configurationService: IConfigurationService,
-		@IExtensionGalleryManifestService private readonly extensionGalleryManifestService: IExtensionGalleryManifestService,
 	) {
 		this.extensionsControlUrl = productService.extensionsGallery?.controlUrl;
 	}
 
 	async getExtensionsControlManifest(): Promise<IExtensionsControlManifest> {
-		const manifest = await this.extensionGalleryManifestService.getExtensionGalleryManifest();
-		if (!manifest) {
-			throw new Error('No extension gallery service configured.');
-		}
-
 		if (!this.extensionsControlUrl) {
 			return { malicious: [], deprecated: {} };
 		}
@@ -119,9 +112,8 @@ export class ExtensionGalleryService extends AbstractExtensionGalleryService {
 		@IRequestService requestService: IRequestService,
 		@IProductService productService: IProductService,
 		@IConfigurationService configurationService: IConfigurationService,
-		@IExtensionGalleryManifestService extensionGalleryManifestService: IExtensionGalleryManifestService,
 	) {
-		super(requestService, productService, configurationService, extensionGalleryManifestService);
+		super(requestService, productService, configurationService);
 	}
 }
 

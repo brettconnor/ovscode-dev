@@ -13,7 +13,6 @@ import { IEnvironmentService } from '../../environment/common/environment.js';
 import { ILogService } from '../../log/common/log.js';
 import { IConfigurationService } from '../../configuration/common/configuration.js';
 import { AbstractExtensionResourceLoaderService, IExtensionResourceLoaderService } from '../common/extensionResourceLoader.js';
-import { IExtensionGalleryManifestService } from '../../extensionManagement/common/extensionGalleryManifest.js';
 
 class ExtensionResourceLoaderService extends AbstractExtensionResourceLoaderService {
 
@@ -25,10 +24,9 @@ class ExtensionResourceLoaderService extends AbstractExtensionResourceLoaderServ
 		@IProductService productService: IProductService,
 		@IEnvironmentService environmentService: IEnvironmentService,
 		@IConfigurationService configurationService: IConfigurationService,
-		@IExtensionGalleryManifestService extensionGalleryManifestService: IExtensionGalleryManifestService,
 		@ILogService logService: ILogService,
 	) {
-		super(fileService, storageService, productService, environmentService, configurationService, extensionGalleryManifestService, logService);
+		super(fileService, storageService, productService, environmentService, configurationService, logService);
 	}
 
 	async readExtensionResource(uri: URI): Promise<string> {

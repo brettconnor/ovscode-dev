@@ -14,10 +14,7 @@ import { getServiceMachineId } from '../../externalServices/common/serviceMachin
 import { IStorageService } from '../../storage/common/storage.js';
 import { TelemetryLevel } from '../../telemetry/common/telemetry.js';
 import { getTelemetryLevel, supportsTelemetry } from '../../telemetry/common/telemetryUtils.js';
-import { TargetPlatform } from '../../extensions/common/extensions.js';
-import { ExtensionGalleryResourceType, getExtensionGalleryManifestResourceUri, IExtensionGalleryManifest, IExtensionGalleryManifestService } from '../../extensionManagement/common/extensionGalleryManifest.js';
 import { ILogService } from '../../log/common/log.js';
-import { Disposable } from '../../../base/common/lifecycle.js';
 import { isWebExtensionResourceEndPoint } from './extensionGalleryResource.js';
 
 export const IExtensionResourceLoaderService = createDecorator<IExtensionResourceLoaderService>('extensionResourceLoaderService');
@@ -47,14 +44,11 @@ export function migratePlatformSpecificExtensionGalleryResourceURL(resource: URI
 	return resource.with({ query: null, path: paths.join('/') });
 }
 
-export abstract class AbstractExtensionResourceLoaderService extends Disposable implements IExtensionResourceLoaderService {
+export abstract class AbstractExtensionResourceLoaderService implements IExtensionResourceLoaderService {
 
 	readonly _serviceBrand: undefined;
 
-	private readonly _initPromise: Promise<void>;
-
-	private _extensionGalleryResourceUrlTemplate: string | undefined;
-	private _extensionGalleryAuthority: string | undefined;
+	private readonly _extensionGalleryAuthority: string | undefined;
 
 	constructor(
 		protected readonly _fileService: IFileService,
@@ -62,32 +56,15 @@ export abstract class AbstractExtensionResourceLoaderService extends Disposable 
 		private readonly _productService: IProductService,
 		private readonly _environmentService: IEnvironmentService,
 		private readonly _configurationService: IConfigurationService,
-		private readonly _extensionGalleryManifestService: IExtensionGalleryManifestService,
 		protected readonly _logService: ILogService,
 	) {
-		super();
-		this._initPromise = this._init();
-	}
-
-	private async _init(): Promise<void> {
-		try {
-			const manifest = await this._extensionGalleryManifestService.getExtensionGalleryManifest();
-			this.resolve(manifest);
-			this._register(this._extensionGalleryManifestService.onDidChangeExtensionGalleryManifest(() => this.resolve(manifest)));
-		} catch (error) {
-			this._logService.error(error);
-		}
-	}
-
-	private resolve(manifest: IExtensionGalleryManifest | null): void {
-		this._extensionGalleryResourceUrlTemplate = manifest ? getExtensionGalleryManifestResourceUri(manifest, ExtensionGalleryResourceType.ExtensionResourceUri) : undefined;
-		this._extensionGalleryAuthority = this._extensionGalleryResourceUrlTemplate ? this._getExtensionGalleryAuthority(URI.parse(this._extensionGalleryResourceUrlTemplate)) : undefined;
+		const resourceUrlTemplate = this._productService.extensionsGallery?.resourceUrlTemplate;
+		this._extensionGalleryAuthority = resourceUrlTemplate ? this._getExtensionGalleryAuthority(URI.parse(resourceUrlTemplate)) : undefined;
 	}
 
 	public abstract readExtensionResource(uri: URI): Promise<string>;
 
 	protected async isExtensionGalleryResource(uri: URI): Promise<boolean> {
-		await this._initPromise;
 		return !!this._extensionGalleryAuthority && this._extensionGalleryAuthority === this._getExtensionGalleryAuthority(uri);
 	}
 
