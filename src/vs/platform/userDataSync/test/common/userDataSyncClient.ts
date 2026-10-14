@@ -18,7 +18,7 @@ import { IConfigurationService } from '../../../configuration/common/configurati
 import { ConfigurationService } from '../../../configuration/common/configurationService.js';
 import { IEnvironmentService } from '../../../environment/common/environment.js';
 import { GlobalExtensionEnablementService } from '../../../extensionManagement/common/extensionEnablementService.js';
-import { DidUninstallExtensionEvent, IExtensionGalleryService, IExtensionManagementService, IGlobalExtensionEnablementService, InstallExtensionResult } from '../../../extensionManagement/common/extensionManagement.js';
+import { DidUninstallExtensionEvent, IExtensionManagementService, IGlobalExtensionEnablementService, InstallExtensionResult } from '../../../extensionManagement/common/extensionManagement.js';
 import { IFileService } from '../../../files/common/files.js';
 import { FileService } from '../../../files/common/fileService.js';
 import { InMemoryFileSystemProvider } from '../../../files/common/inMemoryFilesystemProvider.js';
@@ -126,9 +126,6 @@ export class UserDataSyncClient extends Disposable {
 		});
 		this.instantiationService.stub(IGlobalExtensionEnablementService, this._register(this.instantiationService.createInstance(GlobalExtensionEnablementService)));
 		this.instantiationService.stub(IExtensionStorageService, this._register(this.instantiationService.createInstance(ExtensionStorageService)));
-		this.instantiationService.stub(IExtensionGalleryService, {
-			isEnabled() { return true; },
-		});
 
 		this.instantiationService.stub(IUserDataSyncService, this._register(this.instantiationService.createInstance(UserDataSyncService)));
 

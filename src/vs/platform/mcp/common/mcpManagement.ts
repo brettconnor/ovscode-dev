@@ -9,7 +9,6 @@ import { IMarkdownString } from '../../../base/common/htmlContent.js';
 import { IIterativePager } from '../../../base/common/paging.js';
 import { escapeRegExpCharacters } from '../../../base/common/strings.js';
 import { URI } from '../../../base/common/uri.js';
-import { SortBy, SortOrder } from '../../extensionManagement/common/extensionManagement.js';
 import { createDecorator } from '../../instantiation/common/instantiation.js';
 import { IMcpGalleryManifest } from './mcpGalleryManifest.js';
 import { IMcpServerIdentity } from './allowedMcpServers.js';
@@ -180,8 +179,8 @@ export interface IGalleryMcpServer {
 
 export interface IQueryOptions {
 	text?: string;
-	sortBy?: SortBy;
-	sortOrder?: SortOrder;
+	sortBy?: string;
+	sortOrder?: number;
 }
 
 export const enum McpGalleryResolveStatus {

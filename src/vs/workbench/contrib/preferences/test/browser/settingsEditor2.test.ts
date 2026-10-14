@@ -19,7 +19,7 @@ import { ConfigurationTarget, IConfigurationChangeEvent } from '../../../../../p
 import { ConfigurationScope } from '../../../../../platform/configuration/common/configurationRegistry.js';
 import { TestConfigurationService } from '../../../../../platform/configuration/test/common/testConfigurationService.js';
 import { IContextViewService } from '../../../../../platform/contextview/browser/contextView.js';
-import { IExtensionGalleryService, IExtensionManagementService } from '../../../../../platform/extensionManagement/common/extensionManagement.js';
+import { IExtensionManagementService } from '../../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IEditorProgressService, IProgressRunner } from '../../../../../platform/progress/common/progress.js';
 import { IUserDataSyncEnablementService } from '../../../../../platform/userDataSync/common/userDataSync.js';
 import { ExperimentalSettingsService, IExperimentalSettingsService } from '../../../../services/configuration/common/experimentalSettings.js';
@@ -56,7 +56,6 @@ suite('SettingsEditor2', () => {
 			instantiationService.stub(IUserDataSyncWorkbenchService, {});
 			instantiationService.stub(IUserDataSyncEnablementService, {});
 			instantiationService.stub(IExtensionManagementService, { onDidInstallExtensions: Event.None, onDidUninstallExtension: Event.None });
-			instantiationService.stub(IExtensionGalleryService, { isEnabled: () => false });
 			instantiationService.stub(IEditorProgressService, { show: () => new class extends mock<IProgressRunner>() { override done(): void { } }() });
 			instantiationService.stub(IExperimentalSettingsService, assignments);
 

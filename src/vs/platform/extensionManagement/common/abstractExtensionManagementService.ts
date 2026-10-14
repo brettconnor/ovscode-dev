@@ -539,7 +539,7 @@ export abstract class AbstractExtensionManagementService extends CommontExtensio
 			return await this.galleryService.getExtensionsControlManifest();
 		} catch (err) {
 			this.logService.trace('ExtensionManagementService.refreshControlCache - failed to get extension control manifest', getErrorMessage(err));
-			return { malicious: [], deprecated: {}, search: [] };
+			return { malicious: [], deprecated: {} };
 		}
 	}
 

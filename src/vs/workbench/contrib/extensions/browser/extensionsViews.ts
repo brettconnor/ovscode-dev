@@ -8,7 +8,7 @@ import { Disposable, DisposableStore, toDisposable } from '../../../../base/comm
 import { Event, Emitter } from '../../../../base/common/event.js';
 import { isCancellationError, getErrorMessage } from '../../../../base/common/errors.js';
 import { PagedModel, IPagedModel, DelayedPagedModel } from '../../../../base/common/paging.js';
-import { SortOrder, ExtensionGalleryErrorCode, ExtensionGalleryError } from '../../../../platform/extensionManagement/common/extensionManagement.js';
+import { ExtensionGalleryErrorCode, ExtensionGalleryError } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IExtensionManagementServer, IExtensionManagementServerService, EnablementState, IWorkbenchExtensionManagementService, IWorkbenchExtensionEnablementService } from '../../../services/extensionManagement/common/extensionManagement.js';
 import { areSameExtensions, getExtensionDependencies } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { IKeybindingService } from '../../../../platform/keybinding/common/keybinding.js';
@@ -95,6 +95,12 @@ interface IQueryResult {
 const enum LocalSortBy {
 	Name = 'Name',
 	UpdateDate = 'UpdateDate',
+}
+
+const enum SortOrder {
+	Default,
+	Ascending,
+	Descending,
 }
 
 type IQueryOptions = { sortBy?: LocalSortBy; sortOrder?: SortOrder };

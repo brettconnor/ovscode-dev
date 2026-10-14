@@ -266,12 +266,9 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 			dependencies: ['pub.1'],
 		}, {
 			manifest: { uri: 'uri:manifest', fallbackUri: 'fallback:manifest' },
-			readme: { uri: 'uri:readme', fallbackUri: 'fallback:readme' },
-			changelog: { uri: 'uri:changelog', fallbackUri: 'fallback:changlog' },
 			icon: { uri: 'uri:icon', fallbackUri: 'fallback:icon' },
 			license: { uri: 'uri:license', fallbackUri: 'fallback:license' },
 			repository: { uri: 'uri:repository', fallbackUri: 'fallback:repository' },
-			coreTranslations: []
 		});
 		instantiationService.stubPromise(IExtensionManagementService, 'getInstalled', [local1, local2]);
 		instantiationService.stubPromise(IExtensionGalleryService, 'getExtensions', aGalleryExtensions(gallery1));
@@ -1338,13 +1335,10 @@ suite('ExtensionsWorkbenchServiceTest', () => {
 	}
 
 	const noAssets: IGalleryExtensionAssets = {
-		changelog: null,
 		icon: null!,
 		license: null,
 		manifest: null,
-		readme: null,
 		repository: null,
-		coreTranslations: []
 	};
 
 	function aGalleryExtension(name: string, properties: any = {}, galleryExtensionProperties: any = {}, assets: IGalleryExtensionAssets = noAssets): IGalleryExtension {

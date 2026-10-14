@@ -27,7 +27,7 @@ import { ILifecycleMainService } from '../../lifecycle/electron-main/lifecycleMa
 import { ILogService } from '../../log/common/log.js';
 import { IProductService } from '../../product/common/productService.js';
 import { IIPCObjectUrl, IProtocolMainService } from '../../protocol/electron-main/protocol.js';
-import { IApplicationStorageMainService, IStorageMainService } from '../../storage/electron-main/storageMainService.js';
+import { IStorageMainService } from '../../storage/electron-main/storageMainService.js';
 import { ITelemetryService } from '../../telemetry/common/telemetry.js';
 import { ThemeIcon } from '../../../base/common/themables.js';
 import { IThemeMainService } from '../../theme/electron-main/themeMainService.js';
@@ -751,7 +751,6 @@ export class CodeWindow extends BaseWindow implements ICodeWindow {
 		@IPolicyService private readonly policyService: IPolicyService,
 		@IUserDataProfilesMainService private readonly userDataProfilesService: IUserDataProfilesMainService,
 		@IFileService private readonly fileService: IFileService,
-		@IApplicationStorageMainService private readonly applicationStorageMainService: IApplicationStorageMainService,
 		@IStorageMainService private readonly storageMainService: IStorageMainService,
 		@IConfigurationService configurationService: IConfigurationService,
 		@IThemeMainService private readonly themeMainService: IThemeMainService,

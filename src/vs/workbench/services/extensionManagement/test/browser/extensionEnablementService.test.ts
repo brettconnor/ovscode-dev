@@ -164,7 +164,6 @@ suite('ExtensionEnablementService Test', () => {
 					return {
 						malicious: malicious.map(e => ({ extensionOrPublisher: e })),
 						deprecated: {},
-						search: []
 					};
 				}
 			},
