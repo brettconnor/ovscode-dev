@@ -31,7 +31,6 @@ export interface IHeaders {
 	etag?: string;
 	'Content-Length'?: string;
 	'activityid'?: string;
-	'X-Market-User-Id'?: string;
 	[header: string]: string | string[] | undefined;
 }
 
