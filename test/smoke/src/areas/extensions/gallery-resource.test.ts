@@ -96,6 +96,7 @@ export function setup(logger: Logger) {
 				WebClientServer: new (...services: unknown[]) => {
 					handle(request: http.IncomingMessage, response: http.ServerResponse, parsedUrl: URL, pathname: string): Promise<void>;
 				};
+			};
 			const { VSBuffer, bufferToStream } = require('../../../../../out/vs/base/common/buffer.js') as {
 				VSBuffer: { wrap(value: Uint8Array): unknown };
 				bufferToStream(value: unknown): unknown;
