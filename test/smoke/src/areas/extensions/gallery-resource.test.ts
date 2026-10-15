@@ -5,10 +5,12 @@
 
 import * as assert from 'assert';
 import * as http from 'http';
+import { Application, Logger } from '../../../../automation';
+import { installAllHandlers } from '../../utils';
 
-export function setup() {
+export function setup(logger: Logger) {
 	describe('Gallery resource loading', () => {
-		it('fetches a resource without sending the machine ID header', async () => {
+		it('fetches a resource without sending the machine ID or commit header', async () => {
 			const { ExtensionResourceLoaderService } = require('../../../../../out/vs/platform/extensionResourceLoader/common/extensionResourceLoaderService.js') as {
 				ExtensionResourceLoaderService: new (...services: unknown[]) => { readExtensionResource(uri: unknown): Promise<string> };
 			};
@@ -76,11 +78,100 @@ export function setup() {
 				}, {
 					clientName: 'ovscode-test',
 					clientVersion: '1.2.3',
-					clientCommit: 'test-commit',
+					clientCommit: undefined,
 					machineId: undefined
 				});
 			} finally {
 				await new Promise<void>(resolve => server.close(() => resolve()));
+			}
+		});
+	});
+
+	describe('Gallery browser resource proxy', () => {
+		installAllHandlers(logger);
+
+		it('fetches a Gallery resource through the web proxy in Chromium with Name and Version only', async function () {
+			const app = this.app as Application;
+			const { WebClientServer } = require('../../../../../out/vs/server/node/webClientServer.js') as {
+				WebClientServer: new (...services: unknown[]) => {
+					handle(request: http.IncomingMessage, response: http.ServerResponse, parsedUrl: URL, pathname: string): Promise<void>;
+				};
+			const { VSBuffer, bufferToStream } = require('../../../../../out/vs/base/common/buffer.js') as {
+				VSBuffer: { wrap(value: Uint8Array): unknown };
+				bufferToStream(value: unknown): unknown;
+			};
+
+			let upstreamUrl: string | undefined;
+			let upstreamHeaders: Record<string, string> | undefined;
+			const server = new WebClientServer(
+				{ type: 0, validate: () => true },
+				'',
+				'',
+				{ isBuilt: true, args: {} },
+				{ error: () => undefined, trace: () => undefined, getLevel: () => 0 },
+				{
+					request: async (options: { url: string; headers: Record<string, string> }) => {
+						upstreamUrl = options.url;
+						upstreamHeaders = options.headers;
+						return {
+							res: { statusCode: 200, headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } },
+							stream: bufferToStream(VSBuffer.wrap(Buffer.from('mock Gallery resource')))
+						};
+					}
+				},
+				{ extensionsGallery: { resourceUrlTemplate: 'https://gallery.example/publisher/extension/resource.json' } },
+				{ isEnabled: false }
+			);
+
+			const proxyServer = http.createServer((request, response) => {
+				const requestUrl = new URL(request.url ?? '/', 'http://127.0.0.1');
+				if (requestUrl.pathname === '/') {
+					response.writeHead(200, { 'Content-Type': 'text/html' });
+					response.end('<!doctype html><title>Gallery proxy fixture</title>');
+					return;
+				}
+				void server.handle(request, response, requestUrl, requestUrl.pathname).catch(error => {
+					response.writeHead(500, { 'Content-Type': 'text/plain' });
+					response.end(String(error));
+				});
+			});
+			await new Promise<void>((resolve, reject) => {
+				proxyServer.once('error', reject);
+				proxyServer.listen(0, '127.0.0.1', resolve);
+			});
+
+			try {
+				const address = proxyServer.address();
+				if (!address || typeof address === 'string') {
+					throw new Error('Could not determine the Gallery proxy fixture port.');
+				}
+				const page = app.code.driver.currentPage;
+				await page.goto(`http://127.0.0.1:${address.port}/`);
+				const result = await page.evaluate(async () => {
+					const response = await fetch('/web-extension-resource/gallery.example/publisher/extension/resource.json', {
+						mode: 'cors',
+						headers: {
+							'X-Client-Name': 'ovscode-test-web',
+							'X-Client-Version': '1.2.3'
+						}
+					});
+					return { status: response.status, body: await response.text() };
+				});
+				assert.deepStrictEqual({
+					result,
+					upstreamUrl,
+					clientName: upstreamHeaders?.['X-Client-Name'],
+					clientVersion: upstreamHeaders?.['X-Client-Version'],
+					clientCommit: upstreamHeaders?.['X-Client-Commit']
+				}, {
+					result: { status: 200, body: 'mock Gallery resource' },
+					upstreamUrl: 'https://gallery.example/publisher/extension/resource.json',
+					clientName: 'ovscode-test-web',
+					clientVersion: '1.2.3',
+					clientCommit: undefined
+				});
+			} finally {
+				await new Promise<void>(resolve => proxyServer.close(() => resolve()));
 			}
 		});
 	});

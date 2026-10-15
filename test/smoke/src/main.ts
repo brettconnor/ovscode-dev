@@ -442,5 +442,5 @@ describe(`VSCode Smoke Tests (${opts.web ? 'Web' : 'Electron'})`, () => {
 	// Native policy fixtures modify OS state outside the test profile; opt in only on disposable runners so you don't break your own machine.
 	if (!opts.web && !opts.remote && process.env.VSCODE_SMOKE_TEST_POLICY === '1') { setupPolicyTests(logger); }
 	setupAccessibilityTests(logger, opts, quality);
-	if (!opts.web && !opts.remote) { setupGalleryResourceTests(); }
+	if (!opts.remote) { setupGalleryResourceTests(logger); }
 });

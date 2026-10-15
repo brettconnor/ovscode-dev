@@ -65,9 +65,6 @@ export abstract class AbstractExtensionResourceLoaderService implements IExtensi
 			'X-Client-Name': `${this._productService.applicationName}${isWeb ? '-web' : ''}`,
 			'X-Client-Version': this._productService.version
 		};
-		if (this._productService.commit) {
-			headers['X-Client-Commit'] = this._productService.commit;
-		}
 		return headers;
 	}
 
