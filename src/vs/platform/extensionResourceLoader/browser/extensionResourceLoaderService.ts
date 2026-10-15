@@ -8,10 +8,7 @@ import { InstantiationType, registerSingleton } from '../../instantiation/common
 import { IFileService } from '../../files/common/files.js';
 import { FileAccess, Schemas } from '../../../base/common/network.js';
 import { IProductService } from '../../product/common/productService.js';
-import { IStorageService } from '../../storage/common/storage.js';
-import { IEnvironmentService } from '../../environment/common/environment.js';
 import { ILogService } from '../../log/common/log.js';
-import { IConfigurationService } from '../../configuration/common/configuration.js';
 import { AbstractExtensionResourceLoaderService, IExtensionResourceLoaderService } from '../common/extensionResourceLoader.js';
 
 class ExtensionResourceLoaderService extends AbstractExtensionResourceLoaderService {
@@ -20,13 +17,10 @@ class ExtensionResourceLoaderService extends AbstractExtensionResourceLoaderServ
 
 	constructor(
 		@IFileService fileService: IFileService,
-		@IStorageService storageService: IStorageService,
 		@IProductService productService: IProductService,
-		@IEnvironmentService environmentService: IEnvironmentService,
-		@IConfigurationService configurationService: IConfigurationService,
 		@ILogService logService: ILogService,
 	) {
-		super(fileService, storageService, productService, environmentService, configurationService, logService);
+		super(fileService, productService, logService);
 	}
 
 	async readExtensionResource(uri: URI): Promise<string> {
@@ -39,7 +33,7 @@ class ExtensionResourceLoaderService extends AbstractExtensionResourceLoaderServ
 
 		const requestInit: RequestInit = {};
 		if (await this.isExtensionGalleryResource(uri)) {
-			requestInit.headers = await this.getExtensionGalleryRequestHeaders();
+			requestInit.headers = this.getExtensionGalleryRequestHeaders();
 			requestInit.mode = 'cors'; /* set mode to cors so that above headers are always passed */
 		}
 

@@ -261,7 +261,6 @@ export class WebClientServer {
 		};
 		setRequestHeader('X-Client-Name');
 		setRequestHeader('X-Client-Version');
-		setRequestHeader('X-Machine-Id');
 		setRequestHeader('X-Client-Commit');
 
 		const context = await this._requestService.request({

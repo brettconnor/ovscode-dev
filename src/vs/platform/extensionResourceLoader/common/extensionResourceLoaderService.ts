@@ -8,9 +8,6 @@ import { InstantiationType, registerSingleton } from '../../instantiation/common
 import { IFileService } from '../../files/common/files.js';
 import { IProductService } from '../../product/common/productService.js';
 import { asTextOrError, IRequestService } from '../../request/common/request.js';
-import { IStorageService } from '../../storage/common/storage.js';
-import { IEnvironmentService } from '../../environment/common/environment.js';
-import { IConfigurationService } from '../../configuration/common/configuration.js';
 import { CancellationToken } from '../../../base/common/cancellation.js';
 import { AbstractExtensionResourceLoaderService, IExtensionResourceLoaderService } from './extensionResourceLoader.js';
 import { ILogService } from '../../log/common/log.js';
@@ -19,19 +16,16 @@ export class ExtensionResourceLoaderService extends AbstractExtensionResourceLoa
 
 	constructor(
 		@IFileService fileService: IFileService,
-		@IStorageService storageService: IStorageService,
 		@IProductService productService: IProductService,
-		@IEnvironmentService environmentService: IEnvironmentService,
-		@IConfigurationService configurationService: IConfigurationService,
 		@IRequestService private readonly _requestService: IRequestService,
 		@ILogService logService: ILogService,
 	) {
-		super(fileService, storageService, productService, environmentService, configurationService, logService);
+		super(fileService, productService, logService);
 	}
 
 	async readExtensionResource(uri: URI): Promise<string> {
 		if (await this.isExtensionGalleryResource(uri)) {
-			const headers = await this.getExtensionGalleryRequestHeaders();
+			const headers = this.getExtensionGalleryRequestHeaders();
 			const requestContext = await this._requestService.request({ url: uri.toString(), headers, callSite: 'extensionResourceLoader.readExtensionResource' }, CancellationToken.None);
 			return (await asTextOrError(requestContext)) || '';
 		}
