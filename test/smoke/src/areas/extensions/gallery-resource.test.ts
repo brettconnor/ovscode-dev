@@ -5,6 +5,7 @@
 
 import * as assert from 'assert';
 import * as http from 'http';
+import * as path from 'path';
 import { Application, Logger } from '../../../../automation';
 import { installAllHandlers } from '../../utils';
 
@@ -92,11 +93,21 @@ export function setup(logger: Logger) {
 
 		it('fetches a Gallery resource through the web proxy in Chromium with Name and Version only', async function () {
 			const app = this.app as Application;
-			const { WebClientServer } = require('../../../../../out/vs/server/node/webClientServer.js') as {
+			const runtimeGlobal = globalThis as typeof globalThis & { _VSCODE_FILE_ROOT?: string };
+			const previousFileRoot = runtimeGlobal._VSCODE_FILE_ROOT;
+			runtimeGlobal._VSCODE_FILE_ROOT = path.resolve(__dirname, '../../../../../out');
+			let WebClientServer: new (...services: unknown[]) => {
+				handle(request: http.IncomingMessage, response: http.ServerResponse, parsedUrl: URL, pathname: string): Promise<void>;
+			};
+			try {
+				({ WebClientServer } = require('../../../../../out/vs/server/node/webClientServer.js') as {
 				WebClientServer: new (...services: unknown[]) => {
 					handle(request: http.IncomingMessage, response: http.ServerResponse, parsedUrl: URL, pathname: string): Promise<void>;
 				};
-			};
+				});
+			} finally {
+				runtimeGlobal._VSCODE_FILE_ROOT = previousFileRoot;
+			}
 			const { VSBuffer, bufferToStream } = require('../../../../../out/vs/base/common/buffer.js') as {
 				VSBuffer: { wrap(value: Uint8Array): unknown };
 				bufferToStream(value: unknown): unknown;
