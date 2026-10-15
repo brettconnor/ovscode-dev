@@ -180,9 +180,9 @@ export function setup(logger: Logger) {
 					result,
 					upstreamUrl,
 				upstreamRequests,
-					clientName: upstreamHeaders?.['X-Client-Name'],
-					clientVersion: upstreamHeaders?.['X-Client-Version'],
-					clientCommit: upstreamHeaders?.['X-Client-Commit']
+					clientName: upstreamHeaders?.['x-client-name'],
+					clientVersion: upstreamHeaders?.['x-client-version'],
+					clientCommit: upstreamHeaders?.['x-client-commit']
 				}, {
 					result: {
 						allowed: { status: 200, body: 'mock Gallery resource' },
