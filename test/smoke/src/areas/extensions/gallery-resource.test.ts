@@ -115,6 +115,7 @@ export function setup(logger: Logger) {
 
 			let upstreamUrl: string | undefined;
 			let upstreamHeaders: Record<string, string> | undefined;
+			const upstreamRequests: string[] = [];
 			const server = new WebClientServer(
 				{ type: 0, validate: () => true },
 				'',
@@ -124,6 +125,7 @@ export function setup(logger: Logger) {
 				{
 					request: async (options: { url: string; headers: Record<string, string> }) => {
 						upstreamUrl = options.url;
+						upstreamRequests.push(options.url);
 						upstreamHeaders = options.headers;
 						return {
 							res: { statusCode: 200, headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } },
@@ -167,17 +169,27 @@ export function setup(logger: Logger) {
 							'X-Client-Version': '1.2.3'
 						}
 					});
-					return { status: response.status, body: await response.text() };
+					const allowed = { status: response.status, body: await response.text() };
+					const rejectedResponse = await fetch('/web-extension-resource/attacker.invalid/publisher/extension/resource.json', { mode: 'cors' });
+					return {
+						allowed,
+						rejected: { status: rejectedResponse.status, body: await rejectedResponse.text() }
+					};
 				});
 				assert.deepStrictEqual({
 					result,
 					upstreamUrl,
+				upstreamRequests,
 					clientName: upstreamHeaders?.['X-Client-Name'],
 					clientVersion: upstreamHeaders?.['X-Client-Version'],
 					clientCommit: upstreamHeaders?.['X-Client-Commit']
 				}, {
-					result: { status: 200, body: 'mock Gallery resource' },
+					result: {
+						allowed: { status: 200, body: 'mock Gallery resource' },
+						rejected: { status: 403, body: 'Request Forbidden' }
+					},
 					upstreamUrl: 'https://gallery.example/publisher/extension/resource.json',
+					upstreamRequests: ['https://gallery.example/publisher/extension/resource.json'],
 					clientName: 'ovscode-test-web',
 					clientVersion: '1.2.3',
 					clientCommit: undefined

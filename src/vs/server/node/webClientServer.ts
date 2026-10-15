@@ -240,10 +240,15 @@ export class WebClientServer {
 
 		const normalizedPathname = decodeURIComponent(resourcePath); // support paths that are uri-encoded (e.g. spaces => %20)
 		const path = normalize(normalizedPathname);
+		const pathWithoutLeadingSlash = path.startsWith('/') ? path.substring(1) : path;
+		const authoritySeparator = pathWithoutLeadingSlash.indexOf('/');
+		if (authoritySeparator <= 0 || authoritySeparator === pathWithoutLeadingSlash.length - 1) {
+			return serveError(req, res, 400, 'Bad request.');
+		}
 		const uri = URI.parse(path).with({
 			scheme: this._webExtensionResourceUrlTemplate.scheme,
-			authority: path.substring(0, path.indexOf('/')),
-			path: path.substring(path.indexOf('/') + 1)
+			authority: pathWithoutLeadingSlash.substring(0, authoritySeparator),
+			path: pathWithoutLeadingSlash.substring(authoritySeparator)
 		});
 
 		if (this._getResourceURLTemplateAuthority(this._webExtensionResourceUrlTemplate) !== this._getResourceURLTemplateAuthority(uri)) {
