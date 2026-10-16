@@ -12,7 +12,7 @@ import { CancellationError } from '../../../../base/common/errors.js';
 import { Disposable, MutableDisposable } from '../../../../base/common/lifecycle.js';
 import { ITelemetryService } from '../../../../platform/telemetry/common/telemetry.js';
 import {
-	ILocalExtension, IGalleryExtension,
+	ILocalExtension,
 	DidUninstallExtensionEvent, InstallOperation, InstallExtensionResult,
 	IExtensionsControlManifest, IDeprecationInfo, isTargetPlatformCompatible,
 	InstallOptions, IProductVersion,
@@ -21,7 +21,7 @@ import {
 	MaliciousExtensionInfo,
 } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IWorkbenchExtensionEnablementService, EnablementState, IExtensionManagementServerService, IExtensionManagementServer, IWorkbenchExtensionManagementService, IResourceExtension } from '../../../services/extensionManagement/common/extensionManagement.js';
-import { getGalleryExtensionTelemetryData, getLocalExtensionTelemetryData, areSameExtensions, groupByExtension, getGalleryExtensionId, findMatchingMaliciousEntry } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
+import { getLocalExtensionTelemetryData, areSameExtensions, groupByExtension, getGalleryExtensionId, findMatchingMaliciousEntry } from '../../../../platform/extensionManagement/common/extensionManagementUtil.js';
 import { IInstantiationService } from '../../../../platform/instantiation/common/instantiation.js';
 import { IConfigurationService } from '../../../../platform/configuration/common/configuration.js';
 import { IHostService } from '../../../services/host/browser/host.js';
@@ -79,10 +79,8 @@ export class Extension implements IExtension {
 		private runtimeStateProvider: IExtensionStateProvider<ExtensionRuntimeState | undefined>,
 		public readonly server: IExtensionManagementServer | undefined,
 		public local: ILocalExtension | undefined,
-		private _gallery: IGalleryExtension | undefined,
 		private readonly resourceExtensionInfo: { resourceExtension: IResourceExtension; isWorkspaceScoped: boolean } | undefined,
 		@IFileService private readonly fileService: IFileService,
-		@IProductService private readonly productService: IProductService
 	) {
 	}
 
@@ -101,14 +99,6 @@ export class Extension implements IExtension {
 			};
 		}
 		return undefined;
-	}
-
-	get gallery(): IGalleryExtension | undefined {
-		return this._gallery;
-	}
-
-	set gallery(gallery: IGalleryExtension | undefined) {
-		this._gallery = gallery;
 	}
 
 	get type(): ExtensionType {
@@ -130,24 +120,14 @@ export class Extension implements IExtension {
 	}
 
 	get name(): string {
-		if (this.gallery) {
-			return this.gallery.name;
-		}
 		return this.getManifestFromLocalOrResource()?.name ?? '';
 	}
 
 	get displayName(): string {
-		if (this.gallery) {
-			return this.gallery.displayName || this.gallery.name;
-		}
-
 		return this.getManifestFromLocalOrResource()?.displayName ?? this.name;
 	}
 
 	get identifier(): IExtensionIdentifier {
-		if (this.gallery) {
-			return this.gallery.identifier;
-		}
 		if (this.resourceExtension) {
 			return this.resourceExtension.identifier;
 		}
@@ -155,21 +135,14 @@ export class Extension implements IExtension {
 	}
 
 	get uuid(): string | undefined {
-		return this.gallery ? this.gallery.identifier.uuid : this.local?.identifier.uuid;
+		return this.local?.identifier.uuid ?? this.resourceExtension?.identifier.uuid;
 	}
 
 	get publisher(): string {
-		if (this.gallery) {
-			return this.gallery.publisher;
-		}
 		return this.getManifestFromLocalOrResource()?.publisher ?? '';
 	}
 
 	get publisherDisplayName(): string {
-		if (this.gallery) {
-			return this.gallery.publisherDisplayName || this.gallery.publisher;
-		}
-
 		if (this.local?.publisherDisplayName) {
 			return this.local.publisherDisplayName;
 		}
@@ -177,16 +150,12 @@ export class Extension implements IExtension {
 		return this.publisher;
 	}
 
-	get publisherUrl(): URI | undefined {
-		return this.gallery?.publisherLink ? URI.parse(this.gallery.publisherLink) : undefined;
-	}
-
 	get publisherDomain(): { link: string; verified: boolean } | undefined {
-		return this.gallery?.publisherDomain;
+		return undefined;
 	}
 
 	get publisherSponsorLink(): URI | undefined {
-		return this.gallery?.publisherSponsorLink ? URI.parse(this.gallery.publisherSponsorLink) : undefined;
+		return undefined;
 	}
 
 	get version(): string {
@@ -194,7 +163,7 @@ export class Extension implements IExtension {
 	}
 
 	get private(): boolean {
-		return this.gallery ? this.gallery.private : this.local ? this.local.private : false;
+		return this.local?.private ?? false;
 	}
 
 	get pinned(): boolean {
@@ -202,19 +171,35 @@ export class Extension implements IExtension {
 	}
 
 	get latestVersion(): string {
-		return this.gallery ? this.gallery.version : this.getManifestFromLocalOrResource()?.version ?? '';
+		return this.getManifestFromLocalOrResource()?.version ?? '';
 	}
 
 	get description(): string {
-		return this.gallery ? this.gallery.description : this.getManifestFromLocalOrResource()?.description ?? '';
+		return this.getManifestFromLocalOrResource()?.description ?? '';
 	}
 
 	get iconUrl(): string | undefined {
-		return this.galleryIconUrl || this.resourceExtensionIconUrl || this.localIconUrl || this.defaultIconUrl;
+		return this.resourceExtensionIconUrl || this.localIconUrl || this.defaultIconUrl;
 	}
 
 	get iconUrlFallback(): string | undefined {
-		return this.gallery?.assets.icon?.fallbackUri;
+		return undefined;
+	}
+
+	get supportUrl(): string | undefined {
+		return undefined;
+	}
+
+	get installCount(): number | undefined {
+		return undefined;
+	}
+
+	get rating(): number | undefined {
+		return undefined;
+	}
+
+	get ratingCount(): number | undefined {
+		return undefined;
 	}
 
 	private get localIconUrl(): string | undefined {
@@ -229,10 +214,6 @@ export class Extension implements IExtension {
 			return FileAccess.uriToBrowserUri(resources.joinPath(this.resourceExtension.location, this.resourceExtension.manifest.icon)).toString(true);
 		}
 		return undefined;
-	}
-
-	private get galleryIconUrl(): string | undefined {
-		return this.gallery?.assets.icon?.uri;
 	}
 
 	private get defaultIconUrl(): string | undefined {
@@ -250,15 +231,7 @@ export class Extension implements IExtension {
 	}
 
 	get repository(): string | undefined {
-		return this.gallery && this.gallery.assets.repository ? this.gallery.assets.repository.uri : undefined;
-	}
-
-	get licenseUrl(): string | undefined {
-		return this.gallery && this.gallery.assets.license ? this.gallery.assets.license.uri : undefined;
-	}
-
-	get supportUrl(): string | undefined {
-		return this.gallery && this.gallery.supportLink ? this.gallery.supportLink : undefined;
+		return this.getManifestFromLocalOrResource()?.repository?.url;
 	}
 
 	get state(): ExtensionState {
@@ -276,48 +249,12 @@ export class Extension implements IExtension {
 
 	public deprecationInfo: IDeprecationInfo | undefined;
 
-	get installCount(): number | undefined {
-		return this.gallery ? this.gallery.installCount : undefined;
-	}
-
-	get rating(): number | undefined {
-		return this.gallery ? this.gallery.rating : undefined;
-	}
-
-	get ratingCount(): number | undefined {
-		return this.gallery ? this.gallery.ratingCount : undefined;
-	}
-
 	get outdated(): boolean {
-		try {
-			if (!this.gallery || !this.local) {
-				return false;
-			}
-			// Do not allow updating system extensions in stable
-			if (this.type === ExtensionType.System && this.productService.quality === 'stable' && !this.productService.builtInExtensionsEnabledWithAutoUpdates?.some(id => id.toLowerCase() === this.identifier.id.toLowerCase())) {
-				return false;
-			}
-			if (!this.local.preRelease && this.gallery.properties.isPreReleaseVersion) {
-				return false;
-			}
-			if (semver.gt(this.latestVersion, this.version)) {
-				return true;
-			}
-			if (this.outdatedTargetPlatform) {
-				return true;
-			}
-		} catch (error) {
-			/* Ignore */
-		}
 		return false;
 	}
 
 	get outdatedTargetPlatform(): boolean {
-		return !!this.local && !!this.gallery
-			&& ![TargetPlatform.UNDEFINED, TargetPlatform.WEB].includes(this.local.targetPlatform)
-			&& this.gallery.properties.targetPlatform !== TargetPlatform.WEB
-			&& this.local.targetPlatform !== this.gallery.properties.targetPlatform
-			&& semver.eq(this.latestVersion, this.version);
+		return false;
 	}
 
 	get runtimeState(): ExtensionRuntimeState | undefined {
@@ -325,19 +262,15 @@ export class Extension implements IExtension {
 	}
 
 	get telemetryData(): any {
-		const { local, gallery } = this;
-
-		if (gallery) {
-			return getGalleryExtensionTelemetryData(gallery);
-		} else if (local) {
-			return getLocalExtensionTelemetryData(local);
+		if (this.local) {
+			return getLocalExtensionTelemetryData(this.local);
 		} else {
 			return {};
 		}
 	}
 
 	get preview(): boolean {
-		return this.local?.manifest.preview ?? this.gallery?.preview ?? false;
+		return this.local?.manifest.preview ?? false;
 	}
 
 	get preRelease(): boolean {
@@ -345,18 +278,15 @@ export class Extension implements IExtension {
 	}
 
 	get isPreReleaseVersion(): boolean {
-		if (this.local) {
-			return this.local.isPreReleaseVersion;
-		}
-		return !!this.gallery?.properties.isPreReleaseVersion;
+		return this.local?.isPreReleaseVersion ?? false;
 	}
 
 	get hasPreReleaseVersion(): boolean {
-		return this.gallery ? this.gallery.hasPreReleaseVersion : !!this.local?.hasPreReleaseVersion;
+		return !!this.local?.hasPreReleaseVersion;
 	}
 
 	get hasReleaseVersion(): boolean {
-		return !!this.resourceExtension || !!this.gallery?.hasReleaseVersion;
+		return !!this.resourceExtension || !!this.local?.hasReleaseVersion;
 	}
 
 	async getManifest(_token: CancellationToken): Promise<IExtensionManifest | null> {
@@ -429,12 +359,9 @@ ${this.description}
 	}
 
 	get categories(): readonly string[] {
-		const { local, gallery, resourceExtension } = this;
-		if (local && local.manifest.categories && !this.outdated) {
+		const { local, resourceExtension } = this;
+		if (local && local.manifest.categories) {
 			return local.manifest.categories;
-		}
-		if (gallery) {
-			return gallery.categories;
 		}
 		if (resourceExtension) {
 			return resourceExtension.manifest.categories ?? [];
@@ -443,20 +370,13 @@ ${this.description}
 	}
 
 	get tags(): readonly string[] {
-		const { gallery } = this;
-		if (gallery) {
-			return gallery.tags.filter(tag => !tag.startsWith('_'));
-		}
 		return [];
 	}
 
 	get dependencies(): string[] {
-		const { local, gallery, resourceExtension } = this;
-		if (local && local.manifest.extensionDependencies && !this.outdated) {
+		const { local, resourceExtension } = this;
+		if (local && local.manifest.extensionDependencies) {
 			return local.manifest.extensionDependencies;
-		}
-		if (gallery) {
-			return gallery.properties.dependencies || [];
 		}
 		if (resourceExtension) {
 			return resourceExtension.manifest.extensionDependencies || [];
@@ -465,12 +385,9 @@ ${this.description}
 	}
 
 	get extensionPack(): string[] {
-		const { local, gallery, resourceExtension } = this;
-		if (local && local.manifest.extensionPack && !this.outdated) {
+		const { local, resourceExtension } = this;
+		if (local && local.manifest.extensionPack) {
 			return local.manifest.extensionPack;
-		}
-		if (gallery) {
-			return gallery.properties.extensionPack || [];
 		}
 		if (resourceExtension) {
 			return resourceExtension.manifest.extensionPack || [];
@@ -597,7 +514,7 @@ class Extensions extends Disposable {
 
 		const byId = index(this.installed, e => e.local ? e.local.identifier.id : e.identifier.id);
 		this.installed = installed.map(local => {
-			const extension = byId[local.identifier.id] || this.instantiationService.createInstance(Extension, this.stateProvider, this.runtimeStateProvider, this.server, local, undefined, undefined);
+			const extension = byId[local.identifier.id] || this.instantiationService.createInstance(Extension, this.stateProvider, this.runtimeStateProvider, this.server, local, undefined);
 			extension.local = local;
 			extension.enablementState = this.extensionEnablementService.getEnablementState(local);
 			extension.setExtensionsControlManifest(extensionsControlManifest);
@@ -618,7 +535,7 @@ class Extensions extends Disposable {
 			const { local } = event;
 			const extension = local
 				? this.installed.find(e => areSameExtensions(e.identifier, local.identifier))
-					?? this.instantiationService.createInstance(Extension, this.stateProvider, this.runtimeStateProvider, this.server, local, undefined, undefined)
+					?? this.instantiationService.createInstance(Extension, this.stateProvider, this.runtimeStateProvider, this.server, local, undefined)
 				: undefined;
 			if (local && extension) {
 				if (!this.installed.includes(extension)) {
@@ -946,7 +863,7 @@ export class ExtensionsWorkbenchService extends Disposable implements IExtension
 	async getResourceExtensions(locations: URI[], isWorkspaceScoped: boolean): Promise<IExtension[]> {
 		const resourceExtensions = await this.extensionManagementService.getExtensions(locations);
 		return resourceExtensions.map(resourceExtension => this.getInstalledExtensionMatchingLocation(resourceExtension.location)
-			?? this.instantiationService.createInstance(Extension, ext => this.getExtensionState(ext), ext => this.getRuntimeState(ext), undefined, undefined, undefined, { resourceExtension, isWorkspaceScoped }));
+			?? this.instantiationService.createInstance(Extension, ext => this.getExtensionState(ext), ext => this.getRuntimeState(ext), undefined, undefined, { resourceExtension, isWorkspaceScoped }));
 	}
 
 	private onDidDismissedNotificationsValueChange(): void {

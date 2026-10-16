@@ -4,7 +4,7 @@
  *--------------------------------------------------------------------------------------------*/
 
 import { compareIgnoreCase } from '../../../base/common/strings.js';
-import { IExtensionIdentifier, IGalleryExtension, ILocalExtension, MaliciousExtensionInfo, getTargetPlatform } from './extensionManagement.js';
+import { IExtensionIdentifier, ILocalExtension, MaliciousExtensionInfo, getTargetPlatform } from './extensionManagement.js';
 import { ExtensionIdentifier, IExtension, TargetPlatform, UNDEFINED_PUBLISHER } from '../../extensions/common/extensions.js';
 import { IFileService } from '../../files/common/files.js';
 import { isLinux, platform } from '../../../base/common/platform.js';
@@ -29,10 +29,8 @@ const ExtensionKeyRegex = /^([^.]+\..+)-(\d+\.\d+\.\d+)(-(.+))?$/;
 
 export class ExtensionKey {
 
-	static create(extension: IExtension | IGalleryExtension): ExtensionKey {
-		const version = (extension as IExtension).manifest ? (extension as IExtension).manifest.version : (extension as IGalleryExtension).version;
-		const targetPlatform = (extension as IExtension).manifest ? (extension as IExtension).targetPlatform : (extension as IGalleryExtension).properties.targetPlatform;
-		return new ExtensionKey(extension.identifier, version, targetPlatform);
+	static create(extension: ILocalExtension): ExtensionKey {
+		return new ExtensionKey(extension.identifier, extension.manifest.version, extension.targetPlatform);
 	}
 
 	static parse(key: string): ExtensionKey | null {
@@ -116,37 +114,6 @@ export function getLocalExtensionTelemetryData(extension: ILocalExtension) {
 	};
 }
 
-
-/* __GDPR__FRAGMENT__
-	"GalleryExtensionTelemetryData" : {
-		"id" : { "classification": "SystemMetaData", "purpose": "FeatureInsight" },
-		"name": { "classification": "SystemMetaData", "purpose": "FeatureInsight" },
-		"extensionVersion": { "classification": "SystemMetaData", "purpose": "FeatureInsight" },
-		"galleryId": { "classification": "SystemMetaData", "purpose": "FeatureInsight" },
-		"publisherId": { "classification": "SystemMetaData", "purpose": "FeatureInsight" },
-		"publisherName": { "classification": "SystemMetaData", "purpose": "FeatureInsight" },
-		"publisherDisplayName": { "classification": "SystemMetaData", "purpose": "FeatureInsight" },
-		"isPreReleaseVersion": { "classification": "SystemMetaData", "purpose": "FeatureInsight" },
-		"dependencies": { "classification": "SystemMetaData", "purpose": "FeatureInsight", "isMeasurement": true },
-		"${include}": [
-			"${GalleryExtensionTelemetryData2}"
-		]
-	}
-*/
-export function getGalleryExtensionTelemetryData(extension: IGalleryExtension) {
-	return {
-		id: new TelemetryTrustedValue(extension.identifier.id),
-		name: new TelemetryTrustedValue(extension.name),
-		extensionVersion: extension.version,
-		galleryId: extension.identifier.uuid,
-		publisherId: extension.publisherId,
-		publisherName: extension.publisher,
-		publisherDisplayName: extension.publisherDisplayName,
-		isPreReleaseVersion: extension.properties.isPreReleaseVersion,
-		dependencies: !!(extension.properties.dependencies && extension.properties.dependencies.length > 0),
-		...extension.telemetryData
-	};
-}
 
 export const BetterMergeId = new ExtensionIdentifier('pprice.better-merge');
 

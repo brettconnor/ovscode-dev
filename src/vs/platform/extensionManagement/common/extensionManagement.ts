@@ -154,29 +154,6 @@ export function isTargetPlatformCompatible(extensionTargetPlatform: TargetPlatfo
 	return false;
 }
 
-export interface IGalleryExtensionProperties {
-	dependencies?: string[];
-	extensionPack?: string[];
-	engine?: string;
-	enabledApiProposals?: string[];
-	localizedLanguages?: string[];
-	targetPlatform: TargetPlatform;
-	isPreReleaseVersion: boolean;
-	executesCode?: boolean;
-}
-
-export interface IGalleryExtensionAsset {
-	uri: string;
-	fallbackUri: string;
-}
-
-export interface IGalleryExtensionAssets {
-	manifest: IGalleryExtensionAsset | null;
-	license: IGalleryExtensionAsset | null;
-	repository: IGalleryExtensionAsset | null;
-	icon: IGalleryExtensionAsset | null;
-}
-
 export function isIExtensionIdentifier(obj: unknown): obj is IExtensionIdentifier {
 	const thing = obj as IExtensionIdentifier | undefined;
 	return !!thing
@@ -188,44 +165,6 @@ export function isIExtensionIdentifier(obj: unknown): obj is IExtensionIdentifie
 export interface IExtensionIdentifier {
 	id: string;
 	uuid?: string;
-}
-
-export interface IGalleryExtensionIdentifier extends IExtensionIdentifier {
-	uuid: string;
-}
-
-export interface IGalleryExtension {
-	type: 'gallery';
-	name: string;
-	identifier: IGalleryExtensionIdentifier;
-	version: string;
-	displayName: string;
-	publisherId: string;
-	publisher: string;
-	publisherDisplayName: string;
-	publisherDomain?: { link: string; verified: boolean };
-	publisherLink?: string;
-	publisherSponsorLink?: string;
-	description: string;
-	installCount: number;
-	rating: number;
-	ratingCount: number;
-	categories: readonly string[];
-	tags: readonly string[];
-	releaseDate: number;
-	lastUpdated: number;
-	preview: boolean;
-	private: boolean;
-	hasPreReleaseVersion: boolean;
-	hasReleaseVersion: boolean;
-	allTargetPlatforms: TargetPlatform[];
-	assets: IGalleryExtensionAssets;
-	properties: IGalleryExtensionProperties;
-	detailsLink?: string;
-	ratingLink?: string;
-	supportLink?: string;
-	telemetryData?: IStringDictionary<unknown>;
-	queryContext?: IStringDictionary<unknown>;
 }
 
 export type InstallSource = 'gallery' | 'vsix' | 'resource';
@@ -314,7 +253,7 @@ export interface IExtensionGalleryService {
 
 export interface InstallExtensionEvent {
 	readonly identifier: IExtensionIdentifier;
-	readonly source: URI | IGalleryExtension;
+	readonly source: URI;
 	readonly profileLocation: URI;
 	readonly applicationScoped?: boolean;
 	readonly workspaceScoped?: boolean;
@@ -323,7 +262,7 @@ export interface InstallExtensionEvent {
 export interface InstallExtensionResult {
 	readonly identifier: IExtensionIdentifier;
 	readonly operation: InstallOperation;
-	readonly source?: URI | IGalleryExtension;
+	readonly source?: URI;
 	readonly local?: ILocalExtension;
 	readonly error?: Error;
 	readonly context?: IStringDictionary<unknown>;
@@ -443,7 +382,7 @@ export type UninstallOptions = {
 };
 
 export interface IExtensionManagementParticipant {
-	postInstall(local: ILocalExtension, source: URI | IGalleryExtension, options: InstallOptions, token: CancellationToken): Promise<void>;
+	postInstall(local: ILocalExtension, source: URI, options: InstallOptions, token: CancellationToken): Promise<void>;
 	postUninstall(local: ILocalExtension, options: UninstallOptions, token: CancellationToken): Promise<void>;
 }
 
@@ -505,7 +444,7 @@ export interface IAllowedExtensionsService {
 	readonly allowedExtensionsConfigValue: AllowedExtensionsConfigValueType | undefined;
 	readonly onDidChangeAllowedExtensionsConfigValue: Event<void>;
 
-	isAllowed(extension: IGalleryExtension | IExtension): true | IMarkdownString;
+	isAllowed(extension: IExtension): true | IMarkdownString;
 	isAllowed(extension: { id: string; publisherDisplayName: string | undefined; version?: string; prerelease?: boolean; targetPlatform?: TargetPlatform }): true | IMarkdownString;
 }
 

@@ -5,7 +5,7 @@
 
 import { createDecorator } from '../../../../platform/instantiation/common/instantiation.js';
 import { Event } from '../../../../base/common/event.js';
-import { ILocalExtension, IGalleryExtension, IExtensionIdentifier, IDeprecationInfo, InstallOptions } from '../../../../platform/extensionManagement/common/extensionManagement.js';
+import { ILocalExtension, IExtensionIdentifier, IDeprecationInfo, InstallOptions } from '../../../../platform/extensionManagement/common/extensionManagement.js';
 import { EnablementState, IExtensionManagementServer, IResourceExtension } from '../../../services/extensionManagement/common/extensionManagement.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { Disposable, IDisposable } from '../../../../base/common/lifecycle.js';
@@ -58,7 +58,6 @@ export interface IExtension {
 	readonly identifier: IExtensionIdentifier;
 	readonly publisher: string;
 	readonly publisherDisplayName: string;
-	readonly publisherUrl?: URI;
 	readonly publisherDomain?: { link: string; verified: boolean };
 	readonly publisherSponsorLink?: URI;
 	readonly pinned: boolean;
@@ -74,7 +73,6 @@ export interface IExtension {
 	readonly supportUrl?: string;
 	readonly iconUrl?: string;
 	readonly iconUrlFallback?: string;
-	readonly licenseUrl?: string;
 	readonly installCount?: number;
 	readonly rating?: number;
 	readonly ratingCount?: number;
@@ -95,7 +93,6 @@ export interface IExtension {
 	getChangelog(token: CancellationToken): Promise<string>;
 	readonly server?: IExtensionManagementServer;
 	readonly local?: ILocalExtension;
-	gallery?: IGalleryExtension;
 	readonly resourceExtension?: IResourceExtension;
 	readonly isMalicious: boolean | undefined;
 	readonly maliciousInfoLink: string | undefined;

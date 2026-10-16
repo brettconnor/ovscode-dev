@@ -5,17 +5,13 @@
 
 import { Disposable } from '../../../base/common/lifecycle.js';
 import * as nls from '../../../nls.js';
-import { IGalleryExtension, AllowedExtensionsConfigKey, IAllowedExtensionsService, AllowedExtensionsConfigValueType } from './extensionManagement.js';
+import { AllowedExtensionsConfigKey, IAllowedExtensionsService, AllowedExtensionsConfigValueType } from './extensionManagement.js';
 import { ExtensionType, IExtension, TargetPlatform } from '../../extensions/common/extensions.js';
 import { IProductService } from '../../product/common/productService.js';
 import { createCommandUri, IMarkdownString, MarkdownString } from '../../../base/common/htmlContent.js';
 import { IConfigurationService } from '../../configuration/common/configuration.js';
 import { isBoolean, isObject, isUndefined } from '../../../base/common/types.js';
 import { Emitter } from '../../../base/common/event.js';
-
-function isGalleryExtension(extension: unknown): extension is IGalleryExtension {
-	return (extension as IGalleryExtension).type === 'gallery';
-}
 
 function isIExtension(extension: unknown): extension is IExtension {
 	return (extension as IExtension).type === ExtensionType.User || (extension as IExtension).type === ExtensionType.System;
@@ -64,21 +60,14 @@ export class AllowedExtensionsService extends Disposable implements IAllowedExte
 		return Object.fromEntries(entries);
 	}
 
-	isAllowed(extension: IGalleryExtension | IExtension | { id: string; publisherDisplayName: string | undefined; version?: string; prerelease?: boolean; targetPlatform?: TargetPlatform }): true | IMarkdownString {
+	isAllowed(extension: IExtension | { id: string; publisherDisplayName: string | undefined; version?: string; prerelease?: boolean; targetPlatform?: TargetPlatform }): true | IMarkdownString {
 		if (!this._allowedExtensionsConfigValue) {
 			return true;
 		}
 
 		let id: string, version: string, targetPlatform: TargetPlatform, prerelease: boolean, publisher: string, publisherDisplayName: string | undefined;
 
-		if (isGalleryExtension(extension)) {
-			id = extension.identifier.id.toLowerCase();
-			version = extension.version;
-			prerelease = extension.properties.isPreReleaseVersion;
-			publisher = extension.publisher.toLowerCase();
-			publisherDisplayName = extension.publisherDisplayName.toLowerCase();
-			targetPlatform = extension.properties.targetPlatform;
-		} else if (isIExtension(extension)) {
+		if (isIExtension(extension)) {
 			id = extension.identifier.id.toLowerCase();
 			version = extension.manifest.version;
 			prerelease = extension.preRelease;

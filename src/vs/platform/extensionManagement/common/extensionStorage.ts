@@ -14,7 +14,7 @@ import { ILogService } from '../../log/common/log.js';
 import { IExtension } from '../../extensions/common/extensions.js';
 import { isString } from '../../../base/common/types.js';
 import { IStringDictionary } from '../../../base/common/collections.js';
-import { IExtensionManagementService, IGalleryExtension } from './extensionManagement.js';
+import { IExtensionManagementService } from './extensionManagement.js';
 
 export interface IExtensionIdWithVersion {
 	id: string;
@@ -26,9 +26,9 @@ export const IExtensionStorageService = createDecorator<IExtensionStorageService
 export interface IExtensionStorageService {
 	readonly _serviceBrand: undefined;
 
-	getExtensionState(extension: IExtension | IGalleryExtension | string, global: boolean): IStringDictionary<unknown> | undefined;
-	getExtensionStateRaw(extension: IExtension | IGalleryExtension | string, global: boolean): string | undefined;
-	setExtensionState(extension: IExtension | IGalleryExtension | string, state: object | undefined, global: boolean): void;
+	getExtensionState(extension: IExtension | string, global: boolean): IStringDictionary<unknown> | undefined;
+	getExtensionStateRaw(extension: IExtension | string, global: boolean): string | undefined;
+	setExtensionState(extension: IExtension | string, state: object | undefined, global: boolean): void;
 
 	readonly onDidChangeExtensionStorageToSync: Event<void>;
 	setKeysForSync(extensionIdWithVersion: IExtensionIdWithVersion, keys: string[]): void;
@@ -131,16 +131,14 @@ export class ExtensionStorageService extends Disposable implements IExtensionSto
 		}
 	}
 
-	private getExtensionId(extension: IExtension | IGalleryExtension | string): string {
+	private getExtensionId(extension: IExtension | string): string {
 		if (isString(extension)) {
 			return extension;
 		}
-		const publisher = (extension as IExtension).manifest ? (extension as IExtension).manifest.publisher : (extension as IGalleryExtension).publisher;
-		const name = (extension as IExtension).manifest ? (extension as IExtension).manifest.name : (extension as IGalleryExtension).name;
-		return getExtensionId(publisher, name);
+		return getExtensionId(extension.manifest.publisher, extension.manifest.name);
 	}
 
-	getExtensionState(extension: IExtension | IGalleryExtension | string, global: boolean): IStringDictionary<unknown> | undefined {
+	getExtensionState(extension: IExtension | string, global: boolean): IStringDictionary<unknown> | undefined {
 		const extensionId = this.getExtensionId(extension);
 		const jsonValue = this.getExtensionStateRaw(extension, global);
 		if (jsonValue) {
@@ -156,7 +154,7 @@ export class ExtensionStorageService extends Disposable implements IExtensionSto
 		return undefined;
 	}
 
-	getExtensionStateRaw(extension: IExtension | IGalleryExtension | string, global: boolean): string | undefined {
+	getExtensionStateRaw(extension: IExtension | string, global: boolean): string | undefined {
 		const extensionId = this.getExtensionId(extension);
 		const rawState = this.storageService.get(extensionId, global ? StorageScope.PROFILE : StorageScope.WORKSPACE);
 
@@ -167,7 +165,7 @@ export class ExtensionStorageService extends Disposable implements IExtensionSto
 		return rawState;
 	}
 
-	setExtensionState(extension: IExtension | IGalleryExtension | string, state: IStringDictionary<unknown> | undefined, global: boolean): void {
+	setExtensionState(extension: IExtension | string, state: IStringDictionary<unknown> | undefined, global: boolean): void {
 		const extensionId = this.getExtensionId(extension);
 		if (state === undefined) {
 			this.storageService.remove(extensionId, global ? StorageScope.PROFILE : StorageScope.WORKSPACE);

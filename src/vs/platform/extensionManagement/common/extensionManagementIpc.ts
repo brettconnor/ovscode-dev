@@ -202,8 +202,8 @@ export class ExtensionManagementChannelClient extends CommontExtensionManagement
 		allowedExtensionsService: IAllowedExtensionsService,
 	) {
 		super(productService, allowedExtensionsService);
-		this._register(this.channel.listen<InstallExtensionEvent>('onInstallExtension')(e => this.onInstallExtensionEvent({ ...e, source: this.isUriComponents(e.source) ? URI.revive(e.source) : e.source, profileLocation: URI.revive(e.profileLocation) })));
-		this._register(this.channel.listen<readonly InstallExtensionResult[]>('onDidInstallExtensions')(results => this.onDidInstallExtensionsEvent(results.map(e => ({ ...e, local: e.local ? transformIncomingExtension(e.local, null) : e.local, source: this.isUriComponents(e.source) ? URI.revive(e.source) : e.source, profileLocation: URI.revive(e.profileLocation) })))));
+		this._register(this.channel.listen<InstallExtensionEvent>('onInstallExtension')(e => this.onInstallExtensionEvent({ ...e, source: URI.revive(e.source), profileLocation: URI.revive(e.profileLocation) })));
+		this._register(this.channel.listen<readonly InstallExtensionResult[]>('onDidInstallExtensions')(results => this.onDidInstallExtensionsEvent(results.map(e => ({ ...e, local: e.local ? transformIncomingExtension(e.local, null) : e.local, source: e.source ? URI.revive(e.source) : e.source, profileLocation: URI.revive(e.profileLocation) })))));
 		this._register(this.channel.listen<UninstallExtensionEvent>('onUninstallExtension')(e => this.onUninstallExtensionEvent({ ...e, profileLocation: URI.revive(e.profileLocation) })));
 		this._register(this.channel.listen<DidUninstallExtensionEvent>('onDidUninstallExtension')(e => this.onDidUninstallExtensionEvent({ ...e, profileLocation: URI.revive(e.profileLocation) })));
 		this._register(this.channel.listen<DidUpdateExtensionMetadata>('onDidUpdateExtensionMetadata')(e => this.onDidUpdateExtensionMetadataEvent({ profileLocation: URI.revive(e.profileLocation), local: transformIncomingExtension(e.local, null) })));
@@ -227,15 +227,6 @@ export class ExtensionManagementChannelClient extends CommontExtensionManagement
 
 	protected onDidUpdateExtensionMetadataEvent(event: DidUpdateExtensionMetadata): void {
 		this._onDidUpdateExtensionMetadata.fire(event);
-	}
-
-	private isUriComponents(obj: unknown): obj is UriComponents {
-		if (!obj) {
-			return false;
-		}
-		const thing = obj as UriComponents | undefined;
-		return typeof thing?.path === 'string' &&
-			typeof thing?.scheme === 'string';
 	}
 
 	protected _targetPlatformPromise: Promise<TargetPlatform> | undefined;
