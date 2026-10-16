@@ -12,7 +12,6 @@ import { AllowedExtensionsConfigKey, ILocalExtension } from '../../common/extens
 import { ExtensionType, IExtensionManifest, TargetPlatform } from '../../../extensions/common/extensions.js';
 import { Event } from '../../../../base/common/event.js';
 import { ConfigurationTarget } from '../../../configuration/common/configuration.js';
-import { getGalleryExtensionId } from '../../common/extensionManagementUtil.js';
 import { URI } from '../../../../base/common/uri.js';
 import { IStringDictionary } from '../../../../base/common/collections.js';
 

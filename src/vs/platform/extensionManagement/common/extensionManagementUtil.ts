@@ -12,7 +12,6 @@ import { URI } from '../../../base/common/uri.js';
 import { getErrorMessage } from '../../../base/common/errors.js';
 import { ILogService } from '../../log/common/log.js';
 import { arch } from '../../../base/common/process.js';
-import { TelemetryTrustedValue } from '../../telemetry/common/telemetryUtils.js';
 import { isString } from '../../../base/common/types.js';
 
 export function areSameExtensions(a: IExtensionIdentifier, b: IExtensionIdentifier): boolean {
@@ -29,7 +28,7 @@ const ExtensionKeyRegex = /^([^.]+\..+)-(\d+\.\d+\.\d+)(-(.+))?$/;
 
 export class ExtensionKey {
 
-	static create(extension: ILocalExtension): ExtensionKey {
+	static create(extension: IExtension | ILocalExtension): ExtensionKey {
 		return new ExtensionKey(extension.identifier, extension.manifest.version, extension.targetPlatform);
 	}
 

@@ -48,7 +48,7 @@ suite('Extension Test', () => {
 	});
 
 	function aLocalExtension(): ILocalExtension {
-		const manifest: IExtensionManifest = { name: 'ext', publisher: 'pub', version: '1.0.0', displayName: 'Extension' };
+		const manifest: IExtensionManifest = { name: 'ext', publisher: 'pub', version: '1.0.0', displayName: 'Extension', engines: { vscode: '*' } };
 		return {
 			type: ExtensionType.User,
 			location: URI.file('/extensions/pub.ext'),
