@@ -264,7 +264,6 @@ export class WebClientServer {
 				setRequestHeader(header.toLowerCase());
 			}
 		};
-		setRequestHeader('X-Client-Name');
 		setRequestHeader('X-Client-Version');
 
 		const context = await this._requestService.request({

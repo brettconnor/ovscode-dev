@@ -3,7 +3,6 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 
-import { isWeb } from '../../../base/common/platform.js';
 import { URI } from '../../../base/common/uri.js';
 import { IFileService } from '../../files/common/files.js';
 import { createDecorator } from '../../instantiation/common/instantiation.js';
@@ -62,7 +61,6 @@ export abstract class AbstractExtensionResourceLoaderService implements IExtensi
 
 	protected getExtensionGalleryRequestHeaders(): Record<string, string> {
 		const headers: Record<string, string> = {
-			'X-Client-Name': `${this._productService.applicationName}${isWeb ? '-web' : ''}`,
 			'X-Client-Version': this._productService.version
 		};
 		return headers;
