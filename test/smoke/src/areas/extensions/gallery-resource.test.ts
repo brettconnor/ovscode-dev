@@ -11,7 +11,7 @@ import { installAllHandlers } from '../../utils';
 
 export function setup(logger: Logger) {
 	describe('Gallery resource loading', () => {
-		it('fetches a resource with only the client version header', async () => {
+		it('fetches a resource without Gallery client metadata headers', async () => {
 			const { ExtensionResourceLoaderService } = require('../../../../../out/vs/platform/extensionResourceLoader/common/extensionResourceLoaderService.js') as {
 				ExtensionResourceLoaderService: new (...services: unknown[]) => { readExtensionResource(uri: unknown): Promise<string> };
 			};
@@ -78,7 +78,7 @@ export function setup(logger: Logger) {
 					machineId: receivedHeaders?.['x-machine-id']
 				}, {
 					clientName: undefined,
-					clientVersion: '1.2.3',
+					clientVersion: undefined,
 					clientCommit: undefined,
 					machineId: undefined
 				});
@@ -91,7 +91,7 @@ export function setup(logger: Logger) {
 	describe('Gallery browser resource proxy', () => {
 		installAllHandlers(logger);
 
-		it('fetches a Gallery resource through the web proxy in Chromium with Version only', async function () {
+		it('fetches a Gallery resource through the web proxy in Chromium without client metadata headers', async function () {
 			const app = this.app as Application;
 			const runtimeGlobal = globalThis as typeof globalThis & { _VSCODE_FILE_ROOT?: string };
 			const previousFileRoot = runtimeGlobal._VSCODE_FILE_ROOT;
@@ -123,7 +123,7 @@ export function setup(logger: Logger) {
 				{ isBuilt: true, args: {} },
 				{ error: () => undefined, trace: () => undefined, getLevel: () => 0 },
 				{
-					request: async (options: { url: string; headers: Record<string, string> }) => {
+					request: async (options: { url: string; headers?: Record<string, string> }) => {
 						upstreamUrl = options.url;
 						upstreamRequests.push(options.url);
 						upstreamHeaders = options.headers;
@@ -163,8 +163,7 @@ export function setup(logger: Logger) {
 				await page.goto(`http://127.0.0.1:${address.port}/`);
 				const result = await page.evaluate(async () => {
 					const response = await fetch('/web-extension-resource/gallery.example/publisher/extension/resource.json', {
-						mode: 'cors',
-						headers: { 'X-Client-Version': '1.2.3' }
+						mode: 'cors'
 					});
 					const allowed = { status: response.status, body: await response.text() };
 					const rejectedResponse = await fetch('/web-extension-resource/attacker.invalid/publisher/extension/resource.json', { mode: 'cors' });
@@ -188,7 +187,7 @@ export function setup(logger: Logger) {
 					upstreamUrl: 'https://gallery.example/publisher/extension/resource.json',
 					upstreamRequests: ['https://gallery.example/publisher/extension/resource.json'],
 					clientName: undefined,
-					clientVersion: '1.2.3',
+					clientVersion: undefined,
 					clientCommit: undefined
 				});
 			} finally {

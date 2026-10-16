@@ -59,13 +59,6 @@ export abstract class AbstractExtensionResourceLoaderService implements IExtensi
 		return !!this._extensionGalleryAuthority && this._extensionGalleryAuthority === this._getExtensionGalleryAuthority(uri);
 	}
 
-	protected getExtensionGalleryRequestHeaders(): Record<string, string> {
-		const headers: Record<string, string> = {
-			'X-Client-Version': this._productService.version
-		};
-		return headers;
-	}
-
 	private _getExtensionGalleryAuthority(uri: URI): string | undefined {
 		if (isWebExtensionResourceEndPoint(uri)) {
 			return uri.authority;

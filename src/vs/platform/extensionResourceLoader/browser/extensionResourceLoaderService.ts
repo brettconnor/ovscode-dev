@@ -33,8 +33,7 @@ class ExtensionResourceLoaderService extends AbstractExtensionResourceLoaderServ
 
 		const requestInit: RequestInit = {};
 		if (await this.isExtensionGalleryResource(uri)) {
-			requestInit.headers = this.getExtensionGalleryRequestHeaders();
-			requestInit.mode = 'cors'; /* set mode to cors so that above headers are always passed */
+			requestInit.mode = 'cors'; /* Keep Gallery resource requests subject to browser CORS checks. */
 		}
 
 		const response = await fetch(uri.toString(true), requestInit);

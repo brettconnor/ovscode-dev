@@ -18,12 +18,11 @@ import { generateUuid } from '../../base/common/uuid.js';
 import { IProductService } from '../../platform/product/common/productService.js';
 import { ServerConnectionToken, ServerConnectionTokenType } from './serverConnectionToken.js';
 import { asTextOrError, IRequestService } from '../../platform/request/common/request.js';
-import { IHeaders } from '../../base/parts/request/common/request.js';
 import { CancellationToken } from '../../base/common/cancellation.js';
 import { URI } from '../../base/common/uri.js';
 import { streamToBuffer } from '../../base/common/buffer.js';
 import { IProductConfiguration } from '../../base/common/product.js';
-import { isString, Mutable } from '../../base/common/types.js';
+import { Mutable } from '../../base/common/types.js';
 import { CharCode } from '../../base/common/charCode.js';
 import { IExtensionManifest } from '../../platform/extensions/common/extensions.js';
 import { ICSSDevelopmentService } from '../../platform/cssDev/node/cssDevService.js';
@@ -255,21 +254,9 @@ export class WebClientServer {
 			return serveError(req, res, 403, 'Request Forbidden');
 		}
 
-		const headers: IHeaders = {};
-		const setRequestHeader = (header: string) => {
-			const value = req.headers[header];
-			if (value && (isString(value) || value[0])) {
-				headers[header] = isString(value) ? value : value[0];
-			} else if (header !== header.toLowerCase()) {
-				setRequestHeader(header.toLowerCase());
-			}
-		};
-		setRequestHeader('X-Client-Version');
-
 		const context = await this._requestService.request({
 			type: 'GET',
 			url: uri.toString(true),
-			headers,
 			callSite: 'webClientServer.fetchAndWriteFile'
 		}, CancellationToken.None);
 

@@ -25,8 +25,7 @@ export class ExtensionResourceLoaderService extends AbstractExtensionResourceLoa
 
 	async readExtensionResource(uri: URI): Promise<string> {
 		if (await this.isExtensionGalleryResource(uri)) {
-			const headers = this.getExtensionGalleryRequestHeaders();
-			const requestContext = await this._requestService.request({ url: uri.toString(), headers, callSite: 'extensionResourceLoader.readExtensionResource' }, CancellationToken.None);
+			const requestContext = await this._requestService.request({ url: uri.toString(), callSite: 'extensionResourceLoader.readExtensionResource' }, CancellationToken.None);
 			return (await asTextOrError(requestContext)) || '';
 		}
 		const result = await this._fileService.readFile(uri);
