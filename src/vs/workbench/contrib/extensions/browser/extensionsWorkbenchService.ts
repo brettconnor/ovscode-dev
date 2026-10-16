@@ -36,7 +36,7 @@ import * as resources from '../../../../base/common/resources.js';
 import { CancellationToken } from '../../../../base/common/cancellation.js';
 import { IStorageService, StorageScope, StorageTarget } from '../../../../platform/storage/common/storage.js';
 import { IFileService } from '../../../../platform/files/common/files.js';
-import { IExtensionManifest, ExtensionType, IExtension as IPlatformExtension, TargetPlatform, ExtensionIdentifier, IExtensionIdentifier, IExtensionDescription, isApplicationScopedExtension } from '../../../../platform/extensions/common/extensions.js';
+import { IExtensionManifest, ExtensionType, IExtension as IPlatformExtension, ExtensionIdentifier, IExtensionIdentifier, IExtensionDescription, isApplicationScopedExtension } from '../../../../platform/extensions/common/extensions.js';
 import { IProductService } from '../../../../platform/product/common/productService.js';
 import { FileAccess } from '../../../../base/common/network.js';
 import { isString } from '../../../../base/common/types.js';
@@ -190,6 +190,10 @@ export class Extension implements IExtension {
 		return undefined;
 	}
 
+	get licenseUrl(): string | undefined {
+		return undefined;
+	}
+
 	get installCount(): number | undefined {
 		return undefined;
 	}
@@ -286,7 +290,7 @@ export class Extension implements IExtension {
 	}
 
 	get hasReleaseVersion(): boolean {
-		return !!this.resourceExtension || !!this.local?.hasReleaseVersion;
+		return !!this.resourceExtension;
 	}
 
 	async getManifest(_token: CancellationToken): Promise<IExtensionManifest | null> {

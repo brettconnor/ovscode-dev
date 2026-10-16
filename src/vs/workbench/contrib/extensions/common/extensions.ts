@@ -70,6 +70,7 @@ export interface IExtension {
 	readonly hasReleaseVersion: boolean;
 	readonly description: string;
 	readonly repository?: string;
+	readonly licenseUrl?: string;
 	readonly supportUrl?: string;
 	readonly iconUrl?: string;
 	readonly iconUrlFallback?: string;

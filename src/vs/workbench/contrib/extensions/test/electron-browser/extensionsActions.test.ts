@@ -9,7 +9,7 @@ import { IExtensionsWorkbenchService, ExtensionContainers } from '../../common/e
 import * as ExtensionsActions from '../../browser/extensionsActions.js';
 import { ExtensionsWorkbenchService } from '../../browser/extensionsWorkbenchService.js';
 import {
-	IExtensionManagementService, IExtensionGalleryService, ILocalExtension, IGalleryExtension,
+	IExtensionManagementService, IExtensionGalleryService, ILocalExtension,
 	DidUninstallExtensionEvent, InstallExtensionEvent, IExtensionIdentifier, InstallOperation, InstallExtensionResult, getTargetPlatform, IExtensionsControlManifest, UninstallExtensionEvent, Metadata
 } from '../../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IWorkbenchExtensionEnablementService, EnablementState, IExtensionManagementServerService, IExtensionManagementServer, ExtensionInstallLocation, IProfileAwareExtensionManagementService, IWorkbenchExtensionManagementService } from '../../../../services/extensionManagement/common/extensionManagement.js';
@@ -54,6 +54,8 @@ import { IEnvironmentService, INativeEnvironmentService } from '../../../../../p
 import { platform } from '../../../../../base/common/platform.js';
 import { arch } from '../../../../../base/common/process.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
+
+type IGalleryExtension = any;
 import { IUpdateService, State } from '../../../../../platform/update/common/update.js';
 import { IMeteredConnectionService } from '../../../../../platform/meteredConnection/common/meteredConnection.js';
 import { IFileService } from '../../../../../platform/files/common/files.js';
@@ -222,7 +224,6 @@ suite('ExtensionsActions', () => {
 			.then(extensions => {
 				const gallery = aGalleryExtension('a');
 				const extension = extensions[0];
-				extension.gallery = gallery;
 				installEvent.fire({ identifier: gallery.identifier, source: gallery, profileLocation: null! });
 				testObject.extension = extension;
 				assert.ok(!testObject.enabled);

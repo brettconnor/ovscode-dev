@@ -8,12 +8,11 @@ import { AllowedExtensionsService } from '../../common/allowedExtensionsService.
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../base/test/common/utils.js';
 import { IProductService } from '../../../product/common/productService.js';
 import { TestConfigurationService } from '../../../configuration/test/common/testConfigurationService.js';
-import { AllowedExtensionsConfigKey, IGalleryExtension, ILocalExtension } from '../../common/extensionManagement.js';
+import { AllowedExtensionsConfigKey, ILocalExtension } from '../../common/extensionManagement.js';
 import { ExtensionType, IExtensionManifest, TargetPlatform } from '../../../extensions/common/extensions.js';
 import { Event } from '../../../../base/common/event.js';
 import { ConfigurationTarget } from '../../../configuration/common/configuration.js';
 import { getGalleryExtensionId } from '../../common/extensionManagementUtil.js';
-import { generateUuid } from '../../../../base/common/uuid.js';
 import { URI } from '../../../../base/common/uri.js';
 import { IStringDictionary } from '../../../../base/common/collections.js';
 
@@ -182,10 +181,10 @@ suite('AllowedExtensionsService', () => {
 		assert.strictEqual(testObject.isAllowed({ id: 'test.extension', publisherDisplayName: undefined }) === true, false);
 	});
 
-	test('should allow a gallery extension', () => {
+	test('should allow an extension descriptor', () => {
 		configurationService.setUserConfiguration(AllowedExtensionsConfigKey, { 'pub': true });
 		const testObject = disposables.add(new AllowedExtensionsService(aProductService(), configurationService));
-		assert.strictEqual(testObject.isAllowed(aGalleryExtension('name')) === true, true);
+		assert.strictEqual(testObject.isAllowed({ id: 'pub.name', publisherDisplayName: 'Pub', version: '1.0.0', targetPlatform: TargetPlatform.UNIVERSAL }) === true, true);
 	});
 
 	test('should allow a local extension', () => {
@@ -207,13 +206,6 @@ suite('AllowedExtensionsService', () => {
 			_serviceBrand: undefined,
 			extensionPublisherOrgs
 		} as IProductService;
-	}
-
-	function aGalleryExtension(name: string, properties: Partial<IGalleryExtension> = {}, galleryExtensionProperties: IStringDictionary<unknown> = {}): IGalleryExtension {
-		const galleryExtension = <IGalleryExtension>Object.create({ type: 'gallery', name, publisher: 'pub', publisherDisplayName: 'Pub', version: '1.0.0', allTargetPlatforms: [TargetPlatform.UNIVERSAL], properties: {}, assets: {}, ...properties });
-		galleryExtension.properties = { ...galleryExtension.properties, dependencies: [], ...galleryExtensionProperties };
-		galleryExtension.identifier = { id: getGalleryExtensionId(galleryExtension.publisher, galleryExtension.name), uuid: generateUuid() };
-		return <IGalleryExtension>galleryExtension;
 	}
 
 	function aLocalExtension(id: string, manifest: Partial<IExtensionManifest> = {}, properties: IStringDictionary<unknown> = {}): ILocalExtension {

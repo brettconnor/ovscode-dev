@@ -9,8 +9,8 @@ import { generateUuid } from '../../../../../base/common/uuid.js';
 import { ExtensionState, ExtensionRuntimeActionType } from '../../common/extensions.js';
 import { ExtensionsWorkbenchService } from '../../browser/extensionsWorkbenchService.js';
 import {
-	IExtensionManagementService, IExtensionGalleryService, ILocalExtension, IGalleryExtension,
-	DidUninstallExtensionEvent, InstallExtensionEvent, IGalleryExtensionAssets, InstallOperation, InstallExtensionResult, getTargetPlatform, IExtensionsControlManifest, UninstallExtensionEvent, Metadata
+	IExtensionManagementService, IExtensionGalleryService, ILocalExtension,
+	DidUninstallExtensionEvent, InstallExtensionEvent, InstallOperation, InstallExtensionResult, getTargetPlatform, IExtensionsControlManifest, UninstallExtensionEvent, Metadata
 } from '../../../../../platform/extensionManagement/common/extensionManagement.js';
 import { IWorkbenchExtensionEnablementService, EnablementState, IExtensionManagementServerService, IExtensionManagementServer, IProfileAwareExtensionManagementService, IWorkbenchExtensionManagementService } from '../../../../services/extensionManagement/common/extensionManagement.js';
 import { getGalleryExtensionId } from '../../../../../platform/extensionManagement/common/extensionManagementUtil.js';
@@ -46,6 +46,9 @@ import { arch } from '../../../../../base/common/process.js';
 import { IExtensionService } from '../../../../services/extensions/common/extensions.js';
 import { toDisposable } from '../../../../../base/common/lifecycle.js';
 import { ensureNoDisposablesAreLeakedInTestSuite } from '../../../../../base/test/common/utils.js';
+
+type IGalleryExtension = any;
+type IGalleryExtensionAssets = any;
 import { Mutable } from '../../../../../base/common/types.js';
 import { IUpdateService, State } from '../../../../../platform/update/common/update.js';
 import { IFileService } from '../../../../../platform/files/common/files.js';
